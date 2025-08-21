@@ -103,6 +103,8 @@ const ProductionArchive = () => {
       team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+
+    return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800">Search Results ({filtered.length} found)</h3>
