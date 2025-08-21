@@ -438,4 +438,77 @@ const ProductionArchive = () => {
                     <div className="text-sm text-green-700 space-y-1">
                       <p>In Netlify dashboard, add:</p>
                       <code className="block bg-green-100 p-2 rounded text-xs">
-             
+                        REACT_APP_SHEET_ID<br/>
+                        = 17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w<br/>
+                        <br/>
+                        REACT_APP_GOOGLE_API_KEY<br/>
+                        = your_api_key_here
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <h4 className="font-semibold text-yellow-800 mb-2">Step 2: Redeploy</h4>
+                    <div className="text-sm text-yellow-700 space-y-1">
+                      <p>After adding environment variables:</p>
+                      <code className="block bg-yellow-100 p-2 rounded text-xs">
+                        Go to Deploys tab<br/>
+                        Click "Trigger deploy"<br/>
+                        Select "Deploy site"
+                      </code>
+                    </div>
+                  </div>
+
+                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h4 className="font-semibold text-purple-800 mb-2">Step 3: Test</h4>
+                    <div className="text-sm text-purple-700 space-y-1">
+                      <p>Your archive should show:</p>
+                      <code className="block bg-purple-100 p-2 rounded text-xs">
+                        "Live data connected"<br/>
+                        Real season data<br/>
+                        Working search
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'statistics' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatsCard
+                icon={Database}
+                title="Data Source"
+                value="Google Sheets"
+                subtitle={dataLoaded ? "Connected" : "Not connected"}
+              />
+              <StatsCard
+                icon={Calendar}
+                title="Seasons Loaded"
+                value={availableSeasons.length || 0}
+                subtitle="Historical coverage"
+              />
+              <StatsCard
+                icon={Users}
+                title="Total Records"
+                value={allPositionData.length.toLocaleString() || "0"}
+                subtitle="Position entries"
+              />
+              <StatsCard
+                icon={Trophy}
+                title="Status"
+                value={dataLoaded ? "Live" : "Setup"}
+                subtitle={dataLoaded ? "Real-time data" : "Needs configuration"}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ProductionArchive
