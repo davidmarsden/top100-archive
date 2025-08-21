@@ -434,39 +434,4 @@ const ProductionArchive = () => {
           </div>
         )}
 
-        {activeTab === 'statistics' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatsCard
-                icon={Database}
-                title="Data Source"
-                value="Google Sheets"
-                subtitle={dataLoaded ? "Connected" : "Not connected"}
-              />
-              <StatsCard
-                icon={Calendar}
-                title="Seasons Loaded"
-                value={availableSeasons.length || 0}
-                subtitle="Historical coverage"
-              />
-              <StatsCard
-                icon={Users}
-                title="Total Records"
-                value={allPositionData.length.toLocaleString() || "0"}
-                subtitle="Position entries"
-              />
-              <StatsCard
-                icon={Trophy}
-                title="Status"
-                value={dataLoaded ? "Live" : "Setup"}
-                subtitle={dataLoaded ? "Real-time data" : "Needs configuration"}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ProductionArchive;
+        {acti
