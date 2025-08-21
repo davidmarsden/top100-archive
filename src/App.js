@@ -1,3 +1,6 @@
+
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, BarChart3, Award, Database, Loader, AlertCircle, Calendar, Users, Trophy } from 'lucide-react';
 
@@ -15,7 +18,7 @@ const ProductionArchive = () => {
 
   // Configuration - Your actual Sheet ID
   const SHEET_ID = process.env.REACT_APP_SHEET_ID || '17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w';
-  const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'YOUR_API_KEY_HERE';
+  const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyCHUgLy0eLZy95K-Anzy7UjPMUNWPZEEho';
   const SHEET_RANGE = 'Sorted by team!A:N'; // Updated to include all columns through Manager
 
   // Load data from Google Sheets
