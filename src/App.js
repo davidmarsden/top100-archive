@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, BarChart3, Award, Target, Trophy, Crown, Users, Calendar, Database, Loader, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, BarChart3, Award, Database, Loader, AlertCircle, Calendar, Users, Trophy } from 'lucide-react';
 
 const ProductionArchive = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,12 +16,8 @@ const ProductionArchive = () => {
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'YOUR_API_KEY_HERE';
   const SHEET_RANGE = 'Sheet1!A:N'; // Updated to include all columns through Manager
 
-  // Load data from Google Sheets on component mount
-  useEffect(() => {
-    loadFromGoogleSheets();
-  }, []);
-
-  const loadFromGoogleSheets = async () => {
+  // Load data from Google Sheets
+  const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -42,7 +38,7 @@ const ProductionArchive = () => {
       }
       
       // Convert sheet data to match your exact headers
-      const [headers, ...rows] = data.values;
+      const [, ...rows] = data.values; // Remove headers variable since we don't use it
       const formattedData = rows
         .filter(row => row[0] && row[3]) // Must have Season and Team
         .map(row => ({
@@ -75,7 +71,12 @@ const ProductionArchive = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [SHEET_ID, API_KEY, SHEET_RANGE]);
+
+  // Load data from Google Sheets on component mount
+  useEffect(() => {
+    loadFromGoogleSheets();
+  }, [loadFromGoogleSheets]);
 
   // Get data for specific season/division
   const getTableData = (season, division) => {
@@ -390,42 +391,46 @@ const ProductionArchive = () => {
                   <div className="space-y-2 text-sm">
                     <p className="text-blue-700">✅ Sheet ID: 17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w</p>
                     <p className="text-blue-700">✅ Headers mapped: Season, Div, Pos, Team, P, W, D, L, GF, GA, GD, Pts, Start date, Manager</p>
-                    <p className="text-blue-700">📝 Next: Add your Google API key</p>
+                    <p className="text-blue-700">📝 Next: Add your Google API key in Netlify environment variables</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="font-semibold text-green-800 mb-2">Step 3: Environment Variables</h4>
+                    <h4 className="font-semibold text-green-800 mb-2">Step 1: Netlify Environment Variables</h4>
                     <div className="text-sm text-green-700 space-y-1">
-                      <p>Create .env file:</p>
+                      <p>In Netlify dashboard, add:</p>
                       <code className="block bg-green-100 p-2 rounded text-xs">
-                        REACT_APP_SHEET_ID=17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w<br/>
-                        REACT_APP_GOOGLE_API_KEY=your_api_key_here
+                        REACT_APP_SHEET_ID<br/>
+                        = 17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w<br/>
+                        <br/>
+                        REACT_APP_GOOGLE_API_KEY<br/>
+                        = your_api_key_here
                       </code>
                     </div>
                   </div>
                   
                   <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <h4 className="font-semibold text-yellow-800 mb-2">Step 4: Build & Deploy</h4>
+                    <h4 className="font-semibold text-yellow-800 mb-2">Step 2: Redeploy</h4>
                     <div className="text-sm text-yellow-700 space-y-1">
-                      <p>Deploy to Netlify:</p>
+                      <p>After adding environment variables:</p>
                       <code className="block bg-yellow-100 p-2 rounded text-xs">
-                        npm run build<br/>
-                        drag build folder to Netlify<br/>
-                        add environment variables
+                        Go to Deploys tab<br/>
+                        Click "Trigger deploy"<br/>
+                        Select "Deploy site"
                       </code>
                     </div>
                   </div>
                   
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 className="font-semibold text-purple-800 mb-2">Step 5: Share with Community</h4>
+                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h4 className="font-semibold text-purple-800 mb-2">Step 3: Test</h4>
                     <div className="text-sm text-purple-700 space-y-1">
-                      <p>Your archive will be live at:</p>
+                      <p>Your archive should show:</p>
                       <code className="block bg-purple-100 p-2 rounded text-xs">
-                        https://your-app.netlify.app
+                        "Live data connected"<br/>
+                        Real season data<br/>
+                        Working search
                       </code>
-                      <p className="mt-2">Share with Top 100 managers!</p>
                     </div>
                   </div>
                 </div>
@@ -434,7 +439,7 @@ const ProductionArchive = () => {
           </div>
         )}
 
-         {activeTab === 'statistics' && (
+        {activeTab === 'statistics' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatsCard
