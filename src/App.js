@@ -106,6 +106,12 @@ const ProductionArchive = () => {
 
     return (
       <div className="space-y-4">
+<div style={{background: 'yellow', padding: '10px'}}>
+  <h3>Debug Info:</h3>
+  <p>Data length: {data.length}</p>
+  <p>Data type: {typeof data}</p>
+  <pre>{JSON.stringify(data, null, 2)}</pre>
+</div>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800">Search Results ({filtered.length} found)</h3>
           <div className="text-sm text-gray-500">
