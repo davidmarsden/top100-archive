@@ -14,57 +14,53 @@ const ProductionArchive = () => {
   // Configuration - Your actual Sheet ID
   const SHEET_ID = process.env.REACT_APP_SHEET_ID || '17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w';
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyCHUgLy0eLZy95K-Anzy7UjPMUNWPZEEho';
-  const SHEET_RANGE = 'Sorted by team!A:N'; // Updated to include all columns through Manager
+  const SHEET_RANGE = 'Sorted by team!A:N';
 
   // Load data from Google Sheets
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Google Sheets API URL
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY}`;
-      
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} - ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.values || data.values.length === 0) {
         throw new Error('No data found in the sheet');
       }
-      
-      // Convert sheet data to match your exact headers
-      const [, ...rows] = data.values; // Remove headers variable since we don't use it
+
+      const [, ...rows] = data.values;
       const formattedData = rows
-        .filter(row => row[0] && row[3]) // Must have Season and Team
+        .filter(row => row[0] && row[3])
         .map(row => ({
-          season: row[0] || '',        // Season
-          division: row[1] || '',      // Div
-          position: row[2] || '',      // Pos
-          team: row[3] || '',          // Team
-          played: row[4] || '',        // P
-          won: row[5] || '',           // W
-          drawn: row[6] || '',         // D
-          lost: row[7] || '',          // L
-          goals_for: row[8] || '',     // GF
-          goals_against: row[9] || '', // GA
-          goal_difference: row[10] || '', // GD
-          points: row[11] || '',       // Pts
-          start_date: row[12] || '',   // Start date
-          manager: row[13] || ''       // Manager
+          season: row[0] || '',
+          division: row[1] || '',
+          position: row[2] || '',
+          team: row[3] || '',
+          played: row[4] || '',
+          won: row[5] || '',
+          drawn: row[6] || '',
+          lost: row[7] || '',
+          goals_for: row[8] || '',
+          goals_against: row[9] || '',
+          goal_difference: row[10] || '',
+          points: row[11] || '',
+          start_date: row[12] || '',
+          manager: row[13] || ''
         }));
-      
+
       setAllPositionData(formattedData);
       setDataLoaded(true);
-      
-      // Set default season to latest available
+
       const latestSeason = Math.max(...formattedData.map(row => parseInt(row.season) || 0)).toString();
       setSelectedSeason(latestSeason);
-      
+
     } catch (err) {
       console.error('Error loading data:', err);
       setError(err.message);
@@ -73,94 +69,112 @@ const ProductionArchive = () => {
     }
   }, [SHEET_ID, API_KEY, SHEET_RANGE]);
 
-  // Load data from Google Sheets on component mount
   useEffect(() => {
     loadFromGoogleSheets();
   }, [loadFromGoogleSheets]);
-
-  // Get data for specific season/division
-  const getTableData = (season, division) => {
-    return allPositionData
-      .filter(row => row.season === season && row.division === division)
-      .sort((a, b) => parseInt(a.position) - parseInt(b.position));
-  };
-
-  const getRowColor = (position) => {
-    const pos = parseInt(position);
-    if (pos === 1) return 'bg-yellow-50 border-l-4 border-yellow-400';
-    if (pos >= 2 && pos <= 4) return 'bg-green-50 border-l-4 border-green-400';
-    if (pos >= 17) return 'bg-red-50 border-l-4 border-red-400';
-    return 'bg-white';
-  };
 
   const availableSeasons = [...new Set(allPositionData.map(row => row.season))].sort((a, b) => b - a);
   const availableDivisions = [...new Set(allPositionData.filter(row => row.season === selectedSeason).map(row => row.division))].sort();
 
   const SearchResults = () => {
-  const filtered = allPositionData.filter(team => 
-    team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+    const filtered = allPositionData.filter(team => 
+      team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
-  return (
-    <div className="space-y-4">
-      <div className="text-sm text-gray-600 mb-4">
-        Search Results ({filtered.length} found) <span className="float-right">Total records: {allPositionData.length}</span>
-      </div>
-      
-      {filtered.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No results found for "{searchTerm}"
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800">Search Results ({filtered.length} found)</h3>
+          <div className="text-sm text-gray-500">
+            Total records: {allPositionData.length.toLocaleString()}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((team, index) => (
-            <div key={index} className="bg-white rounded-lg p-4 shadow border">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-semibold text-lg">{team.team}</h3>
-                  <p className="text-gray-600">Season {team.season}, Division {team.division}, Position {team.position}</p>
-                  {team.manager && <p className="text-sm text-gray-500">Manager: {team.manager}</p>}
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-500">Points: {team.points}</div>
-                  <div className="text-sm text-gray-500">P{team.played} W{team.won} D{team.drawn} L{team.lost}</div>
+        
+        {filtered.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No results found for "{searchTerm}"
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((team, index) => (
+              <div key={index} className="bg-white rounded-lg p-4 shadow border-l-4 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{team.team}</h4>
+                    <p className="text-sm text-gray-600">Season {team.season} Division {team.division}</p>
+                    <p className="text-xs text-gray-500">Manager: {team.manager || 'Unknown'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-blue-600">#{team.position}</p>
+                    <p className="text-sm text-gray-600">{team.points} points</p>
+                    <p className="text-xs text-gray-500">{team.won}W {team.drawn}D {team.lost}L</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const DebugInfo = () => (
+    <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
+      <h3>Debug Info:</h3>
+      <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+      <p><strong>Data Loaded:</strong> {dataLoaded ? 'Yes' : 'No'}</p>
+      <p><strong>Error:</strong> {error || 'None'}</p>
+      <p><strong>Records Count:</strong> {allPositionData.length}</p>
+      <p><strong>API Key Set:</strong> {API_KEY ? `Yes (${API_KEY.substring(0, 10)}...)` : 'No'}</p>
+      <p><strong>Sheet ID:</strong> {SHEET_ID ? 'Set' : 'Missing'}</p>
+
+      {allPositionData.length > 0 && (
+        <div>
+          <h4>Sample Data (first 2 records):</h4>
+          <pre style={{fontSize: '12px', maxHeight: '200px', overflow: 'scroll'}}>
+            {JSON.stringify(allPositionData.slice(0, 2), null, 2)}
+          </pre>
         </div>
       )}
+
+      <div>
+        <h4>Available Seasons: {availableSeasons.join(', ')}</h4>
+        <h4>Available Divisions: {availableDivisions.join(', ')}</h4>
+      </div>
+    </div>
+  );
+
+  // MAIN COMPONENT RETURN - This was missing!
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800">
+      <DebugInfo />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-4">TOP 100 POSITION ARCHIVE</h1>
+          <p className="text-xl text-blue-100">25 Seasons • Google Sheets Database • Live Updates</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Search teams or managers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <SearchResults />
+        </div>
+      </div>
     </div>
   );
 };
-    
-const DebugInfo = () => (
-  <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
-    <h3>🐛 Enhanced Debug Info:</h3>
-    <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-    <p><strong>Data Loaded:</strong> {dataLoaded ? 'Yes' : 'No'}</p>
-    <p><strong>Error:</strong> {error || 'None'}</p>
-    <p><strong>Records Count:</strong> {allPositionData.length}</p>
-    <p><strong>API Key Set:</strong> {API_KEY ? `Yes (${API_KEY.substring(0, 10)}...)` : 'No'}</p>
-    <p><strong>Sheet ID:</strong> {SHEET_ID ? 'Set' : 'Missing'}</p>
-    <p><strong>API URL:</strong> {`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY.substring(0, 10)}...`}</p>
 
-    {allPositionData.length > 0 && (
-      <div>
-        <h4>Sample Data (first 2 records):</h4>
-        <pre style={{fontSize: '12px', maxHeight: '200px', overflow: 'scroll'}}>
-          {JSON.stringify(allPositionData.slice(0, 2), null, 2)}
-        </pre>
-      </div>
-    )}
-    
-    <div>
-      <h4>Available Seasons: {availableSeasons.join(', ')}</h4>
-      <h4>Available Divisions: {availableDivisions.join(', ')}</h4>
-    </div>
-  </div>
-);
+export default ProductionArchive;
 
 
         <div className="flex items-center justify-between">
