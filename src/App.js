@@ -1,22 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, BarChart3, Award, Database, Loader, AlertCircle, Calendar, Users, Trophy } from 'lucide-react';
 
-return (
-  <div>
-    {/* ADD THIS ANYWHERE IN YOUR JSX */}
-    <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
-      <h3>🐛 Debug Info:</h3>
-      <p>Data exists: {data ? 'Yes' : 'No'}</p>
-      <p>Data length: {Array.isArray(data) ? data.length : 'Not an array'}</p>
-      <p>Data type: {typeof data}</p>
-      <pre style={{fontSize: '12px', maxHeight: '200px', overflow: 'scroll'}}>
-        {JSON.stringify(data, null, 2)}
-      </pre>
-    </div>
-    
-    {/* Your existing content */}
-  </div>
-);
+
 
 const ProductionArchive = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,6 +105,22 @@ const ProductionArchive = () => {
     );
 
     return (
+
+
+  <div>
+    {/* ADD THIS ANYWHERE IN YOUR JSX */}
+    <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
+      <h3>🐛 Debug Info:</h3>
+      <p>Data exists: {data ? 'Yes' : 'No'}</p>
+      <p>Data length: {Array.isArray(data) ? data.length : 'Not an array'}</p>
+      <p>Data type: {typeof data}</p>
+      <pre style={{fontSize: '12px', maxHeight: '200px', overflow: 'scroll'}}>
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </div>
+    
+    {/* Your existing content */}
+
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800">Search Results ({filtered.length} found)</h3>
