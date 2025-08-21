@@ -1,10 +1,5 @@
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, BarChart3, Award, Database, Loader, AlertCircle, Calendar, Users, Trophy } from 'lucide-react';
-
-
 
 const ProductionArchive = () => {
   const [searchTerm, setSearchTerm] = useState('');
