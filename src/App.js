@@ -99,10 +99,13 @@ const ProductionArchive = () => {
   const SearchResults = () => {
     const filtered = allPositionData.filter(team => 
       team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
+      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()));
 		};
 		
-		const DebugInfo = () => (
+		
+
+    return (
+const DebugInfo = () => (
   <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
     <h3>🐛 Enhanced Debug Info:</h3>
     <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
@@ -128,13 +131,7 @@ const ProductionArchive = () => {
 );
     );
 
-    return (
-      <div className="space-y-4">
-<div style={{background: 'yellow', padding: '10px'}}>
-  <h3>Debug Info:</h3>
-  <p>No data variable defined yet</p>
-  <p>Site is working - need to add data fetching</p>
-</div>
+
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800">Search Results ({filtered.length} found)</h3>
           <div className="text-sm text-gray-500">
