@@ -148,6 +148,9 @@ const ProductionArchive = () => {
     );
   };
 
+  </div>
+);
+
   const LeagueTable = () => {
     const tableData = getTableData(selectedSeason, selectedDivision);
     
