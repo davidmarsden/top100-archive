@@ -108,9 +108,8 @@ const ProductionArchive = () => {
       <div className="space-y-4">
 <div style={{background: 'yellow', padding: '10px'}}>
   <h3>Debug Info:</h3>
-  <p>Data length: {data.length}</p>
-  <p>Data type: {typeof data}</p>
-  <pre>{JSON.stringify(data, null, 2)}</pre>
+  <p>No data variable defined yet</p>
+  <p>Site is working - need to add data fetching</p>
 </div>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800">Search Results ({filtered.length} found)</h3>
