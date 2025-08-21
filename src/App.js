@@ -97,33 +97,43 @@ const ProductionArchive = () => {
   const availableDivisions = [...new Set(allPositionData.filter(row => row.season === selectedSeason).map(row => row.division))].sort();
 
   const SearchResults = () => {
-    const filtered = allPositionData.filter(team => 
-      team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()));
-		};
-		
-		
+  const filtered = allPositionData.filter(team => 
+    team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
-    return (
-const DebugInfo = () => (
-  <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
-    <h3>🐛 Enhanced Debug Info:</h3>
-    <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-    <p><strong>Data Loaded:</strong> {dataLoaded ? 'Yes' : 'No'}</p>
-    <p><strong>Error:</strong> {error || 'None'}</p>
-    <p><strong>Records Count:</strong> {allPositionData.length}</p>
-    <p><strong>API Key Set:</strong> {API_KEY ? `Yes (${API_KEY.substring(0, 10)}...)` : 'No'}</p>
-    <p><strong>Sheet ID:</strong> {SHEET_ID ? 'Set' : 'Missing'}</p>
-    <p><strong>API URL:</strong> {`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY.substring(0, 10)}...`}</p>
-    
-    {allPositionData.length > 0 && (
-      <div>
-        <h4>Sample Data (first 2 records):</h4>
-        <pre style={{fontSize: '12px', maxHeight: '200px', overflow: 'scroll'}}>
-          {JSON.stringify(allPositionData.slice(0, 2), null, 2)}
-        </pre>
+  return (
+    <div className="space-y-4">
+      <div className="text-sm text-gray-600 mb-4">
+        Search Results ({filtered.length} found) <span className="float-right">Total records: {allPositionData.length}</span>
       </div>
-    )}
+      
+      {filtered.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No results found for "{searchTerm}"
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((team, index) => (
+            <div key={index} className="bg-white rounded-lg p-4 shadow border">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-semibold text-lg">{team.team}</h3>
+                  <p className="text-gray-600">Season {team.season}, Division {team.division}, Position {team.position}</p>
+                  {team.manager && <p className="text-sm text-gray-500">Manager: {team.manager}</p>}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">Points: {team.points}</div>
+                  <div className="text-sm text-gray-500">P{team.played} W{team.won} D{team.drawn} L{team.lost}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
     
     <h4>Available Seasons: {availableSeasons.join(', ')}</h4>
     <h4>Available Divisions: {availableDivisions.join(', ')}</h4>
