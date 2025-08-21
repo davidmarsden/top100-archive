@@ -99,8 +99,9 @@ const ProductionArchive = () => {
   const SearchResults = () => {
     const filtered = allPositionData.filter(team => 
       team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
-const DebugInfo = () => (
+      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()));
+		
+		const DebugInfo = () => (
   <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
     <h3>🐛 Enhanced Debug Info:</h3>
     <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
