@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, BarChart3, Award, Database, Loader, AlertCircle, Calendar, Users, Trophy } from 'lucide-react';
+import { Search, BarChart3, Database, Loader, AlertCircle } from 'lucide-react';
 
 const ProductionArchive = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -207,18 +207,7 @@ const ProductionArchive = () => {
     );
   };
 
-  const StatsCard = ({ icon: Icon, title, value, subtitle }) => (
-    <div className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-600 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
-          {subtitle && <p className="text-gray-500 text-sm mt-1">{subtitle}</p>}
-        </div>
-        <Icon className="w-12 h-12 text-blue-500" />
-      </div>
-    </div>
-  );
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
