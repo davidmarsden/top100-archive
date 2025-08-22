@@ -92,28 +92,20 @@ const ProductionArchive = () => {
   const availableDivisions = [...new Set(allPositionData.filter(row => row.season === selectedSeason).map(row => row.division))].sort();
 
   const SearchResults = () => {
+    // Debug: Log a few records to see the actual data structure
+    if (searchTerm.toLowerCase().includes('holmes') && allPositionData.length > 0) {
+      console.log('Debug - First record:', allPositionData[0]);
+      console.log('Debug - Manager field:', JSON.stringify(allPositionData[0].manager));
+      console.log('Debug - All fields:', Object.keys(allPositionData[0]));
+    }
+
     const filtered = allPositionData.filter(team => {
       const searchLower = searchTerm.toLowerCase().trim();
       const teamName = (team.team || '').toLowerCase();
       const managerName = (team.manager || '').toLowerCase().trim();
       
-      // Debug logging to see what we're working with
-      if (searchLower === 'holmes' || searchLower === 'frankland') {
-        console.log('Searching for:', searchLower);
-        console.log('Manager field:', `"${team.manager}"`);
-        console.log('Manager cleaned:', `"${managerName}"`);
-      }
-      
       return teamName.includes(searchLower) || managerName.includes(searchLower);
     });
-
-    // Show some debug info when searching for managers
-    if ((searchTerm.toLowerCase().includes('holmes') || searchTerm.toLowerCase().includes('frankland')) && filtered.length === 0) {
-      console.log('Manager search debug - first 5 records:');
-      allPositionData.slice(0, 5).forEach(team => {
-        console.log(`Team: ${team.team}, Manager: "${team.manager}"`);
-      });
-    }
 
     return (
       <div className="space-y-4">
