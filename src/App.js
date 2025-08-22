@@ -42,24 +42,29 @@ const ProductionArchive = () => {
       // Convert sheet data to match your exact headers
       const [, ...rows] = data.values; // Remove headers variable since we don't use it
       const formattedData = rows
-        .filter(row => row[0] && row[3]) // Must have Season and Team
-        .map(row => ({
-          season: row[0] || '',        // Season
-          division: row[1] || '',      // Div
-          position: row[2] || '',      // Pos
-          team: row[3] || '',          // Team
-          played: row[4] || '',        // P
-          won: row[5] || '',           // W
-          drawn: row[6] || '',         // D
-          lost: row[7] || '',          // L
-          goals_for: row[8] || '',     // GF
-          goals_against: row[9] || '', // GA
-          goal_difference: row[10] || '', // GD
-          points: row[11] || '',       // Pts
-          start_date: row[12] || '',   // Start date
-          manager: row[13] || ''       // Manager
-        }));
+        // Get data for specific season/division
+  const getTableData = (season, division) => {
+    return allPositionData
+      .filter(row => row.season === season && row.division === division)
+      .sort((a, b) => parseInt(a.position) - parseInt(b.position));
+  };
 
+.map(row => ({
+  season: row[0] || '',        // Season
+  division: row[1] || '',      // Div
+  position: row[2] || '',      // Pos
+  team: row[4] || '',          // Team (skip empty column 3)
+  played: row[5] || '',        // P
+  won: row[6] || '',           // W
+  drawn: row[7] || '',         // D
+  lost: row[8] || '',          // L
+  goals_for: row[9] || '',     // GF
+  goals_against: row[10] || '', // GA
+  goal_difference: row[11] || '', // GD
+  points: row[12] || '',       // Pts
+  start_date: row[13] || '',   // Start date
+  manager: row[15] || ''       // Manager (skip empty column 14)
+}));
       console.log('Formatted data:', formattedData);
       setAllPositionData(formattedData);
       setDataLoaded(true);
