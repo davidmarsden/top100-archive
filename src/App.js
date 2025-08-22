@@ -296,7 +296,7 @@ const ProductionArchive = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search teams, managers, or positions across all seasons..."
+                placeholder="Search teams or managers (e.g., Liverpool, Frankland, Holmes)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -334,14 +334,8 @@ const ProductionArchive = () => {
             {!dataLoaded ? (
               <div className="text-center py-12">
                 <Database className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">Configure Your Database</h3>
-                <p className="text-gray-500 mb-4">Add your Google Sheets API credentials to load data</p>
-                <button
-                  onClick={() => setActiveTab('setup')}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  Setup Guide
-                </button>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Loading Your Archive</h3>
+                <p className="text-gray-500 mb-4">Connecting to Google Sheets database...</p>
               </div>
             ) : searchTerm ? (
               <SearchResults />
@@ -350,6 +344,10 @@ const ProductionArchive = () => {
                 <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">Search Your Complete Archive</h3>
                 <p className="text-gray-500">Search across {allPositionData.length.toLocaleString()} position records from {availableSeasons.length} seasons</p>
+                <div className="mt-6 text-sm text-gray-400 space-y-1">
+                  <p>Try searching for teams like: <span className="font-mono bg-gray-100 px-2 py-1 rounded">Liverpool</span> <span className="font-mono bg-gray-100 px-2 py-1 rounded">Hamburger SV</span></p>
+                  <p>Or managers like: <span className="font-mono bg-gray-100 px-2 py-1 rounded">Holmes</span> <span className="font-mono bg-gray-100 px-2 py-1 rounded">Frankland</span></p>
+                </div>
               </div>
             )}
           </div>
@@ -362,14 +360,8 @@ const ProductionArchive = () => {
             ) : (
               <div className="bg-white rounded-xl p-12 shadow-lg text-center">
                 <Database className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Data Connected</h3>
-                <p className="text-gray-500 mb-4">Configure your Google Sheets API to view league tables</p>
-                <button
-                  onClick={() => setActiveTab('setup')}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  Setup Guide
-                </button>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Loading League Data</h3>
+                <p className="text-gray-500 mb-4">Connecting to Google Sheets database...</p>
               </div>
             )}
           </div>
@@ -377,60 +369,18 @@ const ProductionArchive = () => {
 
         {activeTab === 'setup' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Database className="w-6 h-6 text-blue-500" />
-                Deployment Setup Guide
-              </h2>
-
-              <div className="space-y-6">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h3 className="font-bold text-blue-800 mb-2">Your Sheet Configuration</h3>
-                  <div className="space-y-2 text-sm">
-                    <p className="text-blue-700">Sheet ID: 17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w</p>
-                    <p className="text-blue-700">Headers mapped: Season, Div, Pos, Team, P, W, D, L, GF, GA, GD, Pts, Start date, Manager</p>
-                    <p className="text-blue-700">Next: Add your Google API key in Netlify environment variables</p>
-                  </div>
+            <div className="bg-white rounded-xl p-6 shadow-lg text-center">
+              <Database className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Archive Successfully Connected</h2>
+              <p className="text-gray-600 mb-6">Your Google Sheets database is live and connected with {allPositionData.length.toLocaleString()} position records.</p>
+              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{availableSeasons.length}</div>
+                  <div className="text-sm text-green-700">Seasons Loaded</div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="font-semibold text-green-800 mb-2">Step 1: Netlify Environment Variables</h4>
-                    <div className="text-sm text-green-700 space-y-1">
-                      <p>In Netlify dashboard, add:</p>
-                      <code className="block bg-green-100 p-2 rounded text-xs">
-                        REACT_APP_SHEET_ID<br/>
-                        = 17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w<br/>
-                        <br/>
-                        REACT_APP_GOOGLE_API_KEY<br/>
-                        = your_api_key_here
-                      </code>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <h4 className="font-semibold text-yellow-800 mb-2">Step 2: Redeploy</h4>
-                    <div className="text-sm text-yellow-700 space-y-1">
-                      <p>After adding environment variables:</p>
-                      <code className="block bg-yellow-100 p-2 rounded text-xs">
-                        Go to Deploys tab<br/>
-                        Click "Trigger deploy"<br/>
-                        Select "Deploy site"
-                      </code>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 className="font-semibold text-purple-800 mb-2">Step 3: Test</h4>
-                    <div className="text-sm text-purple-700 space-y-1">
-                      <p>Your archive should show:</p>
-                      <code className="block bg-purple-100 p-2 rounded text-xs">
-                        "Live data connected"<br/>
-                        Real season data<br/>
-                        Working search
-                      </code>
-                    </div>
-                  </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{allPositionData.length.toLocaleString()}</div>
+                  <div className="text-sm text-blue-700">Total Records</div>
                 </div>
               </div>
             </div>
