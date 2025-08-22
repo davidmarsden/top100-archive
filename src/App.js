@@ -97,21 +97,25 @@ const ProductionArchive = () => {
     // Champions (position 1 in any division)
     if (pos === 1) return 'bg-yellow-50 border-l-4 border-yellow-400';
     
+    // Manager sack zone (18-20 in any division) - stronger red
+    if (pos >= 18 && pos <= 20) return 'bg-red-200 border-l-4 border-red-600';
+    
     // Division-specific rules
     if (div === 1) {
-      // D1: Champions Cup (2-4), Shield (5-10)
+      // D1: Champions Cup (2-4), Shield (5-10), Relegation (17-20)
       if (pos >= 2 && pos <= 4) return 'bg-blue-50 border-l-4 border-blue-400';
       if (pos >= 5 && pos <= 10) return 'bg-green-50 border-l-4 border-green-400';
-      if (pos >= 17 && pos <= 20) return 'bg-red-50 border-l-4 border-red-400'; // Relegation
-    } else {
-      // D2-D5: Auto promotion (2-3), Playoffs (4-7)
+      if (pos === 17) return 'bg-orange-100 border-l-4 border-orange-400'; // Relegation only
+    } else if (div === 5) {
+      // D5: Auto promotion (2-3), Playoffs (4-7), NO relegation
       if (pos >= 2 && pos <= 3) return 'bg-green-50 border-l-4 border-green-400';
       if (pos >= 4 && pos <= 7) return 'bg-blue-50 border-l-4 border-blue-400';
-      if (pos >= 17 && pos <= 20) return 'bg-red-50 border-l-4 border-red-400'; // Relegation
+    } else {
+      // D2-D4: Auto promotion (2-3), Playoffs (4-7), Relegation (17-20)
+      if (pos >= 2 && pos <= 3) return 'bg-green-50 border-l-4 border-green-400';
+      if (pos >= 4 && pos <= 7) return 'bg-blue-50 border-l-4 border-blue-400';
+      if (pos === 17) return 'bg-orange-100 border-l-4 border-orange-400'; // Relegation only
     }
-    
-    // Manager sack zone (18-20 in any division)
-    if (pos >= 18 && pos <= 20) return 'bg-red-100 border-l-4 border-red-500';
     
     return 'bg-white';
   };
@@ -235,8 +239,10 @@ const ProductionArchive = () => {
                 )}
               </div>
               <div>
-                <p><span className="inline-block w-4 h-4 bg-red-100 border-l-2 border-red-400 rounded mr-2"></span>Relegation (17-20)</p>
-                <p><span className="inline-block w-4 h-4 bg-red-200 border-l-2 border-red-500 rounded mr-2"></span>Manager Sack Zone (18-20)</p>
+                {selectedDivision !== '5' && (
+                  <p><span className="inline-block w-4 h-4 bg-orange-200 border-l-2 border-orange-400 rounded mr-2"></span>Relegation (17)</p>
+                )}
+                <p><span className="inline-block w-4 h-4 bg-red-300 border-l-2 border-red-600 rounded mr-2"></span>Manager Sack Zone (18-20)</p>
               </div>
             </div>
           </div>
