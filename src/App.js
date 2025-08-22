@@ -211,9 +211,7 @@ const ProductionArchive = () => {
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <DebugInfo />
+ 
       
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-900 via-purple-900 to-blue-900 text-white">
