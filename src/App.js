@@ -151,7 +151,9 @@ const ProductionArchive = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.map((team, index) => (
+            {filtered
+              .sort((a, b) => parseInt(a.season) - parseInt(b.season))
+              .map((team, index) => (
               <div key={index} className="bg-white rounded-lg p-4 shadow border">
                 <div className="flex justify-between items-center">
                   <div>
@@ -260,7 +262,7 @@ const ProductionArchive = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              TOP 100 SEASONS ARCHIVE
+              TOP 100 ALL SEASONS ARCHIVE
             </h1>
             <p className="text-xl md:text-2xl text-blue-200 mb-6">
               25 Seasons • Google Sheets Database • Live Updates
