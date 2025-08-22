@@ -90,11 +90,29 @@ const ProductionArchive = () => {
       .sort((a, b) => parseInt(a.position) - parseInt(b.position));
   };
 
-  const getRowColor = (position) => {
+  const getRowColor = (position, division) => {
     const pos = parseInt(position);
+    const div = parseInt(division);
+    
+    // Champions (position 1 in any division)
     if (pos === 1) return 'bg-yellow-50 border-l-4 border-yellow-400';
-    if (pos >= 2 && pos <= 4) return 'bg-green-50 border-l-4 border-green-400';
-    if (pos >= 17) return 'bg-red-50 border-l-4 border-red-400';
+    
+    // Division-specific rules
+    if (div === 1) {
+      // D1: Champions Cup (2-4), Shield (5-10)
+      if (pos >= 2 && pos <= 4) return 'bg-blue-50 border-l-4 border-blue-400';
+      if (pos >= 5 && pos <= 10) return 'bg-green-50 border-l-4 border-green-400';
+      if (pos >= 17 && pos <= 20) return 'bg-red-50 border-l-4 border-red-400'; // Relegation
+    } else {
+      // D2-D5: Auto promotion (2-3), Playoffs (4-7)
+      if (pos >= 2 && pos <= 3) return 'bg-green-50 border-l-4 border-green-400';
+      if (pos >= 4 && pos <= 7) return 'bg-blue-50 border-l-4 border-blue-400';
+      if (pos >= 17 && pos <= 20) return 'bg-red-50 border-l-4 border-red-400'; // Relegation
+    }
+    
+    // Manager sack zone (18-20 in any division)
+    if (pos >= 18 && pos <= 20) return 'bg-red-100 border-l-4 border-red-500';
+    
     return 'bg-white';
   };
 
@@ -179,7 +197,7 @@ const ProductionArchive = () => {
             </thead>
             <tbody>
               {tableData.map((team, index) => (
-                <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${getRowColor(team.position)}`}>
+                <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${getRowColor(team.position, team.division)}`}>
                   <td className="py-3 px-4 font-bold">{team.position}</td>
                   <td className="py-3 px-4 font-semibold">{team.team}</td>
                   <td className="py-3 px-4">{team.played}</td>
@@ -199,10 +217,28 @@ const ProductionArchive = () => {
           </table>
         </div>
         <div className="p-4 bg-gray-50 border-t">
-          <div className="text-sm text-gray-600 space-y-1">
-            <p><span className="inline-block w-4 h-4 bg-yellow-100 rounded mr-2"></span>Champions</p>
-            <p><span className="inline-block w-4 h-4 bg-green-100 rounded mr-2"></span>Promotion (positions 2-4)</p>
-            <p><span className="inline-block w-4 h-4 bg-red-100 rounded mr-2"></span>Relegation (positions 17-20)</p>
+          <div className="text-sm text-gray-600 space-y-2">
+            <h4 className="font-semibold text-gray-800 mb-2">Season Outcomes:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <p><span className="inline-block w-4 h-4 bg-yellow-100 border-l-2 border-yellow-400 rounded mr-2"></span>Champions</p>
+                {selectedDivision === '1' ? (
+                  <>
+                    <p><span className="inline-block w-4 h-4 bg-blue-100 border-l-2 border-blue-400 rounded mr-2"></span>SMFA Champions Cup (2-4)</p>
+                    <p><span className="inline-block w-4 h-4 bg-green-100 border-l-2 border-green-400 rounded mr-2"></span>SMFA Shield (5-10)</p>
+                  </>
+                ) : (
+                  <>
+                    <p><span className="inline-block w-4 h-4 bg-green-100 border-l-2 border-green-400 rounded mr-2"></span>Auto Promotion (2-3)</p>
+                    <p><span className="inline-block w-4 h-4 bg-blue-100 border-l-2 border-blue-400 rounded mr-2"></span>Playoffs (4-7)</p>
+                  </>
+                )}
+              </div>
+              <div>
+                <p><span className="inline-block w-4 h-4 bg-red-100 border-l-2 border-red-400 rounded mr-2"></span>Relegation (17-20)</p>
+                <p><span className="inline-block w-4 h-4 bg-red-200 border-l-2 border-red-500 rounded mr-2"></span>Manager Sack Zone (18-20)</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -218,7 +254,7 @@ const ProductionArchive = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              TOP 100 LEAGUE POSITION ARCHIVE
+              TOP 100 POSITION ARCHIVE
             </h1>
             <p className="text-xl md:text-2xl text-blue-200 mb-6">
               25 Seasons • Google Sheets Database • Live Updates
