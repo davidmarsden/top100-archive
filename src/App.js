@@ -35,6 +35,16 @@ const ProductionArchive = () => {
         throw new Error('No data found in the sheet');
       }
 
+      // Debug: Log the first few rows to see actual structure
+      console.log('=== DEBUG: Raw Google Sheets Data ===');
+      console.log('First 3 rows from sheets:');
+      data.values.slice(0, 4).forEach((row, index) => {
+        console.log(`Row ${index}:`, row);
+        if (index > 0) {
+          console.log(`  Columns 13-18:`, row.slice(13, 19));
+        }
+      });
+
       const [, ...rows] = data.values;
       const formattedData = rows
         .filter(row => row[0] && row[4]) // Must have Season and Team (column 4)
@@ -53,7 +63,7 @@ const ProductionArchive = () => {
           points: row[12] || '',       // Pts
           start_date: row[13] || '',   // Start date (month)
           start_year: row[14] || '',   // Start date (year)
-          manager: row[15] || '',       // Manager
+          manager: row[15] || row[16] || row[17] || row[18] || '' // Try multiple columns for manager
         }));
 
       setAllPositionData(formattedData);
