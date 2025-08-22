@@ -14,7 +14,7 @@ const ProductionArchive = () => {
   // Configuration - Your actual Sheet ID
   const SHEET_ID = process.env.REACT_APP_SHEET_ID || '17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w';
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyCHUgLy0eLZy95K-Anzy7UjPMUNWPZEEho';
-  const SHEET_RANGE = 'Sorted by team!A:N'; // Updated to include all columns through Manager
+  const SHEET_RANGE = 'Sorted by team!A:N';
 
   // Load data from Google Sheets
   const loadFromGoogleSheets = useCallback(async () => {
@@ -22,10 +22,7 @@ const ProductionArchive = () => {
     setError(null);
 
     try {
-      // Google Sheets API URL
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY}`;
-      console.log('Fetching from URL:', url);
-
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -33,37 +30,34 @@ const ProductionArchive = () => {
       }
 
       const data = await response.json();
-      console.log('Raw API response:', data);
 
       if (!data.values || data.values.length === 0) {
         throw new Error('No data found in the sheet');
       }
 
-      // Convert sheet data to match your exact headers
-      const [, ...rows] = data.values; // Remove headers variable since we don't use it
+      const [, ...rows] = data.values;
       const formattedData = rows
-  .filter(row => row[0] && row[4]) // Must have Season and Team
-.map(row => ({
-    season: row[0] || '',        // Season
-    division: row[1] || '',      // Div
-    position: row[2] || '',      // Pos
-    team: row[4] || '',          // Team (skip empty column 3)
-    played: row[5] || '',        // P
-    won: row[6] || '',           // W
-    drawn: row[7] || '',         // D
-    lost: row[8] || '',          // L
-    goals_for: row[9] || '',     // GF
-    goals_against: row[10] || '', // GA
-    goal_difference: row[11] || '', // GD
-    points: row[12] || '',       // Pts
-    start_date: row[13] || '',   // Start date
-    manager: row[15] || ''       // Manager (skip empty column 14)
-  }));
-      console.log('Formatted data:', formattedData);
+        .filter(row => row[0] && row[4]) // Must have Season and Team (column 4)
+        .map(row => ({
+          season: row[0] || '',        // Season
+          division: row[1] || '',      // Div
+          position: row[2] || '',      // Pos
+          team: row[4] || '',          // Team (skip empty column 3)
+          played: row[5] || '',        // P
+          won: row[6] || '',           // W
+          drawn: row[7] || '',         // D
+          lost: row[8] || '',          // L
+          goals_for: row[9] || '',     // GF
+          goals_against: row[10] || '', // GA
+          goal_difference: row[11] || '', // GD
+          points: row[12] || '',       // Pts
+          start_date: row[13] || '',   // Start date
+          manager: row[15] || ''       // Manager (skip empty column 14)
+        }));
+
       setAllPositionData(formattedData);
       setDataLoaded(true);
 
-      // Set default season to latest available
       const latestSeason = Math.max(...formattedData.map(row => parseInt(row.season) || 0)).toString();
       setSelectedSeason(latestSeason);
 
@@ -75,12 +69,10 @@ const ProductionArchive = () => {
     }
   }, [SHEET_ID, API_KEY, SHEET_RANGE]);
 
-  // Load data from Google Sheets on component mount
   useEffect(() => {
     loadFromGoogleSheets();
   }, [loadFromGoogleSheets]);
 
-  // Get data for specific season/division
   const getTableData = (season, division) => {
     return allPositionData
       .filter(row => row.season === season && row.division === division)
@@ -136,8 +128,6 @@ const ProductionArchive = () => {
       </div>
     );
   };
-
- 
 
   const LeagueTable = () => {
     const tableData = getTableData(selectedSeason, selectedDivision);
@@ -211,8 +201,8 @@ const ProductionArchive = () => {
     </div>
   );
 
- 
-      
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-900 via-purple-900 to-blue-900 text-white">
         <div className="max-w-7xl mx-auto px-6 py-8">
@@ -299,7 +289,6 @@ const ProductionArchive = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-
         {/* Search Bar */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row gap-4">
@@ -431,7 +420,7 @@ const ProductionArchive = () => {
                     </div>
                   </div>
 
-                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                     <h4 className="font-semibold text-purple-800 mb-2">Step 3: Test</h4>
                     <div className="text-sm text-purple-700 space-y-1">
                       <p>Your archive should show:</p>
