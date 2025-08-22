@@ -91,10 +91,13 @@ const ProductionArchive = () => {
   const availableDivisions = [...new Set(allPositionData.filter(row => row.season === selectedSeason).map(row => row.division))].sort();
 
   const SearchResults = () => {
-    const filtered = allPositionData.filter(team => 
-      team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filtered = allPositionData.filter(team => {
+      const searchLower = searchTerm.toLowerCase().trim();
+      const teamName = (team.team || '').toLowerCase();
+      const managerName = (team.manager || '').toLowerCase().trim();
+      
+      return teamName.includes(searchLower) || managerName.includes(searchLower);
+    });
 
     return (
       <div className="space-y-4">
@@ -267,7 +270,6 @@ const ProductionArchive = () => {
             {[
               { id: 'search', label: 'Search Archive', icon: Search },
               { id: 'tables', label: 'League Tables', icon: BarChart3 },
-              { id: 'setup', label: 'Setup Guide', icon: Database },
               { id: 'statistics', label: 'Archive Stats', icon: Award }
             ].map(tab => (
               <button
@@ -367,25 +369,7 @@ const ProductionArchive = () => {
           </div>
         )}
 
-        {activeTab === 'setup' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-              <Database className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Archive Successfully Connected</h2>
-              <p className="text-gray-600 mb-6">Your Google Sheets database is live and connected with {allPositionData.length.toLocaleString()} position records.</p>
-              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{availableSeasons.length}</div>
-                  <div className="text-sm text-green-700">Seasons Loaded</div>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{allPositionData.length.toLocaleString()}</div>
-                  <div className="text-sm text-blue-700">Total Records</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {activeTab === 'statistics' && (
           <div className="space-y-6">
