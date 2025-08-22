@@ -137,32 +137,7 @@ const ProductionArchive = () => {
     );
   };
 
-  const DebugInfo = () => (
-    <div style={{background: 'yellow', padding: '10px', margin: '10px', border: '2px solid red'}}>
-      <h3>Debug Info:</h3>
-      <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-      <p><strong>Data Loaded:</strong> {dataLoaded ? 'Yes' : 'No'}</p>
-      <p><strong>Error:</strong> {error || 'None'}</p>
-      <p><strong>Records Count:</strong> {allPositionData.length}</p>
-      <p><strong>API Key Set:</strong> {API_KEY ? `Yes (${API_KEY.substring(0, 10)}...)` : 'No'}</p>
-      <p><strong>Sheet ID:</strong> {SHEET_ID ? 'Set' : 'Missing'}</p>
-      <p><strong>API URL:</strong> {`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY.substring(0, 10)}...`}</p>
-
-      {allPositionData.length > 0 && (
-        <div>
-          <h4>Sample Data (first 2 records):</h4>
-          <pre style={{fontSize: '12px', maxHeight: '200px', overflow: 'scroll'}}>
-            {JSON.stringify(allPositionData.slice(0, 2), null, 2)}
-          </pre>
-        </div>
-      )}
-
-      <div>
-        <h4>Available Seasons: {availableSeasons.join(', ')}</h4>
-        <h4>Available Divisions: {availableDivisions.join(', ')}</h4>
-      </div>
-    </div>
-  );
+ 
 
   const LeagueTable = () => {
     const tableData = getTableData(selectedSeason, selectedDivision);
