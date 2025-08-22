@@ -53,7 +53,7 @@ const ProductionArchive = () => {
           points: row[12] || '',       // Pts
           start_date: row[13] || '',   // Start date (month)
           start_year: row[14] || '',   // Start date (year)
-          manager: row[16] || ''       // Manager
+          manager: row[15] || '',       // Manager
         }));
 
       setAllPositionData(formattedData);
