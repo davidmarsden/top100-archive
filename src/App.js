@@ -51,8 +51,9 @@ const ProductionArchive = () => {
           goals_against: row[10] || '', // GA
           goal_difference: row[11] || '', // GD
           points: row[12] || '',       // Pts
-          start_date: row[13] || '',   // Start date
-          manager: row[15] || ''       // Manager (skip empty column 14)
+          start_date: row[13] || '',   // Start date (month)
+          start_year: row[14] || '',   // Start date (year)
+          manager: row[16] || ''       // Manager
         }));
 
       setAllPositionData(formattedData);
@@ -96,8 +97,23 @@ const ProductionArchive = () => {
       const teamName = (team.team || '').toLowerCase();
       const managerName = (team.manager || '').toLowerCase().trim();
       
+      // Debug logging to see what we're working with
+      if (searchLower === 'holmes' || searchLower === 'frankland') {
+        console.log('Searching for:', searchLower);
+        console.log('Manager field:', `"${team.manager}"`);
+        console.log('Manager cleaned:', `"${managerName}"`);
+      }
+      
       return teamName.includes(searchLower) || managerName.includes(searchLower);
     });
+
+    // Show some debug info when searching for managers
+    if ((searchTerm.toLowerCase().includes('holmes') || searchTerm.toLowerCase().includes('frankland')) && filtered.length === 0) {
+      console.log('Manager search debug - first 5 records:');
+      allPositionData.slice(0, 5).forEach(team => {
+        console.log(`Team: ${team.team}, Manager: "${team.manager}"`);
+      });
+    }
 
     return (
       <div className="space-y-4">
@@ -269,8 +285,7 @@ const ProductionArchive = () => {
           <div className="flex flex-wrap gap-2 py-4">
             {[
               { id: 'search', label: 'Search Archive', icon: Search },
-              { id: 'tables', label: 'League Tables', icon: BarChart3 },
-              { id: 'statistics', label: 'Archive Stats', icon: Award }
+              { id: 'tables', label: 'League Tables', icon: BarChart3 }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -371,36 +386,7 @@ const ProductionArchive = () => {
 
 
 
-        {activeTab === 'statistics' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatsCard
-                icon={Database}
-                title="Data Source"
-                value="Google Sheets"
-                subtitle={dataLoaded ? "Connected" : "Not connected"}
-              />
-              <StatsCard
-                icon={Calendar}
-                title="Seasons Loaded"
-                value={availableSeasons.length || 0}
-                subtitle="Historical coverage"
-              />
-              <StatsCard
-                icon={Users}
-                title="Total Records"
-                value={allPositionData.length.toLocaleString() || "0"}
-                subtitle="Position entries"
-              />
-              <StatsCard
-                icon={Trophy}
-                title="Status"
-                value={dataLoaded ? "Live" : "Setup"}
-                subtitle={dataLoaded ? "Real-time data" : "Needs configuration"}
-              />
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );
