@@ -178,11 +178,11 @@ const ProductionArchive = () => {
     const tableData = getTableData(selectedSeason, selectedDivision);
 
     return (
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="p-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-rose-200">
+        <div className="p-6 bg-gradient-to-r from-rose-500 to-pink-500 text-white">
           <h3 className="text-xl font-bold">Season {selectedSeason} - Division {selectedDivision}</h3>
-          <p className="text-blue-200">Final League Table ({tableData.length} teams)</p>
-          <p className="text-xs text-blue-300 mt-1">Data loaded from Google Sheets</p>
+          <p className="text-rose-100">Final League Table ({tableData.length} teams)</p>
+          <p className="text-xs text-rose-200 mt-1">Data loaded from Google Sheets</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -256,33 +256,33 @@ const ProductionArchive = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-orange-50 to-pink-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-900 via-purple-900 to-blue-900 text-white">
+      <div className="bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400 text-white">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
               TOP 100 POSITION ARCHIVE
             </h1>
-            <p className="text-xl md:text-2xl text-blue-200 mb-6">
+            <p className="text-xl md:text-2xl text-rose-100 mb-6">
               25 Seasons • Google Sheets Database • Live Updates
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
               <div className="text-center">
                 <div className="text-3xl font-bold">{availableSeasons.length || '25'}</div>
-                <div className="text-blue-200">Seasons</div>
+                <div className="text-rose-200">Seasons</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold">5</div>
-                <div className="text-blue-200">Divisions</div>
+                <div className="text-rose-200">Divisions</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold">{allPositionData.length.toLocaleString() || '2,500+'}</div>
-                <div className="text-blue-200">Records</div>
+                <div className="text-rose-200">Records</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold">100</div>
-                <div className="text-blue-200">Teams</div>
+                <div className="text-rose-200">Teams</div>
               </div>
             </div>
 
@@ -291,22 +291,22 @@ const ProductionArchive = () => {
               {loading ? (
                 <>
                   <Loader className="w-4 h-4 animate-spin" />
-                  <span className="text-blue-200">Loading data...</span>
+                  <span className="text-rose-200">Loading data...</span>
                 </>
               ) : error ? (
                 <>
-                  <AlertCircle className="w-4 h-4 text-red-400" />
-                  <span className="text-red-300">Error: {error}</span>
+                  <AlertCircle className="w-4 h-4 text-red-300" />
+                  <span className="text-red-200">Error: {error}</span>
                 </>
               ) : dataLoaded ? (
                 <>
-                  <Database className="w-4 h-4 text-green-400" />
-                  <span className="text-green-300">Live data connected</span>
+                  <Database className="w-4 h-4 text-green-300" />
+                  <span className="text-green-200">Live data connected</span>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-4 h-4 text-yellow-400" />
-                  <span className="text-yellow-300">Configure API keys</span>
+                  <AlertCircle className="w-4 h-4 text-yellow-300" />
+                  <span className="text-yellow-200">Configure API keys</span>
                 </>
               )}
             </div>
@@ -315,7 +315,7 @@ const ProductionArchive = () => {
       </div>
 
       {/* Navigation */}
-      <div className="bg-white shadow-lg sticky top-0 z-10">
+      <div className="bg-white shadow-lg sticky top-0 z-10 border-b border-rose-200">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
             {[
@@ -327,8 +327,8 @@ const ProductionArchive = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
                   activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-rose-500 text-white shadow-lg'
+                    : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -345,13 +345,13 @@ const ProductionArchive = () => {
         <div className="mb-8">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-rose-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search teams or managers (e.g., Liverpool, Frankland, Holmes)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white"
                 disabled={!dataLoaded}
               />
             </div>
@@ -360,7 +360,7 @@ const ProductionArchive = () => {
                 <select
                   value={selectedSeason}
                   onChange={(e) => setSelectedSeason(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="px-4 py-3 border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 bg-white text-gray-700"
                 >
                   {availableSeasons.map(season => (
                     <option key={season} value={season}>Season {season}</option>
@@ -369,7 +369,7 @@ const ProductionArchive = () => {
                 <select
                   value={selectedDivision}
                   onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="px-4 py-3 border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 bg-white text-gray-700"
                 >
                   {availableDivisions.map(div => (
                     <option key={div} value={div}>Division {div}</option>
