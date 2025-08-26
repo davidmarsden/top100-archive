@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, BarChart3, Award, Target, Trophy, Crown, Users, Calendar, Database, Loader, AlertCircle, Filter, SortAsc, SortDesc } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, BarChart3, Award, Target, Trophy, Crown, Users, Calendar, Database, Loader, AlertCircle, SortAsc } from 'lucide-react';
 
 const Top100Archive = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,31 +17,28 @@ const Top100Archive = () => {
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'YOUR_API_KEY_HERE';
   const SHEET_RANGE = 'Sheet1!A:N';
 
-  // Load data from Google Sheets on component mount
-  useEffect(() => {
-    loadFromGoogleSheets();
-  }, []);
-
-  const loadFromGoogleSheets = async () => {
+  // Load data from Google Sheets (memoized for a stable reference in useEffect)
+  const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${API_KEY}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} - ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.values || data.values.length === 0) {
         throw new Error('No data found in the sheet');
       }
-      
-      // Convert sheet data to match your exact headers
-      const [headers, ...rows] = data.values;
+
+      // Skip headers row without creating an unused variable
+      const [, ...rows] = data.values;
+
       const formattedData = rows
         .filter(row => row[0] && row[3]) // Must have Season and Team
         .map(row => ({
@@ -60,32 +57,37 @@ const Top100Archive = () => {
           start_date: row[12] || '',
           manager: row[13] || ''
         }));
-      
+
       setAllPositionData(formattedData);
       setDataLoaded(true);
-      
+
       // Set default season to latest available
       const latestSeason = Math.max(...formattedData.map(row => parseInt(row.season) || 0)).toString();
       setSelectedSeason(latestSeason);
-      
+
     } catch (err) {
       console.error('Error loading data:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_KEY, SHEET_ID, SHEET_RANGE]);
+
+  // Load once on mount
+  useEffect(() => {
+    loadFromGoogleSheets();
+  }, [loadFromGoogleSheets]);
 
   // Get data with flexible sorting and filtering
   const getFilteredData = (season = null, division = null, sortOrder = 'position') => {
     let filtered = [...allPositionData];
-    
+
     // Apply filters
     if (season) filtered = filtered.filter(row => row.season === season);
     if (division) filtered = filtered.filter(row => row.division === division);
-    
+
     // Apply sorting
-    switch(sortOrder) {
+    switch (sortOrder) {
       case 'points':
         return filtered.sort((a, b) => parseInt(b.points || 0) - parseInt(a.points || 0));
       case 'team':
@@ -125,17 +127,19 @@ const Top100Archive = () => {
 
   // Search Results Component
   const SearchResults = () => {
-    const filtered = allPositionData.filter(team => 
-      team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
-    ).sort((a, b) => {
-      // Sort by season (newest first), then by division, then by position
-      const seasonCompare = parseInt(b.season) - parseInt(a.season);
-      if (seasonCompare !== 0) return seasonCompare;
-      const divCompare = parseInt(a.division) - parseInt(b.division);
-      if (divCompare !== 0) return divCompare;
-      return parseInt(a.position) - parseInt(b.position);
-    });
+    const filtered = allPositionData
+      .filter(team =>
+        team.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (team.manager && team.manager.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      .sort((a, b) => {
+        // Sort by season (newest first), then by division, then by position
+        const seasonCompare = parseInt(b.season) - parseInt(a.season);
+        if (seasonCompare !== 0) return seasonCompare;
+        const divCompare = parseInt(a.division) - parseInt(b.division);
+        if (divCompare !== 0) return divCompare;
+        return parseInt(a.position) - parseInt(b.position);
+      });
 
     return (
       <div className="space-y-4">
@@ -149,7 +153,7 @@ const Top100Archive = () => {
             <p>Seasons: {availableSeasons.length} available</p>
           </div>
         </div>
-        
+
         <div className="grid gap-4">
           {filtered.map((team, index) => {
             const badge = getPositionBadge(team.position);
@@ -193,7 +197,7 @@ const Top100Archive = () => {
             );
           })}
         </div>
-        
+
         {filtered.length === 0 && (
           <div className="text-center py-12">
             <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -208,7 +212,7 @@ const Top100Archive = () => {
   // League Table Component
   const LeagueTable = () => {
     const tableData = getFilteredData(selectedSeason, selectedDivision, sortBy);
-    
+
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         {/* Header with controls */}
@@ -219,7 +223,7 @@ const Top100Archive = () => {
               <p className="text-blue-200">Complete League Table ({tableData.length} teams)</p>
               <p className="text-xs text-blue-300 mt-1">Soccer Manager Worlds Top 100 Elite Community</p>
             </div>
-            
+
             {/* Sort Controls */}
             <div className="flex gap-2 flex-wrap">
               {[
@@ -367,7 +371,7 @@ const Top100Archive = () => {
             <p className="text-xl md:text-2xl text-blue-200 mb-8">
               Soccer Manager Worlds Elite Community • Complete Historical Database
             </p>
-            
+
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto mb-8">
               <div className="text-center p-4 bg-white bg-opacity-10 rounded-lg backdrop-blur">
@@ -387,7 +391,7 @@ const Top100Archive = () => {
                 <div className="text-blue-200 text-sm">Elite Teams</div>
               </div>
             </div>
-            
+
             {/* Status Indicator */}
             <div className="flex items-center justify-center gap-3 text-lg">
               {loading ? (
@@ -416,8 +420,7 @@ const Top100Archive = () => {
         </div>
       </div>
 
-
-      {/* Navigation */}
+           {/* Navigation */}
       <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
@@ -446,7 +449,6 @@ const Top100Archive = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        
         {/* Enhanced Search Bar */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -469,7 +471,7 @@ const Top100Archive = () => {
                 </button>
               )}
             </div>
-            
+
             {/* Season & Division Selectors for Tables */}
             {activeTab === 'tables' && availableSeasons.length > 0 && (
               <>
@@ -558,7 +560,7 @@ const Top100Archive = () => {
               <h2 className="text-3xl font-bold text-gray-800 mb-4">Community Statistics</h2>
               <p className="text-gray-600 text-lg">Complete overview of the Top 100 Elite Community</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatsCard
                 icon={Database}
@@ -628,7 +630,7 @@ const Top100Archive = () => {
                             <span className="text-purple-600 font-bold">{divCount} records ({percentage}%)</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-gradient-to-r from-purple-400 to-purple-600 h-2 rounded-full transition-all duration-500"
                               style={{ width: `${percentage}%` }}
                             ></div>
@@ -655,7 +657,7 @@ const Top100Archive = () => {
                 <Database className="w-7 h-7 text-blue-500" />
                 Database Configuration Guide
               </h3>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 {/* Step 1 */}
                 <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
@@ -695,7 +697,7 @@ const Top100Archive = () => {
                   <div className="text-sm text-purple-700 space-y-2">
                     <p>Create .env file:</p>
                     <code className="block bg-purple-100 p-2 rounded text-xs">
-                      REACT_APP_SHEET_ID=17-BZlc...<br/>
+                      REACT_APP_SHEET_ID=17-BZlc...<br />
                       REACT_APP_GOOGLE_API_KEY=your_key
                     </code>
                   </div>
@@ -771,31 +773,31 @@ const Top100Archive = () => {
             </div>
             <h3 className="text-2xl font-bold mb-2">Soccer Manager Worlds Top 100</h3>
             <p className="text-gray-300 mb-6">Elite Community • Historical Database • 25+ Seasons</p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
               <div>
                 <h4 className="font-semibold mb-2 text-blue-300">Database Stats</h4>
                 <p className="text-sm text-gray-400">
-                  {dataLoaded ? `${allPositionData.length.toLocaleString()} records` : 'Setup required'}<br/>
-                  {availableSeasons.length || '25+'} seasons covered<br/>
+                  {dataLoaded ? `${allPositionData.length.toLocaleString()} records` : 'Setup required'}<br />
+                  {availableSeasons.length || '25+'} seasons covered<br />
                   5 competitive divisions
                 </p>
               </div>
               <div>
                 <h4 className="font-semibold mb-2 text-green-300">Features</h4>
                 <p className="text-sm text-gray-400">
-                  Advanced search & filtering<br/>
-                  Complete league tables<br/>
-                  Manager tracking<br/>
+                  Advanced search & filtering<br />
+                  Complete league tables<br />
+                  Manager tracking<br />
                   Live Google Sheets integration
                 </p>
               </div>
               <div>
                 <h4 className="font-semibold mb-2 text-purple-300">Community</h4>
                 <p className="text-sm text-gray-400">
-                  100 elite managers<br/>
-                  Historical achievements<br/>
-                  Performance analytics<br/>
+                  100 elite managers<br />
+                  Historical achievements<br />
+                  Performance analytics<br />
                   Professional scouting data
                 </p>
               </div>
@@ -803,7 +805,7 @@ const Top100Archive = () => {
 
             <div className="mt-8 pt-6 border-t border-gray-700">
               <p className="text-sm text-gray-400">
-                Built for the Soccer Manager Worlds Top 100 Community • 
+                Built for the Soccer Manager Worlds Top 100 Community •
                 <span className="text-blue-300"> Professional Football Management</span>
               </p>
             </div>
