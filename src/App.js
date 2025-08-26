@@ -1,19 +1,7 @@
+// src/App.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-const [activeTab, setActiveTab] = useState('search');
-
-// sync tab with hash on mount + hash change
-useEffect(() => {
-  const handleHashChange = () => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash) setActiveTab(hash);
-  };
-
-  handleHashChange(); // run once on load
-  window.addEventListener('hashchange', handleHashChange);
-  return () => window.removeEventListener('hashchange', handleHashChange);
-}, []);
-import Charts from "./Charts";
-import ManagerProfiles from "./ManagerProfiles";
+import Charts from './Charts';
+import ManagerProfiles from './ManagerProfiles';
 import {
   Search,
   BarChart3,
@@ -24,14 +12,30 @@ import {
   AlertCircle,
   SortAsc,
   Database,
+  Award, // icon used in nav
 } from 'lucide-react';
 
 // ------------------------------
-// Status logic helpers
+// Hash routing helpers (module scope; no hooks here)
+// ------------------------------
+const ALLOWED_TABS = new Set(['search', 'tables', 'insights', 'charts', 'managers']);
+const normalizeHashToTab = (hash) => {
+  const t = (hash || '').replace('#', '').trim().toLowerCase();
+  return ALLOWED_TABS.has(t) ? t : 'search';
+};
+
+// ------------------------------
+// Status logic helpers (pure functions; no hooks)
 // ------------------------------
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
-const isD1UCL = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
-const isD1Shield = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
+const isD1UCL = (div, pos) =>
+  parseInt(div || 0, 10) === 1 &&
+  parseInt(pos || 0, 10) >= 2 &&
+  parseInt(pos || 0, 10) <= 4;
+const isD1Shield = (div, pos) =>
+  parseInt(div || 0, 10) === 1 &&
+  parseInt(pos || 0, 10) >= 5 &&
+  parseInt(pos || 0, 10) <= 10;
 const isAutoPromo = (div, pos) => {
   const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && (p === 2 || p === 3);
@@ -51,22 +55,34 @@ const isAutoSacked = (pos) => {
 
 const getTeamTags = (position, division) => {
   const tags = [];
-  if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
-  if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
-  if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
-  if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-  if (isPlayoff(division, position)) tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
-  if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
-  if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+  if (isChampion(position))
+    tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
+  if (isD1UCL(division, position))
+    tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
+  if (isD1Shield(division, position))
+    tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
+  if (isAutoPromo(division, position))
+    tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
+  if (isPlayoff(division, position))
+    tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
+  if (isRelegated(division, position))
+    tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
+  if (isAutoSacked(position))
+    tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
   return tags;
 };
 
 const getRowStyling = (position, division) => {
-  if (isAutoSacked(position)) return 'bg-rose-50 border-l-4 border-rose-700 ring-1 ring-rose-200 hover:bg-rose-100';
-  if (isRelegated(division, position)) return 'bg-red-50 border-l-4 border-red-700 ring-1 ring-red-200 hover:bg-red-100';
-  if (isChampion(position)) return 'bg-yellow-50 border-l-4 border-yellow-500 ring-1 ring-yellow-200 hover:bg-yellow-100';
-  if (isAutoPromo(division, position)) return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
-  if (isPlayoff(division, position)) return 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-200 hover:bg-blue-100';
+  if (isAutoSacked(position))
+    return 'bg-rose-50 border-l-4 border-rose-700 ring-1 ring-rose-200 hover:bg-rose-100';
+  if (isRelegated(division, position))
+    return 'bg-red-50 border-l-4 border-red-700 ring-1 ring-red-200 hover:bg-red-100';
+  if (isChampion(position))
+    return 'bg-yellow-50 border-l-4 border-yellow-500 ring-1 ring-yellow-200 hover:bg-yellow-100';
+  if (isAutoPromo(division, position))
+    return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
+  if (isPlayoff(division, position))
+    return 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-200 hover:bg-blue-100';
   return 'bg-white hover:bg-gray-50';
 };
 
@@ -81,76 +97,15 @@ const getPositionBadge = (position, division) => {
   return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
 };
 
-useEffect(() => {
-  const applyHash = () => {
-    const target = normalizeHashToTab(window.location.hash);
-    // If the hash was invalid, correct the URL so share links stay clean
-    if (window.location.hash.replace('#', '') !== target) {
-      window.location.hash = target;
-    }
-    setActiveTab(target);
-  };
+const numeric = (v) => (isNaN(parseInt(v || 0, 10)) ? 0 : parseInt(v, 10));
 
-  applyHash(); // run once on load
-  window.addEventListener('hashchange', applyHash);
-  return () => window.removeEventListener('hashchange', applyHash);
-}, []);
-
-// ------------------------------
+// ============================
 // Main component
-// ------------------------------
-// Build raw per-season threshold rows for Charts
-const thresholdHistory = useMemo(() => {
-  // group rows by (season, division) to pick points at key positions
-  const bySeasonDiv = new Map();
-  for (const r of allPositionData) {
-    const season = (r.season || '').trim();
-    const division = (r.division || '').trim();
-    if (!season || !division) continue;
-    const key = `${season}|${division}`;
-    if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
-    bySeasonDiv.get(key).push(r);
-  }
-
-  const out = { win: [], autoPromo: [], playoffs: [], avoidReleg: [], avoidSack: [] };
-
-  const push = (arr, season, division, posRow) => {
-    if (!posRow) return;
-    arr.push({
-      season,
-      division,
-      points: parseInt(posRow.points || 0, 10),
-    });
-  };
-
-  for (const [key, rows] of bySeasonDiv.entries()) {
-    const [season, division] = key.split('|');
-    const d = parseInt(division, 10);
-    const byPos = new Map();
-    rows.forEach(r => byPos.set(parseInt(r.position || 0, 10), r));
-
-    // pos 1 → win division
-    push(out.win, season, division, byPos.get(1));
-
-    // pos 3 → auto-promo cutoff (D2–D5)
-    if (d >= 2 && d <= 5) push(out.autoPromo, season, division, byPos.get(3));
-
-    // pos 7 → playoffs cutoff (D2–D5)
-    if (d >= 2 && d <= 5) push(out.playoffs, season, division, byPos.get(7));
-
-    // pos 16 → avoid relegation (D1–D4)
-    if (d >= 1 && d <= 4) push(out.avoidReleg, season, division, byPos.get(16));
-
-    // pos 17 → avoid sacking (all divisions)
-    push(out.avoidSack, season, division, byPos.get(17));
-  }
-
-  return out;
-}, [allPositionData]);
-
-const Top100Archive = () => {
+// ============================
+function Top100Archive() {
+  // --- state ---
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('tables'); // default to tables
+  const [activeTab, setActiveTab] = useState('tables');
   const [selectedSeason, setSelectedSeason] = useState('25');
   const [selectedDivision, setSelectedDivision] = useState('1');
   const [sortBy, setSortBy] = useState('position');
@@ -159,12 +114,26 @@ const Top100Archive = () => {
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Config — env required in CI
+  // --- config ---
   const SHEET_ID = process.env.REACT_APP_SHEET_ID;
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
   const SHEET_RANGE = 'Sorted by team!A:R';
 
-  // Load data
+  // --- hash routing ---
+  useEffect(() => {
+    const applyHash = () => {
+      const target = normalizeHashToTab(window.location.hash);
+      if (window.location.hash.replace('#', '') !== target) {
+        window.location.hash = target;
+      }
+      setActiveTab(target);
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, []);
+
+  // --- load data ---
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -176,26 +145,24 @@ const Top100Archive = () => {
         SHEET_ID
       )}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
 
-      const response = await fetch(url);
-      if (!response.ok) {
+      const res = await fetch(url);
+      if (!res.ok) {
         let details = '';
         try {
-          const j = await response.json();
+          const j = await res.json();
           details = j?.error?.message ? ` - ${j.error.message}` : '';
-        } catch (_) {}
-        throw new Error(`API Error: ${response.status}${details}`);
+        } catch {}
+        throw new Error(`API Error: ${res.status}${details}`);
       }
-
-      const data = await response.json();
+      const data = await res.json();
       if (!data.values || data.values.length === 0) throw new Error('No data found in the sheet');
 
       const [headerRow, ...rows] = data.values;
 
-      // Header-based mapping
       const norm = (s) => String(s || '').trim().toLowerCase();
       const idx = (names) => {
-        const candidates = Array.isArray(names) ? names : [names];
-        const i = headerRow.findIndex((h) => candidates.includes(norm(h)));
+        const cands = Array.isArray(names) ? names : [names];
+        const i = headerRow.findIndex((h) => cands.includes(norm(h)));
         return i === -1 ? null : i;
       };
 
@@ -216,7 +183,7 @@ const Top100Archive = () => {
 
       const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
 
-      const formattedData = rows
+      const formatted = rows
         .filter((row) => get(row, cSeason) && get(row, cTeam))
         .map((row) => ({
           season: get(row, cSeason),
@@ -235,25 +202,23 @@ const Top100Archive = () => {
           manager: get(row, cManager),
         }));
 
-      setAllPositionData(formattedData);
+      setAllPositionData(formatted);
       setDataLoaded(true);
 
-      const latestSeason = Math.max(
-        ...formattedData.map((row) => parseInt(row.season, 10) || 0)
-      ).toString();
+      const latestSeason = Math.max(...formatted.map((r) => parseInt(r.season, 10) || 0)).toString();
       setSelectedSeason(latestSeason);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [API_KEY, SHEET_ID, SHEET_RANGE]);
+  }, [API_KEY, SHEET_ID]);
 
   useEffect(() => {
     loadFromGoogleSheets();
   }, [loadFromGoogleSheets]);
 
-  // Options
+  // --- selectors ---
   const availableSeasons = useMemo(
     () =>
       [...new Set(allPositionData.map((r) => (r.season || '').trim()))]
@@ -276,7 +241,39 @@ const Top100Archive = () => {
     [allPositionData, selectedSeason]
   );
 
-  // Filters/transforms
+  // --- threshold history for Charts ---
+  const thresholdHistory = useMemo(() => {
+    const bySeasonDiv = new Map();
+    for (const r of allPositionData) {
+      const season = (r.season || '').trim();
+      const division = (r.division || '').trim();
+      if (!season || !division) continue;
+      const key = `${season}|${division}`;
+      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
+      bySeasonDiv.get(key).push(r);
+    }
+
+    const out = { win: [], autoPromo: [], playoffs: [], avoidReleg: [], avoidSack: [] };
+    const push = (arr, season, division, row) =>
+      row && arr.push({ season, division, points: parseInt(row.points || 0, 10) });
+
+    for (const [key, rows] of bySeasonDiv.entries()) {
+      const [season, division] = key.split('|');
+      const d = parseInt(division, 10);
+      const byPos = new Map();
+      rows.forEach((r) => byPos.set(parseInt(r.position || 0, 10), r));
+
+      if (byPos.has(1)) push(out.win, season, division, byPos.get(1));
+      if (d >= 2 && d <= 5 && byPos.has(3)) push(out.autoPromo, season, division, byPos.get(3));
+      if (d >= 2 && d <= 5 && byPos.has(7)) push(out.playoffs, season, division, byPos.get(7));
+      if (d >= 1 && d <= 4 && byPos.has(16)) push(out.avoidReleg, season, division, byPos.get(16));
+      if (byPos.has(17)) push(out.avoidSack, season, division, byPos.get(17));
+    }
+
+    return out;
+  }, [allPositionData]);
+
+  // --- filters / transforms ---
   const getFilteredData = (season = null, division = null, sortOrder = 'position') => {
     let filtered = [...allPositionData];
     if (season) filtered = filtered.filter((r) => (r.season || '').trim() === (season || '').trim());
@@ -285,7 +282,7 @@ const Top100Archive = () => {
 
     switch (sortOrder) {
       case 'points':
-        return filtered.sort((a, b) => parseInt(b.points || 0, 10) - parseInt(a.points || 0, 10));
+        return filtered.sort((a, b) => numeric(b.points) - numeric(a.points));
       case 'team':
         return filtered.sort((a, b) => a.team.localeCompare(b.team));
       case 'manager':
@@ -302,7 +299,7 @@ const Top100Archive = () => {
   };
 
   // ------------------------------
-  // Insights: leaders (titles, promo, relegation, sacked)
+  // Insights data
   // ------------------------------
   const countBy = (arr, keyGetter) => {
     const map = new Map();
@@ -339,11 +336,6 @@ const Top100Archive = () => {
     return { byTeam, byManager };
   }, [allRows]);
 
-  // ------------------------------
-  // Insights: records (max/min points, gf, ga, gd) with sorting/grouping
-  // ------------------------------
-  const numeric = (v) => (isNaN(parseInt(v || 0, 10)) ? 0 : parseInt(v, 10));
-
   const buildRecords = (metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
     const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
     const withMetric = rows.map((r) => ({
@@ -359,9 +351,8 @@ const Top100Archive = () => {
           ? numeric(r.goal_difference)
           : 0,
     }));
-    // Sort
     withMetric.sort((a, b) => (order === 'asc' ? a.value - b.value : b.value - a.value));
-    // Group key
+
     const keyFn =
       group === 'team'
         ? (r) => r.team
@@ -375,96 +366,17 @@ const Top100Archive = () => {
         ? (r) => r.position
         : () => '';
 
-    // Take best per group to avoid flooding
     const seen = new Set();
     const result = [];
     for (const r of withMetric) {
       const k = keyFn(r);
-      if (!k) continue;
-      if (seen.has(k)) continue;
+      if (!k || seen.has(k)) continue;
       seen.add(k);
       result.push(r);
       if (result.length >= 50) break; // top 50
     }
     return result;
   };
-
-  // ------------------------------
-  // Insights: thresholds per division across seasons
-  // ------------------------------
-  const computeThresholds = useMemo(() => {
-    // Build per (season, division) indices; then select the relevant row points and aggregate per division.
-    const bySeasonDiv = new Map();
-    for (const r of allRows) {
-      const season = (r.season || '').trim();
-      const division = (r.division || '').trim();
-      const key = `${season}|${division}`;
-      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
-      bySeasonDiv.get(key).push(r);
-    }
-
-    const acc = {
-      win: new Map(), // division -> array of points of pos 1
-      autoPromo: new Map(), // divisions 2-5 -> array of points for pos 3 (min to guarantee auto-promo)
-      playoffs: new Map(), // divisions 2-5 -> array of points for pos 7 (min to make playoffs)
-      avoidReleg: new Map(), // divisions 1-4 -> points for pos 16 (min to avoid releg)
-      avoidSack: new Map(), // all divisions -> points for pos 17 (min to avoid auto-sacking)
-    };
-
-    const push = (m, div, pts) => {
-      const d = (div || '').trim();
-      if (!d) return;
-      const p = numeric(pts);
-      if (!m.has(d)) m.set(d, []);
-      m.get(d).push(p);
-    };
-
-    for (const [key, rows] of bySeasonDiv.entries()) {
-      const [, div] = key.split('|');
-      const d = parseInt(div || 0, 10);
-      // index rows by position
-      const byPos = new Map();
-      for (const r of rows) {
-        byPos.set(parseInt(r.position || 0, 10), r);
-      }
-
-      // Win division: pos 1 points
-      if (byPos.has(1)) push(acc.win, div, byPos.get(1).points);
-
-      // Auto-promo threshold (guarantee): pos 3 (since 2-3 auto-promo)
-      if (d >= 2 && d <= 5 && byPos.has(3)) push(acc.autoPromo, div, byPos.get(3).points);
-
-      // Playoffs threshold: pos 7 (since 4-7 make playoffs)
-      if (d >= 2 && d <= 5 && byPos.has(7)) push(acc.playoffs, div, byPos.get(7).points);
-
-      // Avoid relegation: for D1-D4, pos 16 (since 17-20 relegated)
-      if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
-
-      // Avoid sacking: pos 17 (since 18-20 are auto-sacked)
-      if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
-    }
-
-    const summarize = (m) => {
-      const out = [];
-      for (const [div, arr] of m.entries()) {
-        if (!arr.length) continue;
-        const min = Math.min(...arr);
-        const max = Math.max(...arr);
-        const avg = Math.round((arr.reduce((s, x) => s + x, 0) / arr.length) * 10) / 10;
-        out.push({ division: div, min, avg, max, samples: arr.length });
-      }
-      // Sort by numeric division
-      return out.sort((a, b) => parseInt(a.division, 10) - parseInt(b.division, 10));
-    };
-
-    return {
-      win: summarize(acc.win),
-      autoPromo: summarize(acc.autoPromo),
-      playoffs: summarize(acc.playoffs),
-      avoidReleg: summarize(acc.avoidReleg),
-      avoidSack: summarize(acc.avoidSack),
-    };
-  }, [allRows]);
 
   // ------------------------------
   // UI: Search Results
@@ -509,21 +421,16 @@ const Top100Archive = () => {
                       </div>
                       <div>
                         <p className="text-gray-500">Season & Division</p>
-                        <p className="font-semibold">
-                          S{team.season} D{team.division}
-                        </p>
+                        <p className="font-semibold">S{team.season} D{team.division}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Record</p>
-                        <p className="font-semibold">
-                          {team.won}W {team.drawn}D {team.lost}L
-                        </p>
+                        <p className="font-semibold">{team.won}W {team.drawn}D {team.lost}L</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Goal Difference</p>
                         <p className={`font-semibold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {numeric(team.goal_difference) > 0 ? '+' : ''}
-                          {team.goal_difference}
+                          {numeric(team.goal_difference) > 0 ? '+' : ''}{team.goal_difference}
                         </p>
                       </div>
                     </div>
@@ -549,7 +456,7 @@ const Top100Archive = () => {
     );
   };
 
-    // ------------------------------
+  // ------------------------------
   // UI: League Table
   // ------------------------------
   const LeagueTable = () => {
@@ -561,9 +468,7 @@ const Top100Archive = () => {
         <div className="p-6 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h3 className="text-2xl font-bold">
-                Season {selectedSeason} - Division {selectedDivision}
-              </h3>
+              <h3 className="text-2xl font-bold">Season {selectedSeason} - Division {selectedDivision}</h3>
               <p className="text-blue-200">Complete League Table ({tableData.length} teams)</p>
               <p className="text-xs text-blue-300 mt-1">Soccer Manager Worlds Top 100 Elite Community</p>
             </div>
@@ -578,10 +483,7 @@ const Top100Archive = () => {
               ].map((sort) => (
                 <button
                   key={sort.id}
-                  onClick={() => {
-  const target = normalizeHashToTab(`#${tab.id}`);
-  window.location.hash = target; // triggers hashchange (and state update)
-}}
+                  onClick={() => setSortBy(sort.id)} // ✅ fixed
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                     sortBy === sort.id ? 'bg-white text-blue-600 shadow-lg' : 'bg-blue-500 hover:bg-blue-400 text-white'
                   }`}
@@ -689,9 +591,7 @@ const Top100Archive = () => {
             <div className="text-right text-sm text-gray-600">
               <p className="font-semibold">Current View:</p>
               <p>Sorted by: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</p>
-              <p>
-                Season {selectedSeason} Division {selectedDivision}
-              </p>
+              <p>Season {selectedSeason} Division {selectedDivision}</p>
               <p>{tableData.length} teams displayed</p>
             </div>
           </div>
@@ -806,17 +706,13 @@ const Top100Archive = () => {
               <select className="border rounded px-2 py-1" value={recordsSeason} onChange={(e) => setRecordsSeason(e.target.value)}>
                 <option value="">All Seasons</option>
                 {availableSeasons.map((s) => (
-                  <option key={s} value={s}>
-                    Season {s}
-                  </option>
+                  <option key={s} value={s}>Season {s}</option>
                 ))}
               </select>
               <select className="border rounded px-2 py-1" value={recordsDivision} onChange={(e) => setRecordsDivision(e.target.value)}>
                 <option value="">All Divisions</option>
                 {[1, 2, 3, 4, 5].map((d) => (
-                  <option key={d} value={String(d)}>
-                    Division {d}
-                  </option>
+                  <option key={d} value={String(d)}>Division {d}</option>
                 ))}
               </select>
             </div>
@@ -863,7 +759,7 @@ const Top100Archive = () => {
           </div>
         </div>
 
-        {/* Thresholds */}
+        {/* Thresholds summary */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-green-700" />
@@ -882,8 +778,69 @@ const Top100Archive = () => {
     );
   };
 
+  // thresholds summary (min/avg/max) for Insights
+  const computeThresholds = useMemo(() => {
+    const bySeasonDiv = new Map();
+    for (const r of allRows) {
+      const season = (r.season || '').trim();
+      const division = (r.division || '').trim();
+      const key = `${season}|${division}`;
+      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
+      bySeasonDiv.get(key).push(r);
+    }
+
+    const acc = {
+      win: new Map(),
+      autoPromo: new Map(),
+      playoffs: new Map(),
+      avoidReleg: new Map(),
+      avoidSack: new Map(),
+    };
+
+    const push = (m, div, pts) => {
+      const d = (div || '').trim();
+      if (!d) return;
+      const p = numeric(pts);
+      if (!m.has(d)) m.set(d, []);
+      m.get(d).push(p);
+    };
+
+    for (const [key, rows] of bySeasonDiv.entries()) {
+      const [, div] = key.split('|');
+      const d = parseInt(div || 0, 10);
+      const byPos = new Map();
+      for (const r of rows) byPos.set(parseInt(r.position || 0, 10), r);
+
+      if (byPos.has(1)) push(acc.win, div, byPos.get(1).points);
+      if (d >= 2 && d <= 5 && byPos.has(3)) push(acc.autoPromo, div, byPos.get(3).points);
+      if (d >= 2 && d <= 5 && byPos.has(7)) push(acc.playoffs, div, byPos.get(7).points);
+      if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
+      if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
+    }
+
+    const summarize = (m) => {
+      const out = [];
+      for (const [div, arr] of m.entries()) {
+        if (!arr.length) continue;
+        const min = Math.min(...arr);
+        const max = Math.max(...arr);
+        const avg = Math.round((arr.reduce((s, x) => s + x, 0) / arr.length) * 10) / 10;
+        out.push({ division: div, min, avg, max, samples: arr.length });
+      }
+      return out.sort((a, b) => parseInt(a.division, 10) - parseInt(b.division, 10));
+    };
+
+    return {
+      win: summarize(acc.win),
+      autoPromo: summarize(acc.autoPromo),
+      playoffs: summarize(acc.playoffs),
+      avoidReleg: summarize(acc.avoidReleg),
+      avoidSack: summarize(acc.avoidSack),
+    };
+  }, [allRows]);
+
   // ------------------------------
-  // Layout (Hero + Tabs)
+  // Layout (Hero + Tabs + Content + Footer)
   // ------------------------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
@@ -935,97 +892,91 @@ const Top100Archive = () => {
       <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
-{[
-  { id: 'search',   label: 'Search',            icon: Search,   color: 'blue' },
-  { id: 'tables',   label: 'League Tables',     icon: BarChart3,color: 'purple' },
-  { id: 'insights', label: 'Insights',          icon: Award,    color: 'green' },
-  { id: 'charts',   label: 'Charts',            icon: BarChart3,color: 'indigo' },
-  { id: 'managers', label: 'Manager Profiles',  icon: Users,    color: 'teal' },
-].map(tab => (
-  <button
-    key={tab.id}
-    onClick={() => {
-  setActiveTab(tab.id);
-  window.location.hash = tab.id;
-}}
-    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
-      activeTab === tab.id
-        ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-    }`}
-  >
-    <tab.icon className="w-4 h-4" />
-    {tab.label}
-  </button>
-))}
+            {[
+              { id: 'search',   label: 'Search',            icon: Search,   color: 'blue' },
+              { id: 'tables',   label: 'League Tables',     icon: BarChart3, color: 'purple' },
+              { id: 'insights', label: 'Insights',          icon: Award,     color: 'green' },
+              { id: 'charts',   label: 'Charts',            icon: BarChart3, color: 'indigo' },
+              { id: 'managers', label: 'Manager Profiles',  icon: Users,     color: 'teal' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  const target = normalizeHashToTab(`#${tab.id}`);
+                  window.location.hash = target; // will also sync state via effect
+                  setActiveTab(tab.id);          // instant UI feedback
+                }}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
+                  activeTab === tab.id
+                    ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
             ))}
           </div>
         </div>
       </div>
 
-{/* Main Content */}
-<div className="max-w-7xl mx-auto px-6 py-8">
-  {/* Search bar + selectors (shown on all tabs for convenience) */}
-  <div className="mb-8">
-    <div className="flex flex-col lg:flex-row gap-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder="Search teams or managers..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
-          disabled={!dataLoaded}
-        />
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm('')}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-        )}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Search bar + selectors */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search teams or managers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                disabled={!dataLoaded}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {activeTab === 'tables' && availableSeasons.length > 0 && (
+              <>
+                <select
+                  value={selectedSeason}
+                  onChange={(e) => setSelectedSeason(e.target.value)}
+                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+                >
+                  {availableSeasons.map((season) => (
+                    <option key={season} value={season}>Season {season}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedDivision}
+                  onChange={(e) => setSelectedDivision(e.target.value)}
+                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+                >
+                  {availableDivisions.map((div) => (
+                    <option key={div} value={div}>Division {div}</option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Content sections */}
+        {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+        {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
+        {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
+        {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+        {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
       </div>
-
-      {activeTab === 'tables' && availableSeasons.length > 0 && (
-        <>
-          <select
-            value={selectedSeason}
-            onChange={(e) => setSelectedSeason(e.target.value)}
-            className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
-          >
-            {availableSeasons.map((season) => (
-              <option key={season} value={season}>
-                Season {season}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedDivision}
-            onChange={(e) => setSelectedDivision(e.target.value)}
-            className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
-          >
-            {availableDivisions.map((div) => (
-              <option key={div} value={div}>
-                Division {div}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
-    </div>
-  </div>
-
-  {/* Content sections */}
-  {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-  {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
-	 {activeTab === 'insights' && (dataLoaded ? <Insights /> : <DataPlaceholder />)}
-  {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
-  {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
-</div>
-       
-      
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-800 to-slate-900 text-white mt-16">
@@ -1047,7 +998,7 @@ const Top100Archive = () => {
       </footer>
     </div>
   );
-};
+}
 
 // ------------------------------
 // Small UI helpers (used)
