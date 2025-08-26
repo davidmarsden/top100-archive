@@ -15,7 +15,7 @@ const Top100Archive = () => {
   // Configuration - Your actual Sheet ID
   const SHEET_ID = process.env.REACT_APP_SHEET_ID || '17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w';
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'YOUR_API_KEY_HERE';
-  const SHEET_RANGE = 'Sheet1!A:N';
+  const SHEET_RANGE = 'Sorted by team!A:P';
 
   // Load data from Google Sheets (memoized for a stable reference in useEffect)
   const loadFromGoogleSheets = useCallback(async () => {
