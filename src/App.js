@@ -1,21 +1,77 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   BarChart3,
-  Award,
   Target,
   Trophy,
   Users,
-  Calendar,
-  Database,
   Loader,
   AlertCircle,
   SortAsc,
+  Database,
 } from 'lucide-react';
 
+// ------------------------------
+// Status logic helpers
+// ------------------------------
+const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
+const isD1UCL = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
+const isD1Shield = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
+const isAutoPromo = (div, pos) => {
+  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  return d >= 2 && d <= 5 && (p === 2 || p === 3);
+};
+const isPlayoff = (div, pos) => {
+  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  return d >= 2 && d <= 5 && p >= 4 && p <= 7;
+};
+const isRelegated = (div, pos) => {
+  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  return d >= 1 && d <= 4 && p >= 17 && p <= 20;
+};
+const isAutoSacked = (pos) => {
+  const p = parseInt(pos || 0, 10);
+  return p >= 18 && p <= 20;
+};
+
+const getTeamTags = (position, division) => {
+  const tags = [];
+  if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
+  if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
+  if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
+  if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
+  if (isPlayoff(division, position)) tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
+  if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
+  if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+  return tags;
+};
+
+const getRowStyling = (position, division) => {
+  if (isAutoSacked(position)) return 'bg-rose-50 border-l-4 border-rose-700 ring-1 ring-rose-200 hover:bg-rose-100';
+  if (isRelegated(division, position)) return 'bg-red-50 border-l-4 border-red-700 ring-1 ring-red-200 hover:bg-red-100';
+  if (isChampion(position)) return 'bg-yellow-50 border-l-4 border-yellow-500 ring-1 ring-yellow-200 hover:bg-yellow-100';
+  if (isAutoPromo(division, position)) return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
+  if (isPlayoff(division, position)) return 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-200 hover:bg-blue-100';
+  return 'bg-white hover:bg-gray-50';
+};
+
+const getPositionBadge = (position, division) => {
+  if (isAutoSacked(position)) return { bg: 'bg-rose-600', text: 'text-white', icon: '⛔' };
+  if (isRelegated(division, position)) return { bg: 'bg-red-600', text: 'text-white', icon: '⬇️' };
+  if (isChampion(position)) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
+  if (isAutoPromo(division, position)) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
+  if (isPlayoff(division, position)) return { bg: 'bg-blue-600', text: 'text-white', icon: '🏁' };
+  if (isD1UCL(division, position)) return { bg: 'bg-purple-600', text: 'text-white', icon: '🏆' };
+  if (isD1Shield(division, position)) return { bg: 'bg-indigo-600', text: 'text-white', icon: '🛡️' };
+  return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
+};
+
+// ------------------------------
+// Main component
+// ------------------------------
 const Top100Archive = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('search');
+  const [activeTab, setActiveTab] = useState('tables'); // default to tables
   const [selectedSeason, setSelectedSeason] = useState('25');
   const [selectedDivision, setSelectedDivision] = useState('1');
   const [sortBy, setSortBy] = useState('position');
@@ -24,16 +80,15 @@ const Top100Archive = () => {
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // === Config (env required in CI) ===
+  // Config — env required in CI
   const SHEET_ID = process.env.REACT_APP_SHEET_ID;
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
   const SHEET_RANGE = 'Sorted by team!A:R';
 
-  // === Data loading (memoized) ===
+  // Load data
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       if (!SHEET_ID) throw new Error('Missing REACT_APP_SHEET_ID (Netlify → Environment).');
       if (!API_KEY) throw new Error('Missing REACT_APP_GOOGLE_API_KEY (Netlify → Environment).');
@@ -53,13 +108,11 @@ const Top100Archive = () => {
       }
 
       const data = await response.json();
-      if (!data.values || data.values.length === 0) {
-        throw new Error('No data found in the sheet');
-      }
+      if (!data.values || data.values.length === 0) throw new Error('No data found in the sheet');
 
       const [headerRow, ...rows] = data.values;
 
-      // Header-name mapping (robust to order / blank columns)
+      // Header-based mapping
       const norm = (s) => String(s || '').trim().toLowerCase();
       const idx = (names) => {
         const candidates = Array.isArray(names) ? names : [names];
@@ -110,9 +163,8 @@ const Top100Archive = () => {
         ...formattedData.map((row) => parseInt(row.season, 10) || 0)
       ).toString();
       setSelectedSeason(latestSeason);
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setError(err.message);
+    } catch (e) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -122,137 +174,222 @@ const Top100Archive = () => {
     loadFromGoogleSheets();
   }, [loadFromGoogleSheets]);
 
-  // === Status & styling helpers ===
-  const getTeamTags = (position, division) => {
-    const pos = parseInt(position || 0, 10);
-    const div = parseInt(division || 0, 10);
-    const tags = [];
+  // Options
+  const availableSeasons = useMemo(
+    () =>
+      [...new Set(allPositionData.map((r) => (r.season || '').trim()))]
+        .filter(Boolean)
+        .sort((a, b) => b.localeCompare(a)),
+    [allPositionData]
+  );
 
-    if (pos === 1)
-      tags.push({
-        label: 'Champions',
-        style: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
-      });
+  const availableDivisions = useMemo(
+    () =>
+      [
+        ...new Set(
+          allPositionData
+            .filter((r) => (r.season || '').trim() === (selectedSeason || '').trim())
+            .map((r) => (r.division || '').trim())
+        ),
+      ]
+        .filter(Boolean)
+        .sort(),
+    [allPositionData, selectedSeason]
+  );
 
-    if (div === 1 && pos >= 2 && pos <= 4)
-      tags.push({
-        label: 'SMFA Champions Cup',
-        style: 'bg-purple-100 text-purple-800 border border-purple-300',
-      });
-
-    if (div === 1 && pos >= 5 && pos <= 10)
-      tags.push({
-        label: 'SMFA Shield',
-        style: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
-      });
-
-    if (div >= 2 && div <= 5 && (pos === 2 || pos === 3))
-      tags.push({
-        label: 'Auto-Promoted',
-        style: 'bg-green-100 text-green-800 border border-green-300',
-      });
-
-    if (div >= 2 && div <= 5 && pos >= 4 && pos <= 7)
-      tags.push({
-        label: 'Playoffs',
-        style: 'bg-blue-100 text-blue-800 border border-blue-300',
-      });
-
-    if (div >= 1 && div <= 4 && pos >= 17 && pos <= 20)
-      tags.push({
-        label: 'Relegated',
-        style: 'bg-red-100 text-red-800 border border-red-300',
-      });
-
-    if (pos >= 18 && pos <= 20)
-      tags.push({
-        label: 'Auto-Sacked',
-        style: 'bg-rose-200 text-rose-900 border border-rose-400',
-      });
-
-    return tags;
-  };
-
-  const getRowStyling = (position, division) => {
-    const pos = parseInt(position || 0, 10);
-    const div = parseInt(division || 0, 10);
-
-    if (pos >= 18 && pos <= 20)
-      return 'bg-rose-50 border-l-4 border-rose-700 ring-1 ring-rose-200 hover:bg-rose-100';
-    if (div >= 1 && div <= 4 && pos >= 17 && pos <= 20)
-      return 'bg-red-50 border-l-4 border-red-700 ring-1 ring-red-200 hover:bg-red-100';
-    if (pos === 1)
-      return 'bg-yellow-50 border-l-4 border-yellow-500 ring-1 ring-yellow-200 hover:bg-yellow-100';
-    if (div >= 2 && div <= 5 && (pos === 2 || pos === 3))
-      return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
-    if (div >= 2 && div <= 5 && pos >= 4 && pos <= 7)
-      return 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-200 hover:bg-blue-100';
-    return 'bg-white hover:bg-gray-50';
-  };
-
-  const getPositionBadge = (position, division) => {
-    const pos = parseInt(position || 0, 10);
-    const div = parseInt(division || 0, 10);
-
-    if (pos >= 18 && pos <= 20) return { bg: 'bg-rose-600', text: 'text-white', icon: '⛔' }; // strongest
-    if (div >= 1 && div <= 4 && pos >= 17 && pos <= 20) return { bg: 'bg-red-600', text: 'text-white', icon: '⬇️' };
-    if (pos === 1) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
-    if (div >= 2 && div <= 5 && (pos === 2 || pos === 3)) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
-    if (div >= 2 && div <= 5 && pos >= 4 && pos <= 7) return { bg: 'bg-blue-600', text: 'text-white', icon: '🏁' };
-    if (div === 1 && pos >= 2 && pos <= 4) return { bg: 'bg-purple-600', text: 'text-white', icon: '🏆' }; // UCL
-    if (div === 1 && pos >= 5 && pos <= 10) return { bg: 'bg-indigo-600', text: 'text-white', icon: '🛡️' }; // Shield
-
-    return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
-  };
-
-  // === Transforms & options ===
+  // Filters/transforms
   const getFilteredData = (season = null, division = null, sortOrder = 'position') => {
     let filtered = [...allPositionData];
-
     if (season) filtered = filtered.filter((r) => (r.season || '').trim() === (season || '').trim());
     if (division)
       filtered = filtered.filter((r) => (r.division || '').trim() === (division || '').trim());
 
     switch (sortOrder) {
       case 'points':
-        return filtered.sort(
-          (a, b) => parseInt(b.points || 0, 10) - parseInt(a.points || 0, 10)
-        );
+        return filtered.sort((a, b) => parseInt(b.points || 0, 10) - parseInt(a.points || 0, 10));
       case 'team':
         return filtered.sort((a, b) => a.team.localeCompare(b.team));
       case 'manager':
         return filtered.sort((a, b) => (a.manager || '').localeCompare(b.manager || ''));
       case 'division':
         return filtered.sort((a, b) => {
-          const divCompare =
-            parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
-          return divCompare !== 0
-            ? divCompare
-            : parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
+          const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
+          return d !== 0 ? d : parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
         });
       case 'position':
       default:
-        return filtered.sort(
-          (a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10)
-        );
+        return filtered.sort((a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10));
     }
   };
 
-  const availableSeasons = [...new Set(allPositionData.map((r) => (r.season || '').trim()))]
-    .filter(Boolean)
-    .sort((a, b) => b.localeCompare(a));
+  // ------------------------------
+  // Insights: leaders (titles, promo, relegation, sacked)
+  // ------------------------------
+  const countBy = (arr, keyGetter) => {
+    const map = new Map();
+    for (const item of arr) {
+      const key = keyGetter(item);
+      if (!key) continue;
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([key, count]) => ({ key, count }))
+      .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+  };
 
-  const availableDivisions = [
-    ...new Set(
-      allPositionData
-        .filter((r) => (r.season || '').trim() === (selectedSeason || '').trim())
-        .map((r) => (r.division || '').trim())
-    ),
-  ]
-    .filter(Boolean)
-    .sort();
+  const allRows = allPositionData;
 
-  // === Components ===
+  const leaders = useMemo(() => {
+    const rowsTitles = allRows.filter((r) => isChampion(r.position));
+    const rowsPromo = allRows.filter((r) => isAutoPromo(r.division, r.position));
+    const rowsReleg = allRows.filter((r) => isRelegated(r.division, r.position));
+    const rowsSack = allRows.filter((r) => isAutoSacked(r.position));
+
+    const byTeam = {
+      titles: countBy(rowsTitles, (r) => r.team),
+      promotions: countBy(rowsPromo, (r) => r.team),
+      relegations: countBy(rowsReleg, (r) => r.team),
+      sackings: countBy(rowsSack, (r) => r.team),
+    };
+    const byManager = {
+      titles: countBy(rowsTitles, (r) => r.manager),
+      promotions: countBy(rowsPromo, (r) => r.manager),
+      relegations: countBy(rowsReleg, (r) => r.manager),
+      sackings: countBy(rowsSack, (r) => r.manager),
+    };
+    return { byTeam, byManager };
+  }, [allRows]);
+
+  // ------------------------------
+  // Insights: records (max/min points, gf, ga, gd) with sorting/grouping
+  // ------------------------------
+  const numeric = (v) => (isNaN(parseInt(v || 0, 10)) ? 0 : parseInt(v, 10));
+
+  const buildRecords = (metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
+    const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
+    const withMetric = rows.map((r) => ({
+      ...r,
+      value:
+        metric === 'points'
+          ? numeric(r.points)
+          : metric === 'gf'
+          ? numeric(r.goals_for)
+          : metric === 'ga'
+          ? numeric(r.goals_against)
+          : metric === 'gd'
+          ? numeric(r.goal_difference)
+          : 0,
+    }));
+    // Sort
+    withMetric.sort((a, b) => (order === 'asc' ? a.value - b.value : b.value - a.value));
+    // Group key
+    const keyFn =
+      group === 'team'
+        ? (r) => r.team
+        : group === 'manager'
+        ? (r) => r.manager
+        : group === 'season'
+        ? (r) => r.season
+        : group === 'division'
+        ? (r) => r.division
+        : group === 'position'
+        ? (r) => r.position
+        : () => '';
+
+    // Take best per group to avoid flooding
+    const seen = new Set();
+    const result = [];
+    for (const r of withMetric) {
+      const k = keyFn(r);
+      if (!k) continue;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      result.push(r);
+      if (result.length >= 50) break; // top 50
+    }
+    return result;
+  };
+
+  // ------------------------------
+  // Insights: thresholds per division across seasons
+  // ------------------------------
+  const computeThresholds = useMemo(() => {
+    // Build per (season, division) indices; then select the relevant row points and aggregate per division.
+    const bySeasonDiv = new Map();
+    for (const r of allRows) {
+      const season = (r.season || '').trim();
+      const division = (r.division || '').trim();
+      const key = `${season}|${division}`;
+      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
+      bySeasonDiv.get(key).push(r);
+    }
+
+    const acc = {
+      win: new Map(), // division -> array of points of pos 1
+      autoPromo: new Map(), // divisions 2-5 -> array of points for pos 3 (min to guarantee auto-promo)
+      playoffs: new Map(), // divisions 2-5 -> array of points for pos 7 (min to make playoffs)
+      avoidReleg: new Map(), // divisions 1-4 -> points for pos 16 (min to avoid releg)
+      avoidSack: new Map(), // all divisions -> points for pos 17 (min to avoid auto-sacking)
+    };
+
+    const push = (m, div, pts) => {
+      const d = (div || '').trim();
+      if (!d) return;
+      const p = numeric(pts);
+      if (!m.has(d)) m.set(d, []);
+      m.get(d).push(p);
+    };
+
+    for (const [key, rows] of bySeasonDiv.entries()) {
+      const [, div] = key.split('|');
+      const d = parseInt(div || 0, 10);
+      // index rows by position
+      const byPos = new Map();
+      for (const r of rows) {
+        byPos.set(parseInt(r.position || 0, 10), r);
+      }
+
+      // Win division: pos 1 points
+      if (byPos.has(1)) push(acc.win, div, byPos.get(1).points);
+
+      // Auto-promo threshold (guarantee): pos 3 (since 2-3 auto-promo)
+      if (d >= 2 && d <= 5 && byPos.has(3)) push(acc.autoPromo, div, byPos.get(3).points);
+
+      // Playoffs threshold: pos 7 (since 4-7 make playoffs)
+      if (d >= 2 && d <= 5 && byPos.has(7)) push(acc.playoffs, div, byPos.get(7).points);
+
+      // Avoid relegation: for D1-D4, pos 16 (since 17-20 relegated)
+      if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
+
+      // Avoid sacking: pos 17 (since 18-20 are auto-sacked)
+      if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
+    }
+
+    const summarize = (m) => {
+      const out = [];
+      for (const [div, arr] of m.entries()) {
+        if (!arr.length) continue;
+        const min = Math.min(...arr);
+        const max = Math.max(...arr);
+        const avg = Math.round((arr.reduce((s, x) => s + x, 0) / arr.length) * 10) / 10;
+        out.push({ division: div, min, avg, max, samples: arr.length });
+      }
+      // Sort by numeric division
+      return out.sort((a, b) => parseInt(a.division, 10) - parseInt(b.division, 10));
+    };
+
+    return {
+      win: summarize(acc.win),
+      autoPromo: summarize(acc.autoPromo),
+      playoffs: summarize(acc.playoffs),
+      avoidReleg: summarize(acc.avoidReleg),
+      avoidSack: summarize(acc.avoidSack),
+    };
+  }, [allRows]);
+
+  // ------------------------------
+  // UI: Search Results
+  // ------------------------------
   const SearchResults = () => {
     const filtered = allPositionData
       .filter(
@@ -270,17 +407,6 @@ const Top100Archive = () => {
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-2xl font-bold text-gray-800">Search Results</h3>
-            <p className="text-gray-600">{filtered.length} records found across all seasons</p>
-          </div>
-          <div className="text-right text-sm text-gray-500">
-            <p>Database: {allPositionData.length.toLocaleString()} total records</p>
-            <p>Seasons: {availableSeasons.length} available</p>
-          </div>
-        </div>
-
         <div className="grid gap-4">
           {filtered.map((team, index) => {
             const badge = getPositionBadge(team.position, team.division);
@@ -293,9 +419,7 @@ const Top100Archive = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <h4 className="text-xl font-bold text-gray-900">{team.team}</h4>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${badge.bg} ${badge.text}`}
-                      >
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${badge.bg} ${badge.text}`}>
                         {badge.icon} #{team.position}
                       </span>
                     </div>
@@ -318,14 +442,8 @@ const Top100Archive = () => {
                       </div>
                       <div>
                         <p className="text-gray-500">Goal Difference</p>
-                        <p
-                          className={`font-semibold ${
-                            parseInt(team.goal_difference || 0, 10) >= 0
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {parseInt(team.goal_difference || 0, 10) > 0 ? '+' : ''}
+                        <p className={`font-semibold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {numeric(team.goal_difference) > 0 ? '+' : ''}
                           {team.goal_difference}
                         </p>
                       </div>
@@ -352,6 +470,9 @@ const Top100Archive = () => {
     );
   };
 
+    // ------------------------------
+  // UI: League Table
+  // ------------------------------
   const LeagueTable = () => {
     const tableData = getFilteredData(selectedSeason, selectedDivision, sortBy);
 
@@ -415,10 +536,7 @@ const Top100Archive = () => {
                 return (
                   <tr
                     key={index}
-                    className={`${getRowStyling(
-                      team.position,
-                      selectedDivision
-                    )} border-b border-gray-100 transition-all hover:shadow-md`}
+                    className={`${getRowStyling(team.position, selectedDivision)} border-b border-gray-100 transition-all hover:shadow-md`}
                   >
                     <td className="py-4 px-4">
                       <span
@@ -455,12 +573,8 @@ const Top100Archive = () => {
                     <td className="py-4 px-3 text-center font-bold text-red-600">{team.lost}</td>
                     <td className="py-4 px-3 text-center font-semibold">{team.goals_for}</td>
                     <td className="py-4 px-3 text-center font-semibold">{team.goals_against}</td>
-                    <td
-                      className={`py-4 px-3 text-center font-bold ${
-                        parseInt(team.goal_difference || 0, 10) >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {parseInt(team.goal_difference || 0, 10) > 0 ? '+' : ''}
+                    <td className={`py-4 px-3 text-center font-bold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {numeric(team.goal_difference) > 0 ? '+' : ''}
                       {team.goal_difference}
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -475,40 +589,19 @@ const Top100Archive = () => {
           </table>
         </div>
 
-          {/* Footer with legend and stats */}
+        {/* Legend */}
         <div className="p-6 bg-gray-50 border-t">
           <div className="flex flex-col md:flex-row justify-between items-start gap-4">
             <div className="space-y-2">
               <h4 className="font-semibold text-gray-700 mb-2">Legend</h4>
               <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-yellow-300 rounded border border-yellow-500" />
-                  <span>Champions (1st)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-green-300 rounded border border-green-600" />
-                  <span>Auto-Promoted (2nd–3rd in D2–D5)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-blue-300 rounded border border-blue-600" />
-                  <span>Playoffs (4th–7th in D2–D5)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-red-300 rounded border border-red-700" />
-                  <span>Relegated (17th–20th in D1–D4)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-rose-400 rounded border border-rose-700" />
-                  <span>Automatic Sacking (18th–20th all divisions)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-purple-300 rounded border border-purple-500" />
-                  <span>D1: SMFA Champions Cup (2nd–4th)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-indigo-300 rounded border border-indigo-500" />
-                  <span>D1: SMFA Shield (5th–10th)</span>
-                </div>
+                <LegendSwatch color="bg-yellow-300 border-yellow-500" label="Champions (1st)" />
+                <LegendSwatch color="bg-green-300 border-green-600" label="Auto-Promoted (2nd–3rd in D2–D5)" />
+                <LegendSwatch color="bg-blue-300 border-blue-600" label="Playoffs (4th–7th in D2–D5)" />
+                <LegendSwatch color="bg-red-300 border-red-700" label="Relegated (17th–20th in D1–D4)" />
+                <LegendSwatch color="bg-rose-400 border-rose-700" label="Automatic Sacking (18th–20th all divisions)" />
+                <LegendSwatch color="bg-purple-300 border-purple-500" label="D1: SMFA Champions Cup (2nd–4th)" />
+                <LegendSwatch color="bg-indigo-300 border-indigo-500" label="D1: SMFA Shield (5th–10th)" />
               </div>
             </div>
             <div className="text-right text-sm text-gray-600">
@@ -525,22 +618,191 @@ const Top100Archive = () => {
     );
   };
 
-  const StatsCard = ({ icon: Icon, title, value, subtitle, color = 'blue' }) => (
-    <div
-      className={`bg-gradient-to-br from-${color}-50 to-${color}-100 rounded-xl p-6 shadow-lg border border-${color}-200 hover:shadow-xl transition-all`}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className={`text-${color}-700 text-sm font-semibold uppercase tracking-wide`}>{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-          {subtitle && <p className={`text-${color}-600 text-sm mt-1`}>{subtitle}</p>}
-        </div>
-        <Icon className={`w-12 h-12 text-${color}-500`} />
-      </div>
-    </div>
+  // ------------------------------
+  // UI: Insights
+  // ------------------------------
+  const [leadersView, setLeadersView] = useState('team'); // 'team' | 'manager'
+  const [recordsMetric, setRecordsMetric] = useState('points'); // points|gf|ga|gd
+  const [recordsGroup, setRecordsGroup] = useState('team'); // team|manager|season|division|position
+  const [recordsOrder, setRecordsOrder] = useState('desc'); // desc|asc
+  const [recordsSeason, setRecordsSeason] = useState('');
+  const [recordsDivision, setRecordsDivision] = useState('');
+
+  const recordRows = useMemo(
+    () =>
+      buildRecords(
+        recordsMetric,
+        recordsGroup,
+        recordsOrder,
+        recordsSeason || null,
+        recordsDivision || null
+      ),
+    [recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision] // eslint-disable-line
   );
 
-  // === Layout ===
+  const Insights = () => {
+    const src = leadersView === 'team' ? leaders.byTeam : leaders.byManager;
+
+    const LeaderTable = ({ title, rows }) => (
+      <div className="bg-white rounded-xl shadow p-4">
+        <h4 className="font-semibold mb-3">{title}</h4>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-600">
+              <th className="py-2">#{leadersView === 'team' ? 'Team' : 'Manager'}</th>
+              <th className="py-2 text-right">Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 15).map((r, i) => (
+              <tr key={i} className="border-t">
+                <td className="py-2">{r.key || 'Unknown'}</td>
+                <td className="py-2 text-right font-semibold">{r.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
+    return (
+      <div className="space-y-8">
+        {/* Leaders */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-600" /> Leaders
+            </h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLeadersView('team')}
+                className={`px-3 py-1 rounded ${leadersView === 'team' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+              >
+                Teams
+              </button>
+              <button
+                onClick={() => setLeadersView('manager')}
+                className={`px-3 py-1 rounded ${leadersView === 'manager' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+              >
+                Managers
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <LeaderTable title="Most Titles" rows={src.titles} />
+            <LeaderTable title="Most Auto-Promotions" rows={src.promotions} />
+            <LeaderTable title="Most Relegations" rows={src.relegations} />
+            <LeaderTable title="Most Sackings" rows={src.sackings} />
+          </div>
+        </div>
+
+        {/* Records */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-purple-600" /> Records
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <select className="border rounded px-2 py-1" value={recordsMetric} onChange={(e) => setRecordsMetric(e.target.value)}>
+                <option value="points">Points</option>
+                <option value="gf">Goals For</option>
+                <option value="ga">Goals Against</option>
+                <option value="gd">Goal Difference</option>
+              </select>
+              <select className="border rounded px-2 py-1" value={recordsGroup} onChange={(e) => setRecordsGroup(e.target.value)}>
+                <option value="team">By Team</option>
+                <option value="manager">By Manager</option>
+                <option value="season">By Season</option>
+                <option value="division">By Division</option>
+                <option value="position">By Position</option>
+              </select>
+              <select className="border rounded px-2 py-1" value={recordsOrder} onChange={(e) => setRecordsOrder(e.target.value)}>
+                <option value="desc">Highest</option>
+                <option value="asc">Lowest</option>
+              </select>
+              <select className="border rounded px-2 py-1" value={recordsSeason} onChange={(e) => setRecordsSeason(e.target.value)}>
+                <option value="">All Seasons</option>
+                {availableSeasons.map((s) => (
+                  <option key={s} value={s}>
+                    Season {s}
+                  </option>
+                ))}
+              </select>
+              <select className="border rounded px-2 py-1" value={recordsDivision} onChange={(e) => setRecordsDivision(e.target.value)}>
+                <option value="">All Divisions</option>
+                {[1, 2, 3, 4, 5].map((d) => (
+                  <option key={d} value={String(d)}>
+                    Division {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-600">
+                  <th className="py-2 px-2">Team</th>
+                  <th className="py-2 px-2">Manager</th>
+                  <th className="py-2 px-2">Season</th>
+                  <th className="py-2 px-2">Div</th>
+                  <th className="py-2 px-2">Pos</th>
+                  <th className="py-2 px-2">Points</th>
+                  <th className="py-2 px-2">GF</th>
+                  <th className="py-2 px-2">GA</th>
+                  <th className="py-2 px-2">GD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recordRows.map((r, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="py-2 px-2">{r.team}</td>
+                    <td className="py-2 px-2">{r.manager || 'Unknown'}</td>
+                    <td className="py-2 px-2">{r.season}</td>
+                    <td className="py-2 px-2">{r.division}</td>
+                    <td className="py-2 px-2">{r.position}</td>
+                    <td className="py-2 px-2 font-semibold">{r.points}</td>
+                    <td className="py-2 px-2">{r.goals_for}</td>
+                    <td className="py-2 px-2">{r.goals_against}</td>
+                    <td className="py-2 px-2">{r.goal_difference}</td>
+                  </tr>
+                ))}
+                {recordRows.length === 0 && (
+                  <tr>
+                    <td className="py-4 px-2 text-gray-500" colSpan={9}>
+                      No rows found for the selected filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Thresholds */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="w-5 h-5 text-green-700" />
+            <h3 className="text-xl font-bold">Points Thresholds (Min / Avg / Max)</h3>
+          </div>
+
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <ThresholdCard title="Win Division (Pos 1)" rows={computeThresholds.win} />
+            <ThresholdCard title="Auto-Promotion (Pos 3 in D2–D5)" rows={computeThresholds.autoPromo} />
+            <ThresholdCard title="Make Playoffs (Pos 7 in D2–D5)" rows={computeThresholds.playoffs} />
+            <ThresholdCard title="Avoid Relegation (Pos 16 in D1–D4)" rows={computeThresholds.avoidReleg} />
+            <ThresholdCard title="Avoid Sacking (Pos 17 in all Divs)" rows={computeThresholds.avoidSack} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ------------------------------
+  // Layout (Hero + Tabs)
+  // ------------------------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       {/* Hero Header */}
@@ -558,26 +820,6 @@ const Top100Archive = () => {
             <p className="text-xl md:text-2xl text-blue-200 mb-8">
               Soccer Manager Worlds Elite Community • Complete Historical Database
             </p>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto mb-8">
-              <StatsCard
-                icon={Calendar}
-                title="Seasons"
-                value={availableSeasons.length || 0}
-                subtitle="Historical coverage"
-                color="blue"
-              />
-              <StatsCard icon={BarChart3} title="Divisions" value="5" subtitle="Competitive tiers" color="purple" />
-              <StatsCard
-                icon={Database}
-                title="Records"
-                value={allPositionData.length.toLocaleString() || '0'}
-                subtitle="Positions tracked"
-                color="green"
-              />
-              <StatsCard icon={Users} title="Elite Teams" value="100" subtitle="Community size" color="yellow" />
-            </div>
 
             {/* Status Indicator */}
             <div className="flex items-center justify-center gap-3 text-lg">
@@ -612,10 +854,9 @@ const Top100Archive = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
             {[
-              { id: 'search', label: 'Search Teams & Managers', icon: Search, color: 'blue' },
+              { id: 'search', label: 'Search', icon: Search, color: 'blue' },
               { id: 'tables', label: 'League Tables', icon: BarChart3, color: 'purple' },
-              { id: 'statistics', label: 'Community Stats', icon: Award, color: 'green' },
-              { id: 'setup', label: 'Setup Guide', icon: Database, color: 'gray' },
+              { id: 'insights', label: 'Insights', icon: Target, color: 'green' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -636,14 +877,14 @@ const Top100Archive = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Search & selectors */}
+        {/* Search bar + selectors (shown on all tabs for convenience) */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search teams, managers, or browse complete archives..."
+                placeholder="Search teams or managers..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
@@ -688,55 +929,10 @@ const Top100Archive = () => {
           </div>
         </div>
 
-        {/* Content sections */}
-        {activeTab === 'search' && (
-          <div className="space-y-8">
-            {!dataLoaded ? (
-              <div className="text-center py-16">
-                <div className="bg-white rounded-2xl p-12 shadow-xl max-w-2xl mx-auto">
-                  <Database className="w-20 h-20 text-blue-500 mx-auto mb-6" />
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Setup Your Database Connection</h3>
-                  <p className="text-gray-600 mb-6">Configure your Google Sheets API to access 25+ seasons of Top 100 data</p>
-                  <button
-                    onClick={() => setActiveTab('setup')}
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    View Setup Guide
-                  </button>
-                </div>
-              </div>
-            ) : searchTerm ? (
-              <SearchResults />
-            ) : (
-              <div className="text-center py-16">
-                <div className="bg-white rounded-2xl p-12 shadow-xl max-w-2xl mx-auto">
-                  <Search className="w-20 h-20 text-blue-500 mx-auto mb-6" />
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Search the Complete Archive</h3>
-                  <p className="text-gray-600 mb-4">
-                    Explore {allPositionData.length.toLocaleString()} position records across {availableSeasons.length} seasons
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Search by team name, manager name, or browse league tables by season and division
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'tables' && (
-          <div className="space-y-6">{dataLoaded ? <LeagueTable /> : <TablesPlaceholder setActiveTab={setActiveTab} />}</div>
-        )}
-
-        {activeTab === 'statistics' && (
-          <StatisticsPanel
-            dataLoaded={dataLoaded}
-            allPositionData={allPositionData}
-            availableSeasons={availableSeasons}
-          />
-        )}
-
-        {activeTab === 'setup' && <SetupPanel loadFromGoogleSheets={loadFromGoogleSheets} loading={loading} />}
+        {/* Content */}
+        {activeTab === 'search' && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+        {activeTab === 'tables' && (dataLoaded ? <LeagueTable /> : <DataPlaceholder />)}
+        {activeTab === 'insights' && (dataLoaded ? <Insights /> : <DataPlaceholder />)}
       </div>
 
       {/* Footer */}
@@ -748,44 +944,6 @@ const Top100Archive = () => {
             </div>
             <h3 className="text-2xl font-bold mb-2">Soccer Manager Worlds Top 100</h3>
             <p className="text-gray-300 mb-6">Elite Community • Historical Database • 25+ Seasons</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              <div>
-                <h4 className="font-semibold mb-2 text-blue-300">Database Stats</h4>
-                <p className="text-sm text-gray-400">
-                  {dataLoaded ? `${allPositionData.length.toLocaleString()} records` : 'Setup required'}
-                  <br />
-                  {availableSeasons.length || '25+'} seasons covered
-                  <br />
-                  5 competitive divisions
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2 text-green-300">Features</h4>
-                <p className="text-sm text-gray-400">
-                  Advanced search & filtering
-                  <br />
-                  Complete league tables
-                  <br />
-                  Manager tracking
-                  <br />
-                  Live Google Sheets integration
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2 text-purple-300">Community</h4>
-                <p className="text-sm text-gray-400">
-                  100 elite managers
-                  <br />
-                  Historical achievements
-                  <br />
-                  Performance analytics
-                  <br />
-                  Professional scouting data
-                </p>
-              </div>
-            </div>
-
             <div className="mt-8 pt-6 border-t border-gray-700">
               <p className="text-sm text-gray-400">
                 Built for the Soccer Manager Worlds Top 100 Community •
@@ -799,144 +957,56 @@ const Top100Archive = () => {
   );
 };
 
-// === Small subcomponents (all used) ===
-const TablesPlaceholder = ({ setActiveTab }) => (
+// ------------------------------
+// Small UI helpers (used)
+// ------------------------------
+const LegendSwatch = ({ color, label }) => (
+  <div className="flex items-center gap-2">
+    <span className={`w-4 h-4 rounded border ${color}`} />
+    <span>{label}</span>
+  </div>
+);
+
+const ThresholdCard = ({ title, rows }) => (
+  <div className="bg-white rounded-xl shadow p-4">
+    <h4 className="font-semibold mb-3">{title}</h4>
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left text-gray-600">
+          <th className="py-2">Div</th>
+          <th className="py-2">Min</th>
+          <th className="py-2">Avg</th>
+          <th className="py-2">Max</th>
+          <th className="py-2 text-right">Samples</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className="border-t">
+            <td className="py-2">D{r.division}</td>
+            <td className="py-2">{r.min}</td>
+            <td className="py-2 font-semibold">{r.avg}</td>
+            <td className="py-2">{r.max}</td>
+            <td className="py-2 text-right">{r.samples}</td>
+          </tr>
+        ))}
+        {rows.length === 0 && (
+          <tr>
+            <td className="py-2 text-gray-500" colSpan={5}>
+              No data available.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+);
+
+const DataPlaceholder = () => (
   <div className="bg-white rounded-2xl p-16 shadow-xl text-center">
     <Trophy className="w-20 h-20 text-gray-400 mx-auto mb-6" />
-    <h3 className="text-2xl font-bold text-gray-700 mb-4">Historical League Tables</h3>
-    <p className="text-gray-600 mb-6">Connect your Google Sheets database to view complete league tables</p>
-    <button
-      onClick={() => setActiveTab('setup')}
-      className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg"
-    >
-      Setup Database
-    </button>
-  </div>
-);
-
-const StatisticsPanel = ({ dataLoaded, allPositionData, availableSeasons }) => (
-  <div className="space-y-8">
-    <div className="text-center mb-8">
-      <h2 className="text-3xl font-bold text-gray-800 mb-4">Community Statistics</h2>
-      <p className="text-gray-600 text-lg">Complete overview of the Top 100 Elite Community</p>
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <StatsCard
-        icon={Database}
-        title="Data Source"
-        value="Google Sheets"
-        subtitle={dataLoaded ? '✅ Connected' : '❌ Not connected'}
-        color="blue"
-      />
-      <StatsCard
-        icon={Calendar}
-        title="Historical Seasons"
-        value={availableSeasons.length || 0}
-        subtitle="Complete coverage"
-        color="green"
-      />
-      <StatsCard
-        icon={Users}
-        title="Total Records"
-        value={allPositionData.length.toLocaleString() || '0'}
-        subtitle="Position entries"
-        color="purple"
-      />
-      <StatsCard
-        icon={Trophy}
-        title="Database Status"
-        value={dataLoaded ? 'Live' : 'Setup'}
-        subtitle={dataLoaded ? 'Real-time updates' : 'Needs configuration'}
-        color="yellow"
-      />
-    </div>
-  </div>
-);
-
-const SetupPanel = ({ loadFromGoogleSheets, loading }) => (
-  <div className="space-y-8">
-    <div className="text-center mb-8">
-      <h2 className="text-3xl font-bold text-gray-800 mb-4">Setup Guide</h2>
-      <p className="text-gray-600 text-lg">Configure your Google Sheets API for live data access</p>
-    </div>
-
-    <div className="bg-white rounded-xl p-8 shadow-xl">
-      <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-        <Database className="w-7 h-7 text-blue-500" />
-        Database Configuration Guide
-      </h3>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Step 1 */}
-        <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">1</div>
-            <h4 className="font-bold text-blue-800">Google API Setup</h4>
-          </div>
-          <div className="text-sm text-blue-700 space-y-2">
-            <p>• Go to Google Cloud Console</p>
-            <p>• Enable Google Sheets API</p>
-            <p>• Create API credentials</p>
-            <p>• Copy your API key</p>
-          </div>
-        </div>
-
-        {/* Step 2 */}
-        <div className="p-6 bg-green-50 rounded-xl border border-green-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center font-bold">2</div>
-            <h4 className="font-bold text-green-800">Sheet Configuration</h4>
-          </div>
-          <div className="text-sm text-green-700 space-y-2">
-            <p>✅ Sheet ID configured</p>
-            <code className="block bg-green-100 p-2 rounded text-xs break-all">…</code>
-            <p>✅ Headers mapped correctly</p>
-          </div>
-        </div>
-
-        {/* Step 3 */}
-        <div className="p-6 bg-purple-50 rounded-xl border border-purple-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold">3</div>
-            <h4 className="font-bold text-purple-800">Environment Setup</h4>
-          </div>
-          <div className="text-sm text-purple-700 space-y-2">
-            <p>Create .env file:</p>
-            <code className="block bg-purple-100 p-2 rounded text-xs">
-              REACT_APP_SHEET_ID=…<br />
-              REACT_APP_GOOGLE_API_KEY=…
-            </code>
-          </div>
-        </div>
-      </div>
-
-      {/* Test Connection */}
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-        <h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
-          Test Your Connection
-        </h4>
-        <p className="text-yellow-700 text-sm mb-3">Click below to fetch fresh data from Google Sheets:</p>
-        <button
-          onClick={loadFromGoogleSheets}
-          disabled={loading}
-          className="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {loading ? (
-            <>
-              <Loader className="w-4 h-4 animate-spin" />
-              Testing Connection...
-            </>
-          ) : (
-            <>
-              <Database className="w-4 h-4" />
-              Test Database Connection
-            </>
-          )}
-        </button>
-      </div>
-    </div>
+    <h3 className="text-2xl font-bold text-gray-700 mb-4">Connecting to Database…</h3>
+    <p className="text-gray-600 mb-6">Please wait while we load the latest archive data.</p>
   </div>
 );
 
