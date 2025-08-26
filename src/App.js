@@ -109,8 +109,8 @@ const formattedData = rows
     let filtered = [...allPositionData];
 
     // Apply filters
-+ if (season)   filtered = filtered.filter(r => (r.season || '').trim() === (season || '').trim());
-+ if (division) filtered = filtered.filter(r => (r.division || '').trim() === (division || '').trim());
+if (season)   filtered = filtered.filter(r => (r.season || '').trim() === (season || '').trim());
+if (division) filtered = filtered.filter(r => (r.division || '').trim() === (division || '').trim());
     // Apply sorting
     switch (sortOrder) {
       case 'points':
