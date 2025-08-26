@@ -1,4 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+const [activeTab, setActiveTab] = useState('search');
+
+// sync tab with hash on mount + hash change
+useEffect(() => {
+  const handleHashChange = () => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) setActiveTab(hash);
+  };
+
+  handleHashChange(); // run once on load
+  window.addEventListener('hashchange', handleHashChange);
+  return () => window.removeEventListener('hashchange', handleHashChange);
+}, []);
+import Charts from "./Charts";
+import ManagerProfiles from "./ManagerProfiles";
 import {
   Search,
   BarChart3,
@@ -65,10 +80,75 @@ const getPositionBadge = (position, division) => {
   if (isD1Shield(division, position)) return { bg: 'bg-indigo-600', text: 'text-white', icon: '🛡️' };
   return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
 };
+const [activeTab, setActiveTab] = useState('search');
+
+useEffect(() => {
+  const applyHash = () => {
+    const target = normalizeHashToTab(window.location.hash);
+    // If the hash was invalid, correct the URL so share links stay clean
+    if (window.location.hash.replace('#', '') !== target) {
+      window.location.hash = target;
+    }
+    setActiveTab(target);
+  };
+
+  applyHash(); // run once on load
+  window.addEventListener('hashchange', applyHash);
+  return () => window.removeEventListener('hashchange', applyHash);
+}, []);
 
 // ------------------------------
 // Main component
 // ------------------------------
+// Build raw per-season threshold rows for Charts
+const thresholdHistory = useMemo(() => {
+  // group rows by (season, division) to pick points at key positions
+  const bySeasonDiv = new Map();
+  for (const r of allPositionData) {
+    const season = (r.season || '').trim();
+    const division = (r.division || '').trim();
+    if (!season || !division) continue;
+    const key = `${season}|${division}`;
+    if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
+    bySeasonDiv.get(key).push(r);
+  }
+
+  const out = { win: [], autoPromo: [], playoffs: [], avoidReleg: [], avoidSack: [] };
+
+  const push = (arr, season, division, posRow) => {
+    if (!posRow) return;
+    arr.push({
+      season,
+      division,
+      points: parseInt(posRow.points || 0, 10),
+    });
+  };
+
+  for (const [key, rows] of bySeasonDiv.entries()) {
+    const [season, division] = key.split('|');
+    const d = parseInt(division, 10);
+    const byPos = new Map();
+    rows.forEach(r => byPos.set(parseInt(r.position || 0, 10), r));
+
+    // pos 1 → win division
+    push(out.win, season, division, byPos.get(1));
+
+    // pos 3 → auto-promo cutoff (D2–D5)
+    if (d >= 2 && d <= 5) push(out.autoPromo, season, division, byPos.get(3));
+
+    // pos 7 → playoffs cutoff (D2–D5)
+    if (d >= 2 && d <= 5) push(out.playoffs, season, division, byPos.get(7));
+
+    // pos 16 → avoid relegation (D1–D4)
+    if (d >= 1 && d <= 4) push(out.avoidReleg, season, division, byPos.get(16));
+
+    // pos 17 → avoid sacking (all divisions)
+    push(out.avoidSack, season, division, byPos.get(17));
+  }
+
+  return out;
+}, [allPositionData]);
+
 const Top100Archive = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('tables'); // default to tables
@@ -499,7 +579,10 @@ const Top100Archive = () => {
               ].map((sort) => (
                 <button
                   key={sort.id}
-                  onClick={() => setSortBy(sort.id)}
+                  onClick={() => {
+  const target = normalizeHashToTab(`#${tab.id}`);
+  window.location.hash = target; // triggers hashchange (and state update)
+}}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                     sortBy === sort.id ? 'bg-white text-blue-600 shadow-lg' : 'bg-blue-500 hover:bg-blue-400 text-white'
                   }`}
@@ -853,87 +936,97 @@ const Top100Archive = () => {
       <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
-            {[
-              { id: 'search', label: 'Search', icon: Search, color: 'blue' },
-              { id: 'tables', label: 'League Tables', icon: BarChart3, color: 'purple' },
-              { id: 'insights', label: 'Insights', icon: Target, color: 'green' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
-                  activeTab === tab.id
-                    ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
+{[
+  { id: 'search',   label: 'Search',            icon: Search,   color: 'blue' },
+  { id: 'tables',   label: 'League Tables',     icon: BarChart3,color: 'purple' },
+  { id: 'insights', label: 'Insights',          icon: Award,    color: 'green' },
+  { id: 'charts',   label: 'Charts',            icon: BarChart3,color: 'indigo' },
+  { id: 'managers', label: 'Manager Profiles',  icon: Users,    color: 'teal' },
+].map(tab => (
+  <button
+    key={tab.id}
+    onClick={() => {
+  setActiveTab(tab.id);
+  window.location.hash = tab.id;
+}}
+    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
+      activeTab === tab.id
+        ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
+        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+    }`}
+  >
+    <tab.icon className="w-4 h-4" />
+    {tab.label}
+  </button>
+))}
             ))}
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Search bar + selectors (shown on all tabs for convenience) */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search teams or managers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                disabled={!dataLoaded}
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {activeTab === 'tables' && availableSeasons.length > 0 && (
-              <>
-                <select
-                  value={selectedSeason}
-                  onChange={(e) => setSelectedSeason(e.target.value)}
-                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
-                >
-                  {availableSeasons.map((season) => (
-                    <option key={season} value={season}>
-                      Season {season}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedDivision}
-                  onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
-                >
-                  {availableDivisions.map((div) => (
-                    <option key={div} value={div}>
-                      Division {div}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Content */}
-        {activeTab === 'search' && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-        {activeTab === 'tables' && (dataLoaded ? <LeagueTable /> : <DataPlaceholder />)}
-        {activeTab === 'insights' && (dataLoaded ? <Insights /> : <DataPlaceholder />)}
+{/* Main Content */}
+<div className="max-w-7xl mx-auto px-6 py-8">
+  {/* Search bar + selectors (shown on all tabs for convenience) */}
+  <div className="mb-8">
+    <div className="flex flex-col lg:flex-row gap-4">
+      <div className="relative flex-1">
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <input
+          type="text"
+          placeholder="Search teams or managers..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+          disabled={!dataLoaded}
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        )}
       </div>
+
+      {activeTab === 'tables' && availableSeasons.length > 0 && (
+        <>
+          <select
+            value={selectedSeason}
+            onChange={(e) => setSelectedSeason(e.target.value)}
+            className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+          >
+            {availableSeasons.map((season) => (
+              <option key={season} value={season}>
+                Season {season}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedDivision}
+            onChange={(e) => setSelectedDivision(e.target.value)}
+            className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+          >
+            {availableDivisions.map((div) => (
+              <option key={div} value={div}>
+                Division {div}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+    </div>
+  </div>
+
+  {/* Content sections */}
+  {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+  {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
+	 {activeTab === 'insights' && (dataLoaded ? <Insights /> : <DataPlaceholder />)}
+  {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+  {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
+</div>
+       
+      
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-800 to-slate-900 text-white mt-16">
