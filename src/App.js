@@ -80,7 +80,6 @@ const getPositionBadge = (position, division) => {
   if (isD1Shield(division, position)) return { bg: 'bg-indigo-600', text: 'text-white', icon: '🛡️' };
   return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
 };
-const [activeTab, setActiveTab] = useState('search');
 
 useEffect(() => {
   const applyHash = () => {
