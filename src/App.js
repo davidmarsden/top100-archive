@@ -37,26 +37,52 @@ const Top100Archive = () => {
       }
 
       // Skip headers row without creating an unused variable
-      const [, ...rows] = data.values;
+const [headerRow, ...rows] = data.values;
 
-      const formattedData = rows
-        .filter(row => row[0] && row[3]) // Must have Season and Team
-        .map(row => ({
-          season: row[0] || '',
-          division: row[1] || '',
-          position: row[2] || '',
-          team: row[3] || '',
-          played: row[4] || '',
-          won: row[5] || '',
-          drawn: row[6] || '',
-          lost: row[7] || '',
-          goals_for: row[8] || '',
-          goals_against: row[9] || '',
-          goal_difference: row[10] || '',
-          points: row[11] || '',
-          start_date: row[12] || '',
-          manager: row[13] || ''
-        }));
+// normalize to compare header texts
+const norm = (s) => String(s || '').trim().toLowerCase();
+const idx = (names) => {
+  const candidates = Array.isArray(names) ? names : [names];
+  const i = headerRow.findIndex(h => candidates.includes(norm(h)));
+  return i === -1 ? null : i;
+};
+
+// columns by header (covers your exact labels)
+const cSeason   = idx(['season','seas','s']);
+const cDivision = idx(['div','division','d']);
+const cPosition = idx(['pos','position','rank']);
+const cTeam     = idx(['team','club']);
+const cPlayed   = idx(['p','played','pld']);
+const cWon      = idx(['w','won']);
+const cDrawn    = idx(['d','drawn','draws']);
+const cLost     = idx(['l','lost']);
+const cGF       = idx(['gf','goals for','for']);
+const cGA       = idx(['ga','goals against','against','conceded']);
+const cGD       = idx(['gd','goal difference']);
+const cPoints   = idx(['pts','points','pnts']);
+const cStart    = idx(['start date','start','date']);
+const cManager  = idx(['manager','mgr','coach']);
+
+const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
+
+const formattedData = rows
+  .filter(row => get(row, cSeason) && get(row, cTeam))
+  .map(row => ({
+    season:          get(row, cSeason),
+    division:        get(row, cDivision),
+    position:        get(row, cPosition),
+    team:            get(row, cTeam),
+    played:          get(row, cPlayed),
+    won:             get(row, cWon),
+    drawn:           get(row, cDrawn),
+    lost:            get(row, cLost),
+    goals_for:       get(row, cGF),
+    goals_against:   get(row, cGA),
+    goal_difference: get(row, cGD),
+    points:          get(row, cPoints),
+    start_date:      get(row, cStart),
+    manager:         get(row, cManager),
+  }));
 
       setAllPositionData(formattedData);
       setDataLoaded(true);
@@ -83,9 +109,8 @@ const Top100Archive = () => {
     let filtered = [...allPositionData];
 
     // Apply filters
-    if (season) filtered = filtered.filter(row => row.season === season);
-    if (division) filtered = filtered.filter(row => row.division === division);
-
++ if (season)   filtered = filtered.filter(r => (r.season || '').trim() === (season || '').trim());
++ if (division) filtered = filtered.filter(r => (r.division || '').trim() === (division || '').trim());
     // Apply sorting
     switch (sortOrder) {
       case 'points':
