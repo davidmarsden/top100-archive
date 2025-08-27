@@ -1091,7 +1091,7 @@ const Top100Archive = () => {
   (dataLoaded ? (
     <ManagerProfiles
       allPositionData={allPositionData}
-      playoffWinnersSet={playoffWinnersSetMemo}
+      playoffWinnersSet={playoffWinnersSet}
     />
   ) : (
     <DataPlaceholder />
