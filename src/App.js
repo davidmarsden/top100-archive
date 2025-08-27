@@ -30,6 +30,13 @@ const LegendSwatch = ({ color, label }) => (
   </span>
 );
 
+const DataPlaceholder = () => (
+  <div className="text-center py-16 bg-white rounded-xl border">
+    <Loader className="w-10 h-10 mx-auto mb-4 animate-spin text-blue-600" />
+    <p className="text-gray-600">Loading data…</p>
+  </div>
+);
+
 const ThresholdCard = ({ title, rows }) => (
   <div className="bg-white rounded-xl border p-4">
     <h4 className="font-semibold mb-3">{title}</h4>
@@ -55,13 +62,6 @@ const ThresholdCard = ({ title, rows }) => (
         ))}
       </tbody>
     </table>
-  </div>
-);
-
-const DataPlaceholder = () => (
-  <div className="text-center py-16 bg-white rounded-xl border">
-    <Loader className="w-10 h-10 mx-auto mb-4 animate-spin text-blue-600" />
-    <p className="text-gray-600">Loading data…</p>
   </div>
 );
 
@@ -169,18 +169,16 @@ const Top100Archive = () => {
   }, []);
 
   /* =========================
-     ENV / Config (declare ONCE)
+     ENV / Config
      ========================= */
   const SHEET_ID            = process.env.REACT_APP_SHEET_ID;
   const API_KEY             = process.env.REACT_APP_GOOGLE_API_KEY;
   const SHEET_RANGE         = 'Sorted by team!A:R';
-
   const WINNERS_SHEET_ID    = process.env.REACT_APP_WINNERS_SHEET_ID;
   const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
 
   /* =========================
-     Load main league data
-     (maps by header names to fix column order/manager field)
+     Load main league data (header-mapped)
      ========================= */
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
@@ -251,11 +249,10 @@ const Top100Archive = () => {
   }, [API_KEY, SHEET_ID, SHEET_RANGE]);
 
   /* =========================
-     Load playoff winners (Clubs sheet)
-     Builds Set: "season|divisionNumber|normalizedTeam"
+     Load playoff winners (Clubs sheet) -> Set
      ========================= */
   const loadWinners = useCallback(async () => {
-    if (!WINNERS_SHEET_ID || !API_KEY) return; // fail-soft if env is missing
+    if (!WINNERS_SHEET_ID || !API_KEY) return;
     try {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
         WINNERS_SHEET_ID
@@ -295,13 +292,11 @@ const Top100Archive = () => {
     }
   }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
 
-  // Kick off both loads
   useEffect(() => {
     loadFromGoogleSheets();
     loadWinners();
   }, [loadFromGoogleSheets, loadWinners]);
 
-  // Fast lookup set for playoff winners -> promotion
   const playoffWinnersSetMemo = useMemo(
     () => playoffWinnersSet ?? new Set(),
     [playoffWinnersSet]
@@ -332,7 +327,6 @@ const Top100Archive = () => {
     [allPositionData, selectedSeason]
   );
 
-  // Make this stable so downstream hooks can depend on it
   const getFilteredData = useCallback((season = null, division = null, sortOrder = 'position') => {
     let filtered = [...allPositionData];
     if (season) filtered = filtered.filter((r) => (r.season || '').trim() === (season || '').trim());
@@ -357,7 +351,6 @@ const Top100Archive = () => {
     }
   }, [allPositionData]);
 
-  // Make this stable and list it as a dependency where used
   const buildRecords = useCallback((metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
     const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
     const withMetric = rows.map((r) => ({
@@ -400,6 +393,9 @@ const Top100Archive = () => {
     return result;
   }, [getFilteredData]);
 
+  /* =========================
+     Insights (leaders, thresholds, records)
+     ========================= */
   const countBy = (arr, keyGetter) => {
     const map = new Map();
     for (const item of arr) {
@@ -415,7 +411,6 @@ const Top100Archive = () => {
   const leaders = useMemo(() => {
     const rowsTitles = allPositionData.filter((r) => isChampion(r.position));
 
-    // Promotions = auto-promo + playoff winners within playoff band
     const promos = [];
     for (const r of allPositionData) {
       if (isAutoPromo(r.division, r.position)) {
@@ -447,6 +442,97 @@ const Top100Archive = () => {
     };
     return { byTeam, byManager };
   }, [allPositionData, playoffWinnersSetMemo]);
+
+  // ---- thresholds summary for cards ----
+  const computeThresholds = useMemo(() => {
+    const bySeasonDiv = new Map();
+    for (const r of allPositionData) {
+      const season = (r.season || '').trim();
+      const division = (r.division || '').trim();
+      const key = `${season}|${division}`;
+      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
+      bySeasonDiv.get(key).push(r);
+    }
+
+    const acc = {
+      win: new Map(),
+      autoPromo: new Map(),
+      playoffs: new Map(),
+      avoidReleg: new Map(),
+      avoidSack: new Map(),
+    };
+
+    const push = (m, div, pts) => {
+      const d = (div || '').trim();
+      if (!d) return;
+      const p = numeric(pts);
+      if (!m.has(d)) m.set(d, []);
+      m.get(d).push(p);
+    };
+
+    for (const [key, rows] of bySeasonDiv.entries()) {
+      const [, div] = key.split('|');
+      const d = parseInt(div || 0, 10);
+      const byPos = new Map();
+      for (const r of rows) byPos.set(parseInt(r.position || 0, 10), r);
+
+      if (byPos.has(1)) push(acc.win, div, byPos.get(1).points);
+      if (d >= 2 && d <= 5 && byPos.has(3)) push(acc.autoPromo, div, byPos.get(3).points);
+      if (d >= 2 && d <= 5 && byPos.has(7)) push(acc.playoffs, div, byPos.get(7).points);
+      if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
+      if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
+    }
+
+    const summarize = (m) => {
+      const out = [];
+      for (const [div, arr] of m.entries()) {
+        if (!arr.length) continue;
+        const min = Math.min(...arr);
+        const max = Math.max(...arr);
+        const avg = Math.round((arr.reduce((s, x) => s + x, 0) / arr.length) * 10) / 10;
+        out.push({ division: div, min, avg, max, samples: arr.length });
+      }
+      return out.sort((a, b) => parseInt(a.division, 10) - parseInt(b.division, 10));
+    };
+
+    return {
+      win: summarize(acc.win),
+      autoPromo: summarize(acc.autoPromo),
+      playoffs: summarize(acc.playoffs),
+      avoidReleg: summarize(acc.avoidReleg),
+      avoidSack: summarize(acc.avoidSack),
+    };
+  }, [allPositionData]);
+
+  // ---- thresholds history for charts ----
+  const thresholdHistory = useMemo(() => {
+    const bySeasonDiv = new Map();
+    for (const r of allPositionData) {
+      const season = (r.season || '').trim();
+      const division = (r.division || '').trim();
+      if (!season || !division) continue;
+      const key = `${season}|${division}`;
+      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
+      bySeasonDiv.get(key).push(r);
+    }
+    const out = { win: [], autoPromo: [], playoffs: [], avoidReleg: [], avoidSack: [] };
+    const push = (arr, season, division, posRow) => {
+      if (!posRow) return;
+      arr.push({ season, division, points: numeric(posRow.points) });
+    };
+    for (const [key, rows] of bySeasonDiv.entries()) {
+      const [season, division] = key.split('|');
+      const d = parseInt(division, 10);
+      const byPos = new Map();
+      rows.forEach((r) => byPos.set(parseInt(r.position || 0, 10), r));
+      push(out.win, season, division, byPos.get(1));
+      if (d >= 2 && d <= 5) push(out.autoPromo, season, division, byPos.get(3));
+      if (d >= 2 && d <= 5) push(out.playoffs, season, division, byPos.get(7));
+      if (d >= 1 && d <= 4) push(out.avoidReleg, season, division, byPos.get(16));
+      push(out.avoidSack, season, division, byPos.get(17));
+    }
+    return out;
+  }, [allPositionData]);
 
   /* =========================
      UI: Search Results
@@ -516,7 +602,7 @@ const Top100Archive = () => {
                       </div>
                     )}
                   </div>
-                 <div className="text-right ml-4">
+                  <div className="text-right ml-4">
                     <div className="text-3xl font-bold text-blue-600 mb-1">{team.points}</div>
                     <div className="text-sm text-gray-500">points</div>
                   </div>
@@ -699,7 +785,6 @@ const Top100Archive = () => {
   const [recordsSeason, setRecordsSeason] = useState('');
   const [recordsDivision, setRecordsDivision] = useState('');
 
-  // Depend on buildRecords to satisfy exhaustive-deps
   const recordRows = useMemo(
     () =>
       buildRecords(
@@ -955,7 +1040,7 @@ const Top100Archive = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Search bar + selectors */}
+        {/* Search & selectors */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
@@ -978,36 +1063,25 @@ const Top100Archive = () => {
               )}
             </div>
 
+            {/* Only show season/div selectors on the Tables tab */}
             {activeTab === 'tables' && availableSeasons.length > 0 && (
               <>
-                <select
+                <SeasonSelect
                   value={selectedSeason}
-                  onChange={(e) => setSelectedSeason(e.target.value)}
-                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
-                >
-                  {availableSeasons.map((season) => (
-                    <option key={season} value={season}>
-                      Season {season}
-                    </option>
-                  ))}
-                </select>
-                <select
+                  onChange={setSelectedSeason}
+                  seasons={availableSeasons}
+                />
+                <DivisionSelect
                   value={selectedDivision}
-                  onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
-                >
-                  {availableDivisions.map((div) => (
-                    <option key={div} value={div}>
-                      Division {div}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedDivision}
+                  divisions={availableDivisions}
+                />
               </>
             )}
           </div>
         </div>
 
-        {/* Content sections */}
+        {/* Sections */}
         {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
         {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
         {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
@@ -1038,5 +1112,33 @@ const Top100Archive = () => {
   );
 };
 
-export default Top100Archive;
+/* Small controlled selects (keeps main JSX tidy) */
+const SeasonSelect = ({ value, onChange, seasons }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+  >
+    {seasons.map((s) => (
+      <option key={s} value={s}>
+        Season {s}
+      </option>
+    ))}
+  </select>
+);
 
+const DivisionSelect = ({ value, onChange, divisions }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+  >
+    {divisions.map((d) => (
+      <option key={d} value={d}>
+        Division {d}
+      </option>
+    ))}
+  </select>
+);
+
+export default Top100Archive;
