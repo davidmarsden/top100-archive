@@ -267,33 +267,38 @@ export default Top100Archive;
      Tags builder (uses winners)
      ========================= */
   
-    if (isChampion(position))
-      tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
-    if (isD1UCL(division, position))
-      tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
-    if (isD1Shield(division, position))
-      tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
-    if (isAutoPromo(division, position))
-      tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-    if (isPlayoffBand(division, position))
-      tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
-    if (isRelegated(division, position))
-      tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
-    if (isAutoSacked(position))
-      tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+/* =========================
+   Tags builder (uses winners)
+   ========================= */
+const buildRowTags = (position, division, team, season, winnersSet) => {
+  const tags = [];
 
-    // Playoff Winner (promoted) — from winners sheet
-    const isWinner = winnersSet?.has(playoffWinnerKey(season, division, team));
-    if (isWinner) {
-      // Upgrade/add promoted label
-      tags.push({
-        label: 'Playoff Winner (Promoted)',
-        style: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
-      });
-    }
-    return { tags, isWinner };
-  };
+  if (isChampion(position))
+    tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
+  if (isD1UCL(division, position))
+    tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
+  if (isD1Shield(division, position))
+    tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
+  if (isAutoPromo(division, position))
+    tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
+  if (isPlayoffBand(division, position))
+    tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
+  if (isRelegated(division, position))
+    tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
+  if (isAutoSacked(position))
+    tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
 
+  // Playoff Winner (promoted) — from winners sheet
+  const isWinner = winnersSet?.has(playoffWinnerKey(season, division, team));
+  if (isWinner) {
+    tags.push({
+      label: 'Playoff Winner (Promoted)',
+      style: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+    });
+  }
+
+  return { tags, isWinner };
+};
   /* =========================
      Insights (leaders, records, thresholds)
      ========================= */
