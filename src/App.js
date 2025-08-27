@@ -59,7 +59,7 @@ const playoffWinnerKey = (season, division, team) =>
   `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
 // SINGLE SOURCE OF TRUTH — keep ONLY this getTeamTags
-const getTeamTags = (position, division, team, season, playoffWinnersSet) => {
+const getTeamTags = (position, division, team, season, playoffWinnersSetMemo) => {
   const tags = [];
   if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
   if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
@@ -74,7 +74,7 @@ const getTeamTags = (position, division, team, season, playoffWinnersSet) => {
   return tags;
 };
 
-const getPositionBadge = (position, division, team, season, playoffWinnersSet) => {
+const getPositionBadge = (position, division, team, season, playoffWinnersSetMemo) => {
   if (isAutoSacked(position)) return { bg: 'bg-rose-600', text: 'text-white', icon: '⛔' };
   if (isRelegated(division, position)) return { bg: 'bg-red-600', text: 'text-white', icon: '⬇️' };
   if (isChampion(position)) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
@@ -88,9 +88,7 @@ const getPositionBadge = (position, division, team, season, playoffWinnersSet) =
   return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
 };
 
-// ------------------------------
-// Main component
-// ------------------------------
+
 // ------------------------------
 // Main component
 // ------------------------------
