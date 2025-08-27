@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { Users, AlertCircle } from "lucide-react";
 
-// ---------- helpers (mirror App.js EXACTLY) ----------
+/* ===== Helpers (must mirror App.js) ===== */
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
 const isAutoPromo = (div, pos) => {
   const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
@@ -37,19 +37,19 @@ const normalizeName = (s) =>
 const playoffWinnerKey = (season, division, team) =>
   `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
-// ---------- component ----------
+/* ===== Component ===== */
 export default function ManagerProfiles({
   allPositionData = [],
-  playoffWinnersSet,                 // pass from App.js
-  playoffWinnersBySeasonDiv,         // fallback (older prop shape)
+  playoffWinnersSet,                 // preferred: a Set from App.js
+  playoffWinnersBySeasonDiv,         // legacy support: Map-like
 }) {
-  // Normalize winners set (tolerant to null / alt shape)
+  // Normalize winners into a Set
   const winnersSet = useMemo(() => {
     if (playoffWinnersSet instanceof Set) return playoffWinnersSet;
-    if (playoffWinnersBySeasonDiv && typeof playoffWinnersBySeasonDiv.forEach === 'function') {
+    if (playoffWinnersBySeasonDiv && typeof playoffWinnersBySeasonDiv.forEach === "function") {
       const s = new Set();
       playoffWinnersBySeasonDiv.forEach((team, key) => {
-        const parts = String(key).split('|');
+        const parts = String(key).split("|");
         if (parts.length >= 2) {
           const season = parts[0];
           const division = parts[1];
@@ -61,32 +61,35 @@ export default function ManagerProfiles({
     return new Set();
   }, [playoffWinnersSet, playoffWinnersBySeasonDiv]);
 
-  // managers list
-  const managerNames = useMemo(() => {
-    return [...new Set(allPositionData.map(r => (r.manager || '').trim()))]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-  }, [allPositionData]);
+  // Manager list for dropdown
+  const managerNames = useMemo(
+    () =>
+      [...new Set(allPositionData.map(r => (r.manager || '').trim()))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [allPositionData]
+  );
 
-  const [teamQuery, setTeamQuery] = useState('');
-  const [managerQuery, setManagerQuery] = useState(managerNames[0] || '');
+  const [teamQuery, setTeamQuery] = useState("");
+  const [managerQuery, setManagerQuery] = useState(managerNames[0] || "");
 
+  // Filter/group rows by manager
   const filteredManagers = useMemo(() => {
     const qTeam = teamQuery.toLowerCase();
     const qMgr  = managerQuery.toLowerCase();
-    const grouped = new Map();
 
+    const grouped = new Map();
     for (const r of allPositionData) {
-      const m = (r.manager || '').trim(); // use `m`, not an unused `mgr`
+      const m = (r.manager || "").trim();
       if (!m) continue;
       if (qMgr && !m.toLowerCase().includes(qMgr)) continue;
-      if (qTeam && !String(r.team || '').toLowerCase().includes(qTeam)) continue;
+      if (qTeam && !String(r.team || "").toLowerCase().includes(qTeam)) continue;
       if (!grouped.has(m)) grouped.set(m, []);
       grouped.get(m).push(r);
     }
 
-    // sort each manager’s rows newest season first then by division asc then position asc
-    for (const [name, rows] of grouped.entries()) {
+    // sort each manager’s rows: season desc, division asc, position asc
+    for (const [mgrName, rows] of grouped.entries()) {
       rows.sort((a, b) => {
         const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
         if (s !== 0) return s;
@@ -95,20 +98,20 @@ export default function ManagerProfiles({
         return parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
       });
     }
+
     return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [allPositionData, teamQuery, managerQuery]);
 
-  const ManagerCard = ({ name, rows }) => {
+  const ManagerCard = ({ mgrName, rows }) => {
     let titles = 0, autoPromos = 0, playoffWins = 0, releg = 0, sack = 0;
 
     const tableRows = rows.map(r => {
-      const season = r.season, division = r.division, pos = r.position, team = r.team;
+      const { season, division, position: pos, team } = r;
 
-      const wonTitle = isChampion(pos);
-      const auto = isAutoPromo(division, pos);
-      const inPly = isPlayoffBand(division, pos);
-
-      const wonPlayoff = winnersSet.has(playoffWinnerKey(season, division, team));
+      const wonTitle    = isChampion(pos);
+      const auto        = isAutoPromo(division, pos);
+      const inPlayoffs  = isPlayoffBand(division, pos);
+      const wonPlayoff  = winnersSet.has(playoffWinnerKey(season, division, team));
 
       if (wonTitle) titles++;
       if (auto) autoPromos++;
@@ -117,12 +120,12 @@ export default function ManagerProfiles({
       if (isAutoSacked(pos)) sack++;
 
       const notes = [];
-      if (wonPlayoff) notes.push('Playoff Winner 🏆');
-      if (wonTitle) notes.push('Champions');
-      if (auto) notes.push('Auto Promoted');
-      if (inPly && !wonPlayoff) notes.push('Playoffs');
-      if (isRelegated(division, pos)) notes.push('Relegated');
-      if (isAutoSacked(pos)) notes.push('Auto-Sacked');
+      if (wonPlayoff) notes.push("Playoff Winner 🏆");
+      if (wonTitle) notes.push("Champions");
+      if (auto) notes.push("Auto Promoted");
+      if (inPlayoffs && !wonPlayoff) notes.push("Playoffs");
+      if (isRelegated(division, pos)) notes.push("Relegated");
+      if (isAutoSacked(pos)) notes.push("Auto-Sacked");
 
       return {
         season,
@@ -130,7 +133,7 @@ export default function ManagerProfiles({
         position: pos,
         team,
         points: r.points,
-        notes: notes.join(' • ') || '—',
+        notes: notes.join(" • ") || "—",
       };
     });
 
@@ -139,7 +142,7 @@ export default function ManagerProfiles({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-slate-700" />
-            <h3 className="font-bold text-lg">{name || 'Unknown'}</h3>
+            <h3 className="font-bold text-lg">{mgrName || "Unknown"}</h3>
           </div>
           <div className="flex gap-3 text-sm">
             <Badge label="Titles" value={titles} color="yellow" />
@@ -211,14 +214,15 @@ export default function ManagerProfiles({
           <span>No managers match your filters.</span>
         </div>
       ) : (
-        filteredManagers.map(([name, rows]) => (
-          <ManagerCard key={name || 'unknown'} name={name} rows={rows} />
+        filteredManagers.map(([mgrName, rows]) => (
+          <ManagerCard key={mgrName || "unknown"} mgrName={mgrName} rows={rows} />
         ))
       )}
     </div>
   );
 }
 
+/* ===== Small UI badge ===== */
 function Badge({ label, value, color }) {
   const colors = {
     yellow: 'bg-yellow-100 text-yellow-800 border-yellow-300',
