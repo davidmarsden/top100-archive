@@ -180,6 +180,7 @@ const Top100Archive = () => {
 
   /* =========================
      Load main league data
+     (now maps by header names to fix column order/manager field)
      ========================= */
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
@@ -192,28 +193,52 @@ const Top100Archive = () => {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`API error ${response.status}`);
       const data = await response.json();
-      if (!data.values) throw new Error('No data returned');
+      if (!data.values || data.values.length === 0) throw new Error('No data returned');
 
-      const [, ...rows] = data.values; // known A:R
-      const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
+      const [headerRow, ...rows] = data.values;
+      const lower = headerRow.map(h => String(h || '').trim().toLowerCase());
+
+      const idx = (names) => {
+        const targets = Array.isArray(names) ? names : [names];
+        return lower.findIndex(h => targets.includes(h));
+      };
+
+      const I = {
+        season: idx(['season']),
+        division: idx(['division','div']),
+        position: idx(['position','pos']),
+        team: idx(['team','club']),
+        played: idx(['p','played']),
+        won: idx(['w','won']),
+        drawn: idx(['d','draw','drawn']),
+        lost: idx(['l','lost']),
+        gf: idx(['gf','goals for','goals_for']),
+        ga: idx(['ga','goals against','goals_against']),
+        gd: idx(['gd','goal difference','goal_difference']),
+        points: idx(['points','pts']),
+        start_date: idx(['start date','start_date','date']),
+        manager: idx(['manager','boss','coach']),
+      };
+
+      const get = (row, i) => (i == null || i === -1 ? '' : String(row[i] ?? '').trim());
 
       const formatted = rows
-        .filter((r) => r && r.length)
-        .map((row) => ({
-          season: get(row, 0),
-          division: get(row, 1),
-          position: get(row, 2),
-          team: get(row, 3),
-          played: get(row, 4),
-          won: get(row, 5),
-          drawn: get(row, 6),
-          lost: get(row, 7),
-          goals_for: get(row, 8),
-          goals_against: get(row, 9),
-          goal_difference: get(row, 10),
-          points: get(row, 11),
-          start_date: get(row, 12),
-          manager: get(row, 13),
+        .filter(r => r && r.length)
+        .map(row => ({
+          season: get(row, I.season),
+          division: get(row, I.division),
+          position: get(row, I.position),
+          team: get(row, I.team),
+          played: get(row, I.played),
+          won: get(row, I.won),
+          drawn: get(row, I.drawn),
+          lost: get(row, I.lost),
+          goals_for: get(row, I.gf),
+          goals_against: get(row, I.ga),
+          goal_difference: get(row, I.gd),
+          points: get(row, I.points),
+          start_date: get(row, I.start_date),
+          manager: get(row, I.manager),
         }));
 
       setAllPositionData(formatted);
@@ -223,7 +248,7 @@ const Top100Archive = () => {
     } finally {
       setLoading(false);
     }
-  }, [API_KEY, SHEET_ID]);
+  }, [API_KEY, SHEET_ID, SHEET_RANGE]);
 
   /* =========================
      Load playoff winners (Clubs sheet)
@@ -663,14 +688,14 @@ const Top100Archive = () => {
               {tableData.map((team, index) => {
                 const rowTags = getTeamTags(
                   team.position,
-                  selectedDivision,
+                  team.division,
                   team.team,
                   team.season,
                   playoffWinnersSetMemo
                 );
                 const badge = getPositionBadge(
                   team.position,
-                  selectedDivision,
+                  team.division,
                   team.team,
                   team.season,
                   playoffWinnersSetMemo
@@ -770,7 +795,7 @@ const Top100Archive = () => {
         recordsSeason || null,
         recordsDivision || null
       ),
-    [recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision] // eslint-disable-line
+    [recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision]
   );
 
   const Insights = () => {
@@ -914,7 +939,7 @@ const Top100Archive = () => {
           </div>
         </div>
 
-            {/* Thresholds */}
+        {/* Thresholds */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-green-700" />
