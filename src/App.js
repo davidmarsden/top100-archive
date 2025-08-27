@@ -249,8 +249,11 @@ const Top100Archive = () => {
      ========================= */
 
   // Fast lookup set for playoff winners -> promotion
-  const playoffWinnersSet = useMemo(() => {
-    const s = new Set();
+const playoffWinnersSetMemo = useMemo(
+  () => playoffWinnersSet ?? new Set(),
+  [playoffWinnersSet]
+);
+
     playoffWinnersBySeasonDiv.forEach((team, key) => {
       const [season, division] = key.split('|');
       s.add(playoffWinnerKey(season, division, team));
