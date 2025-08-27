@@ -18,6 +18,9 @@ import {
 // ------------------------------
 // Status logic helpers
 // ------------------------------
+// ------------------------------
+// Status + tag helpers (define ONCE, above component)
+// ------------------------------
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
 const isD1UCL = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
 const isD1Shield = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
@@ -38,7 +41,7 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
-// --- normalization for playoff winners
+// normalization used for playoff winners matching
 const normDiv = (d) => {
   const m = String(d || '').match(/\d+/);
   return m ? m[0] : String(d || '').trim();
@@ -55,6 +58,7 @@ const normalizeName = (s) =>
 const playoffWinnerKey = (season, division, team) =>
   `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
+// SINGLE SOURCE OF TRUTH — keep ONLY this getTeamTags
 const getTeamTags = (position, division, team, season, playoffWinnersSet) => {
   const tags = [];
   if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
@@ -62,21 +66,12 @@ const getTeamTags = (position, division, team, season, playoffWinnersSet) => {
   if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
   if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
   if (isPlayoffBand(division, position) &&
-      playoffWinnersSet.has(playoffWinnerKey(season, division, team))) {
+      playoffWinnersSet?.has(playoffWinnerKey(season, division, team))) {
     tags.push({ label: 'Playoff Winner (Promoted)', style: 'bg-green-200 text-green-900 border border-green-400' });
   }
   if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
   if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
   return tags;
-};
-
-const getRowStyling = (position, division) => {
-  if (isAutoSacked(position)) return 'bg-rose-50 border-l-4 border-rose-700 ring-1 ring-rose-200 hover:bg-rose-100';
-  if (isRelegated(division, position)) return 'bg-red-50 border-l-4 border-red-700 ring-1 ring-red-200 hover:bg-red-100';
-  if (isChampion(position)) return 'bg-yellow-50 border-l-4 border-yellow-500 ring-1 ring-yellow-200 hover:bg-yellow-100';
-  if (isAutoPromo(division, position)) return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
-  if (isPlayoffBand(division, position)) return 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-200 hover:bg-blue-100';
-  return 'bg-white hover:bg-gray-50';
 };
 
 const getPositionBadge = (position, division, team, season, playoffWinnersSet) => {
@@ -85,7 +80,7 @@ const getPositionBadge = (position, division, team, season, playoffWinnersSet) =
   if (isChampion(position)) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
   if (isAutoPromo(division, position)) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
   if (isPlayoffBand(division, position) &&
-      playoffWinnersSet.has(playoffWinnerKey(season, division, team))) {
+      playoffWinnersSet?.has(playoffWinnerKey(season, division, team))) {
     return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
   }
   if (isD1UCL(division, position)) return { bg: 'bg-purple-600', text: 'text-white', icon: '🏆' };
@@ -271,8 +266,7 @@ export default Top100Archive;
   /* =========================
      Tags builder (uses winners)
      ========================= */
-  const getTeamTags = (position, division, team, season, winnersSet) => {
-    const tags = [];
+  
     if (isChampion(position))
       tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
     if (isD1UCL(division, position))
@@ -641,46 +635,49 @@ export default Top100Archive;
               </tr>
             </thead>
             <tbody>
-              {tableData.map((team, index) => {
-                  const tags = getTeamTags(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
-  const badge = getPositionBadge(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+ {tableData.map((team, index) => {
+  const rowTags = getTeamTags(
+    team.position,
+    selectedDivision,
+    team.team,
+    team.season,
+    playoffWinnersBySeasonDiv
+  );
+  const badge = getPositionBadge(
+    team.position,
+    selectedDivision,
+    team.team,
+    team.season,
+    playoffWinnersBySeasonDiv
+  );
 
-                const rowCls = getRowStyling(team.position, selectedDivision, isWinner);
-
-                return (
-                  <tr
-                    key={index}
-                    className={`${rowCls} border-b border-gray-100 transition-all hover:shadow-md`}
-                  >
-                    <td className="py-4 px-4">
-                      <span
-                        className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}
-                        title={tags.map((t) => t.label).join(' • ')}
-                      >
-                        {badge.icon ? `${badge.icon} ` : ''}
-                        {team.position}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-start gap-3">
-                        <div>
-                          <div className="font-bold text-gray-900 text-lg">{team.team}</div>
-                          <div className="text-sm text-gray-600 flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {team.manager || 'Unknown Manager'}
-                          </div>
-                          {tags.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {tags.map((t, i) => (
-                                <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
-                                  {t.label}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+  return (
+    <tr key={index} className={`${getRowStyling(team.position, selectedDivision)} border-b border-gray-100 transition-all hover:shadow-md`}>
+      <td className="py-4 px-4">
+        <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}>
+          {badge.icon ? `${badge.icon} ` : ''}{team.position}
+        </span>
+      </td>
+      <td className="py-4 px-4">
+        <div className="flex items-start gap-3">
+          <div>
+            <div className="font-bold text-gray-900 text-lg">{team.team}</div>
+            <div className="text-sm text-gray-600 flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              {team.manager || 'Unknown Manager'}
+            </div>
+            {rowTags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {rowTags.map((t, i) => (
+                  <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
                     <td className="py-4 px-3 text-center font-semibold">{team.played}</td>
                     <td className="py-4 px-3 text-center font-bold text-green-600">{team.won}</td>
                     <td className="py-4 px-3 text-center font-semibold text-gray-600">{team.drawn}</td>
