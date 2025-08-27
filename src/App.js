@@ -1092,7 +1092,7 @@ const Top100Archive = () => {
 <ManagerProfiles
   allPositionData={allPositionData}
   winnersSet={playoffWinnersSet /* or playoffWinnersSetMemo */}
-/>
+/>}
  
         {activeTab === 'honours'  && <Winners />}
 
