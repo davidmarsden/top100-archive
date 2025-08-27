@@ -60,20 +60,17 @@ const getTeamTags = (position, division, team, season) => {
   if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
   if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
   if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-
-  // NEW: promoted via playoffs
-  const key = `${String(season || '').trim()}|${String(division || '').trim()}`;
-  const playoffWinnerTeam = playoffWinnersBySeasonDiv.get(key);
-  const isThisPlayoffWinner = isPlayoff(division, position) && playoffWinnerTeam && playoffWinnerTeam === team;
-
-  if (isThisPlayoffWinner) {
-    tags.push({ label: 'Play-off Winners (Promoted)', style: 'bg-emerald-100 text-emerald-800 border border-emerald-300' });
-  } else if (isPlayoff(division, position)) {
-    tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
-  }
-
+  if (isPlayoff(division, position)) tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
   if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
   if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+
+  // New: playoff winners promoted (D2–D5). We only badge if THIS team is the winner for that season/div.
+  const key = `${String(season || '').trim()}|${String(division || '').trim()}`;
+  const winner = playoffWinnersBySeasonDiv.get(key);
+  if (winner && team && winner.toLowerCase() === String(team).toLowerCase()) {
+    tags.push({ label: 'Playoff Winner (Promoted)', style: 'bg-emerald-100 text-emerald-800 border border-emerald-300' });
+  }
+
   return tags;
 };
 
@@ -123,6 +120,9 @@ function Top100Archive() {
   const SHEET_ID = process.env.REACT_APP_SHEET_ID;
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
   const SHEET_RANGE = 'Sorted by team!A:R';
+// Winners sheet (same spreadsheet as clubs/managers winners)
+const WINNERS_SHEET_ID    = process.env.REACT_APP_WINNERS_SHEET_ID;
+const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:U'; // A:U covers all comps
 
   // --- hash routing ---
   useEffect(() => {
@@ -220,62 +220,52 @@ function Top100Archive() {
   }, [API_KEY, SHEET_ID]);
 
   useEffect(() => {
-    loadFromGoogleSheets();
-  }, [loadFromGoogleSheets]);
+  loadFromGoogleSheets();
+  loadPlayoffWinners();   // <— add this
+}, [loadFromGoogleSheets, loadPlayoffWinners]);
 
-// Load play-off winners from Winners sheet (clubs tab)
-useEffect(() => {
-  const loadWinners = async () => {
-    try {
-      if (!WINNERS_SHEET_ID || !API_KEY) return; // optional feature
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        WINNERS_SHEET_ID
-      )}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
-
-      const res = await fetch(url);
-      if (!res.ok) return;
-      const json = await res.json();
-      const values = json?.values || [];
-      if (!values.length) return;
-
-      // header-based mapping
-      const [headers, ...rows] = values;
-      const H = headers.map((h) => String(h || '').trim().toLowerCase());
-      const idxSeason = H.findIndex((h) => ['season', 'seas', 's'].includes(h));
-
-      const wanted = new Set([
-        'division 2 play-off',
-        'division 3 play-off',
-        'division 4 play-off',
-        'division 5 play-off',
-      ]);
-
-      // Build map (season|division) -> club
-      const m = new Map();
-      for (const r of rows) {
-        const season = (r[idxSeason] ?? '').toString().trim();
-        if (!season) continue;
-
-        H.forEach((h, i) => {
-          if (!wanted.has(h)) return;
-          const winner = (r[i] ?? '').toString().trim();
-          if (!winner) return;
-
-          // extract division number from header text
-          const divMatch = h.match(/division\s+(\d+)/);
-          const div = divMatch ? divMatch[1] : null;
-          if (!div) return;
-
-          m.set(`${season}|${div}`, winner);
-        });
-      }
-      setPlayoffWinnersBySeasonDiv(m);
-    } catch (_) {
-      // ignore (feature is optional)
+// Load playoff winners (clubs tab) → Map key `${season}|${division}` => team name (string)
+const loadPlayoffWinners = useCallback(async () => {
+  if (!WINNERS_SHEET_ID) return; // optional
+  try {
+    const base = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(WINNERS_SHEET_ID)}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+    const res = await fetch(base);
+    if (!res.ok) {
+      // don't make the whole app fail; just skip winners if API blocks us
+      return;
     }
-  };
-  loadWinners();
-}, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
+    const json = await res.json();
+    const values = json?.values || [];
+    if (!values.length) return;
+
+    const [header, ...rows] = values;
+
+    // header index helpers
+    const ix = (name) => header.findIndex(h => String(h || '').trim().toLowerCase() === name);
+    const sIx  = ix('season');
+    const d2PO = ix('division 2 play-off');
+    const d3PO = ix('division 3 play-off');
+    const d4PO = ix('division 4 play-off');
+    const d5PO = ix('division 5 play-off');
+
+    const get = (row, i) => (i < 0 ? '' : String(row[i] ?? '').trim());
+
+    const map = new Map();
+    for (const r of rows) {
+      const season = get(r, sIx);
+      if (!season) continue;
+
+      const d2 = get(r, d2PO); if (d2) map.set(`${season}|2`, d2);
+      const d3 = get(r, d3PO); if (d3) map.set(`${season}|3`, d3);
+      const d4 = get(r, d4PO); if (d4) map.set(`${season}|4`, d4);
+      const d5 = get(r, d5PO); if (d5) map.set(`${season}|5`, d5);
+    }
+
+    setPlayoffWinnersBySeasonDiv(map);
+  } catch {
+    // ignore — optional data
+  }
+}, [API_KEY, WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE]);
 
   // --- selectors ---
   const availableSeasons = useMemo(
@@ -469,8 +459,9 @@ for (const r of allRows) {
       <div className="space-y-4">
         <div className="grid gap-4">
           {filtered.map((team, index) => {
- const badge   = getPositionBadge(team.position, team.division);
-const rowTags = getTeamTags(team.position, team.division, team.team, team.season);
+ // Inside LeagueTable row render:
+const badge = getPositionBadge(team.position, selectedDivision);
+const tags  = getTeamTags(team.position, selectedDivision, team.team, team.season);
             return (
               <div
                 key={index}
@@ -585,8 +576,9 @@ const rowTags = getTeamTags(team.position, team.division, team.team, team.season
             </thead>
 <tbody>
   {tableData.map((team, index) => {
-    const badge   = getPositionBadge(team.position, selectedDivision);
-    const rowTags = getTeamTags(team.position, selectedDivision, team.team, team.season); // ← single declaration
+    // Inside LeagueTable row render:
+const badge = getPositionBadge(team.position, selectedDivision);
+const tags  = getTeamTags(team.position, selectedDivision, team.team, team.season);
 
     return (
       <tr
@@ -897,7 +889,7 @@ const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!
 
 // === Play-off winners map ===
 // key: `${season}|${division}` → value: club name (exact as in archive)
-const [playoffWinnersBySeasonDiv, setPlayoffWinnersBySeasonDiv] = useState(() => new Map());
+const [playoffWinnersBySeasonDiv, setPlayoffWinnersBySeasonDiv] = useState(new Map());
 
     const summarize = (m) => {
       const out = [];
