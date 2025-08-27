@@ -1,113 +1,251 @@
-import React, { useState, useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
-import { Users, Trophy, ArrowUpCircle, ArrowDownCircle, AlertTriangle } from "lucide-react";
+// src/ManagerProfiles.js
+import React, { useMemo, useState } from "react";
+import { Users, Trophy, ArrowUpCircle, Play, ArrowDownCircle, AlertTriangle, Search } from "lucide-react";
 
-// expects props: { allPositionData }
-const ManagerProfiles = ({ allPositionData }) => {
-  const [selectedManager, setSelectedManager] = useState("");
+/* --------- lightweight helpers (scoped here) ---------- */
+const numeric = (v) => {
+  const n = parseInt(String(v ?? "").replace(/[^\d-]/g, ""), 10);
+  return Number.isFinite(n) ? n : 0;
+};
 
-  // unique manager list
-  const managers = useMemo(
-    () =>
-      [...new Set(allPositionData.map((r) => (r.manager || "").trim()))]
-        .filter(Boolean)
-        .sort(),
-    [allPositionData]
-  );
+const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
+const isAutoPromo = (div, pos) => {
+  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  return d >= 2 && d <= 5 && (p === 2 || p === 3);
+};
+const isRelegated = (div, pos) => {
+  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  return d >= 1 && d <= 4 && p >= 17 && p <= 20;
+};
+const isAutoSacked = (pos) => {
+  const p = parseInt(pos || 0, 10);
+  return p >= 18 && p <= 20;
+};
 
-  const career = useMemo(
-    () =>
+// normalize for winners keys
+const seasonNorm = (s) => {
+  const m = String(s || "").match(/\d+/);
+  return m ? m[0] : String(s || "").trim();
+};
+const normDiv = (d) => {
+  const m = String(d || "").match(/\d+/);
+  return m ? m[0] : String(d || "").trim();
+};
+const normalizeName = (s) =>
+  String(s || "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b(fc|cf|afc|sc|club)\b/gi, " ")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+const playoffWinnerKey = (season, division, team) =>
+  `${seasonNorm(season)}|${normDiv(division)}|${normalizeName(team)}`;
+
+/* ------------------------------------------------------ */
+
+export default function ManagerProfiles({ allPositionData = [], playoffWinnersSet }) {
+  // Build manager list (unique, sorted)
+  const managers = useMemo(() => {
+    const set = new Set(
       allPositionData
-        .filter((r) => (r.manager || "").trim() === selectedManager)
-        .sort((a, b) => parseInt(a.season) - parseInt(b.season)),
-    [allPositionData, selectedManager]
-  );
+        .map((r) => (r.manager || "").trim())
+        .filter(Boolean)
+    );
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allPositionData]);
 
-  // summary stats
-  const summary = useMemo(() => {
-    if (!career.length) return null;
-    const titles = career.filter((r) => parseInt(r.position) === 1).length;
-    const promos = career.filter(
-      (r) => parseInt(r.division) >= 2 && parseInt(r.division) <= 5 && [2, 3].includes(parseInt(r.position))
-    ).length;
-    const releg = career.filter(
-      (r) => parseInt(r.division) <= 4 && parseInt(r.position) >= 17
-    ).length;
-    const sacks = career.filter((r) => parseInt(r.position) >= 18).length;
-    const avgPts =
-      Math.round(
-        (career.reduce((sum, r) => sum + (parseInt(r.points) || 0), 0) / career.length) * 10
-      ) / 10;
-    return { titles, promos, releg, sacks, avgPts, seasons: career.length };
-  }, [career]);
+  const [query, setQuery] = useState("");
+  const filteredManagers = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return managers;
+    return managers.filter((m) => m.toLowerCase().includes(q));
+  }, [managers, query]);
+
+  // Aggregate per manager stats
+  const perManager = useMemo(() => {
+    const map = new Map();
+    for (const r of allPositionData) {
+      const m = (r.manager || "").trim();
+      if (!m) continue;
+      if (!map.has(m)) {
+        map.set(m, {
+          manager: m,
+          appearances: 0,
+          titles: 0,
+          autoPromotions: 0,
+          playoffWins: 0,
+          relegations: 0,
+          sackings: 0,
+          teams: new Set(),
+          seasons: new Set(),
+          rows: [],
+        });
+      }
+      const item = map.get(m);
+      item.appearances += 1;
+      item.teams.add(r.team);
+      item.seasons.add(seasonNorm(r.season));
+      item.rows.push(r);
+
+      if (isChampion(r.position)) item.titles += 1;
+      if (isAutoPromo(r.division, r.position)) item.autoPromotions += 1;
+      if (isRelegated(r.division, r.position)) item.relegations += 1;
+      if (isAutoSacked(r.position)) item.sackings += 1;
+
+      // Playoff win = winners sheet authority
+      if (playoffWinnersSet?.has(playoffWinnerKey(r.season, r.division, r.team))) {
+        item.playoffWins += 1;
+      }
+    }
+    // finalize team/seasons counts
+    for (const v of map.values()) {
+      v.teamCount = v.teams.size;
+      v.seasonCount = v.seasons.size;
+      v.teams = Array.from(v.teams).sort((a, b) => a.localeCompare(b));
+      v.seasons = Array.from(v.seasons).sort((a, b) => Number(a) - Number(b));
+    }
+    return map;
+  }, [allPositionData, playoffWinnersSet]);
+
+  // Choose current manager (first matching filter or none)
+  const [selected, setSelected] = useState("");
+  const currentManager = useMemo(() => {
+    const pick = selected || filteredManagers[0] || "";
+    return perManager.get(pick);
+  }, [selected, filteredManagers, perManager]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium mb-2">Select Manager</label>
+      {/* Search + dropdown */}
+      <div className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row gap-3">
+        <div className="relative md:w-1/2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            className="w-full pl-9 pr-3 py-2 border rounded-lg"
+            placeholder="Search managers…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
         <select
-          value={selectedManager}
-          onChange={(e) => setSelectedManager(e.target.value)}
-          className="w-full p-2 border rounded"
+          className="md:w-1/2 px-3 py-2 border rounded-lg"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
         >
-          <option value="">-- choose manager --</option>
-          {managers.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
+          {filteredManagers.map((m) => (
+            <option key={m} value={m}>{m}</option>
           ))}
         </select>
       </div>
 
-      {summary && (
+      {/* Summary grid */}
+      {currentManager ? (
         <>
-          <div className="grid md:grid-cols-3 gap-4">
-            <StatCard icon={Trophy} color="yellow" label="Titles" value={summary.titles} />
-            <StatCard icon={ArrowUpCircle} color="green" label="Promotions" value={summary.promos} />
-            <StatCard icon={ArrowDownCircle} color="red" label="Relegations" value={summary.releg} />
-            <StatCard icon={AlertTriangle} color="rose" label="Sackings" value={summary.sacks} />
-            <StatCard icon={Users} color="blue" label="Avg Points" value={summary.avgPts} />
-            <StatCard icon={Users} color="gray" label="Seasons" value={summary.seasons} />
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Users className="w-6 h-6 text-teal-700" />
+              <h2 className="text-xl font-bold">{currentManager.manager}</h2>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              <StatBox icon={<Trophy className="w-4 h-4" />} label="Titles" value={currentManager.titles} tone="yellow" />
+              <StatBox icon={<ArrowUpCircle className="w-4 h-4" />} label="Auto Promotions" value={currentManager.autoPromotions} tone="green" />
+              <StatBox icon={<Play className="w-4 h-4" />} label="Playoff Wins" value={currentManager.playoffWins} tone="emerald" />
+              <StatBox icon={<ArrowDownCircle className="w-4 h-4" />} label="Relegations" value={currentManager.relegations} tone="red" />
+              <StatBox icon={<AlertTriangle className="w-4 h-4" />} label="Sackings" value={currentManager.sackings} tone="rose" />
+              <StatBox icon={<Users className="w-4 h-4" />} label="Seasons Managed" value={currentManager.seasonCount} tone="indigo" />
+            </div>
+
+            <div className="mt-6 text-sm text-gray-600">
+              <p><span className="font-semibold">Teams:</span> {currentManager.teams.join(" • ") || "—"}</p>
+              <p className="mt-1"><span className="font-semibold">Seasons:</span> {currentManager.seasons.join(", ") || "—"}</p>
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h4 className="font-semibold mb-3">Career Timeline</h4>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={career.map((r) => ({
-                  season: r.season,
-                  pos: parseInt(r.position),
-                  div: `D${r.division}`,
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="season" />
-                <YAxis reversed domain={[1, 20]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="pos" stroke="#2563eb" dot />
-              </LineChart>
-            </ResponsiveContainer>
+          {/* Career table */}
+          <div className="bg-white rounded-xl shadow overflow-hidden">
+            <div className="px-6 py-4 border-b">
+              <h3 className="font-semibold">Career History</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr className="text-left text-gray-600">
+                    <th className="py-2 px-3">Season</th>
+                    <th className="py-2 px-3">Division</th>
+                    <th className="py-2 px-3">Pos</th>
+                    <th className="py-2 px-3">Team</th>
+                    <th className="py-2 px-3 text-right">Pts</th>
+                    <th className="py-2 px-3">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentManager.rows
+                    .slice()
+                    .sort((a, b) => {
+                      const s = numeric(a.season) - numeric(b.season);
+                      if (s !== 0) return s;
+                      const d = numeric(a.division) - numeric(b.division);
+                      if (d !== 0) return d;
+                      return numeric(a.position) - numeric(b.position);
+                    })
+                    .map((r, i) => {
+                      const playoffWin = playoffWinnersSet?.has(
+                        playoffWinnerKey(r.season, r.division, r.team)
+                      );
+                      const notes = [
+                        isChampion(r.position) && "Champions",
+                        isAutoPromo(r.division, r.position) && "Auto-Promoted",
+                        playoffWin && "Playoff Winner 🏆",
+                        isRelegated(r.division, r.position) && "Relegated",
+                        isAutoSacked(r.position) && "Auto-Sacked",
+                      ]
+                        .filter(Boolean)
+                        .join(" • ");
+
+                      return (
+                        <tr key={i} className="border-t">
+                          <td className="py-2 px-3">S{r.season}</td>
+                          <td className="py-2 px-3">D{r.division}</td>
+                          <td className="py-2 px-3">#{r.position}</td>
+                          <td className="py-2 px-3">{r.team}</td>
+                          <td className="py-2 px-3 text-right font-semibold">{r.points}</td>
+                          <td className="py-2 px-3">{notes || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
+      ) : (
+        <div className="bg-white rounded-xl shadow p-6 text-gray-600">No manager selected.</div>
       )}
     </div>
   );
-};
+}
 
-const StatCard = ({ icon: Icon, color, label, value }) => (
-  <div className={`p-4 bg-${color}-50 border border-${color}-200 rounded-lg flex flex-col items-center`}>
-    <Icon className={`w-6 h-6 text-${color}-600 mb-2`} />
-    <div className="text-xl font-bold">{value}</div>
-    <div className="text-sm text-gray-600">{label}</div>
-  </div>
-);
+function StatBox({ icon, label, value, tone = "slate" }) {
+  const tones = {
+    yellow: "bg-yellow-100 text-yellow-800 border-yellow-300",
+    green: "bg-green-100 text-green-800 border-green-300",
+    emerald: "bg-emerald-100 text-emerald-800 border-emerald-300",
+    red: "bg-red-100 text-red-800 border-red-300",
+    rose: "bg-rose-100 text-rose-800 border-rose-300",
+    indigo: "bg-indigo-100 text-indigo-800 border-indigo-300",
+    slate: "bg-slate-100 text-slate-800 border-slate-300",
+  }[tone];
 
-export default ManagerProfiles;
+  return (
+    <div className={`rounded-lg border p-3 flex items-center gap-3 ${tones}`}>
+      <span className="shrink-0 p-2 rounded-lg bg-white/60">{icon}</span>
+      <div>
+        <div className="text-xs uppercase tracking-wide">{label}</div>
+        <div className="text-lg font-bold">{value}</div>
+      </div>
+    </div>
+  );
+}
