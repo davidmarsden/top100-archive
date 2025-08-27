@@ -1,6 +1,6 @@
 // src/Winners.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Trophy, Users, Loader, AlertCircle, Filter } from 'lucide-react';
+import { Search, Trophy, Users, Loader, AlertCircle } from 'lucide-react';
 
 // ENV
 const SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
