@@ -54,22 +54,26 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
-const getTeamTags = (position, division) => {
+const getTeamTags = (position, division, team, season) => {
   const tags = [];
-  if (isChampion(position))
-    tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
-  if (isD1UCL(division, position))
-    tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
-  if (isD1Shield(division, position))
-    tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
-  if (isAutoPromo(division, position))
-    tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-  if (isPlayoff(division, position))
+  if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
+  if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
+  if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
+  if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
+
+  // NEW: promoted via playoffs
+  const key = `${String(season || '').trim()}|${String(division || '').trim()}`;
+  const playoffWinnerTeam = playoffWinnersBySeasonDiv.get(key);
+  const isThisPlayoffWinner = isPlayoff(division, position) && playoffWinnerTeam && playoffWinnerTeam === team;
+
+  if (isThisPlayoffWinner) {
+    tags.push({ label: 'Play-off Winners (Promoted)', style: 'bg-emerald-100 text-emerald-800 border border-emerald-300' });
+  } else if (isPlayoff(division, position)) {
     tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
-  if (isRelegated(division, position))
-    tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
-  if (isAutoSacked(position))
-    tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+  }
+
+  if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
+  if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
   return tags;
 };
 
@@ -219,6 +223,60 @@ function Top100Archive() {
     loadFromGoogleSheets();
   }, [loadFromGoogleSheets]);
 
+// Load play-off winners from Winners sheet (clubs tab)
+useEffect(() => {
+  const loadWinners = async () => {
+    try {
+      if (!WINNERS_SHEET_ID || !API_KEY) return; // optional feature
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+        WINNERS_SHEET_ID
+      )}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const json = await res.json();
+      const values = json?.values || [];
+      if (!values.length) return;
+
+      // header-based mapping
+      const [headers, ...rows] = values;
+      const H = headers.map((h) => String(h || '').trim().toLowerCase());
+      const idxSeason = H.findIndex((h) => ['season', 'seas', 's'].includes(h));
+
+      const wanted = new Set([
+        'division 2 play-off',
+        'division 3 play-off',
+        'division 4 play-off',
+        'division 5 play-off',
+      ]);
+
+      // Build map (season|division) -> club
+      const m = new Map();
+      for (const r of rows) {
+        const season = (r[idxSeason] ?? '').toString().trim();
+        if (!season) continue;
+
+        H.forEach((h, i) => {
+          if (!wanted.has(h)) return;
+          const winner = (r[i] ?? '').toString().trim();
+          if (!winner) return;
+
+          // extract division number from header text
+          const divMatch = h.match(/division\s+(\d+)/);
+          const div = divMatch ? divMatch[1] : null;
+          if (!div) return;
+
+          m.set(`${season}|${div}`, winner);
+        });
+      }
+      setPlayoffWinnersBySeasonDiv(m);
+    } catch (_) {
+      // ignore (feature is optional)
+    }
+  };
+  loadWinners();
+}, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
+
   // --- selectors ---
   const availableSeasons = useMemo(
     () =>
@@ -319,6 +377,16 @@ function Top100Archive() {
   const leaders = useMemo(() => {
     const rowsTitles = allRows.filter((r) => isChampion(r.position));
     const rowsPromo = allRows.filter((r) => isAutoPromo(r.division, r.position));
+
+// add play-off winners as promotions
+for (const r of allRows) {
+  if (!isPlayoff(r.division, r.position)) continue;
+  const key = `${String(r.season || '').trim()}|${String(r.division || '').trim()}`;
+  const winner = playoffWinnersBySeasonDiv.get(key);
+  if (winner && winner === r.team) {
+    rowsPromo.push(r); // counts for both team and manager tallies below
+  }
+}
     const rowsReleg = allRows.filter((r) => isRelegated(r.division, r.position));
     const rowsSack = allRows.filter((r) => isAutoSacked(r.position));
 
@@ -402,6 +470,7 @@ function Top100Archive() {
         <div className="grid gap-4">
           {filtered.map((team, index) => {
             const badge = getPositionBadge(team.position, team.division);
+											const tags = getTeamTags(team.position, selectedDivision, team.team, team.season);
             return (
               <div
                 key={index}
@@ -517,6 +586,7 @@ function Top100Archive() {
             <tbody>
               {tableData.map((team, index) => {
                 const badge = getPositionBadge(team.position, selectedDivision);
+														const tags = getTeamTags(team.position, selectedDivision, team.team, team.season);
                 const tags = getTeamTags(team.position, selectedDivision);
                 return (
                   <tr
@@ -818,6 +888,14 @@ function Top100Archive() {
       if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
       if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
     }
+
+// === Winners (play-off) env ===
+const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
+const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
+
+// === Play-off winners map ===
+// key: `${season}|${division}` → value: club name (exact as in archive)
+const [playoffWinnersBySeasonDiv, setPlayoffWinnersBySeasonDiv] = useState(() => new Map());
 
     const summarize = (m) => {
       const out = [];
