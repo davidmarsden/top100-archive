@@ -22,10 +22,14 @@ const headerToCompetition = (h) => {
   return hit || H; // fall back
 };
 
-const Winners = () => {
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+// ...imports...
+const Winners = ({ sharedSearch, onSharedSearchChange }) => {
+  // If App passes a search + setter, use those; otherwise keep local state
+  const [internalSearch, setInternalSearch] = useState('');
+  const search   = typeof sharedSearch === 'string' ? sharedSearch : internalSearch;
+  const setSearch = typeof onSharedSearchChange === 'function' ? onSharedSearchChange : setInternalSearch;
 
+  // ...rest of Winners.js stays the same...
   // normalized rows: { season, competition, winner, kind: 'club'|'manager' }
   const [clubRows, setClubRows] = useState([]);
   const [managerRows, setManagerRows] = useState([]);
