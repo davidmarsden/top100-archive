@@ -180,7 +180,7 @@ const Top100Archive = () => {
 
   /* =========================
      Load main league data
-     (now maps by header names to fix column order/manager field)
+     (maps by header names to fix column order/manager field)
      ========================= */
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
@@ -332,7 +332,8 @@ const Top100Archive = () => {
     [allPositionData, selectedSeason]
   );
 
-  const getFilteredData = (season = null, division = null, sortOrder = 'position') => {
+  // Make this stable so downstream hooks can depend on it
+  const getFilteredData = useCallback((season = null, division = null, sortOrder = 'position') => {
     let filtered = [...allPositionData];
     if (season) filtered = filtered.filter((r) => (r.season || '').trim() === (season || '').trim());
     if (division)
@@ -354,7 +355,50 @@ const Top100Archive = () => {
       default:
         return filtered.sort((a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10));
     }
-  };
+  }, [allPositionData]);
+
+  // Make this stable and list it as a dependency where used
+  const buildRecords = useCallback((metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
+    const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
+    const withMetric = rows.map((r) => ({
+      ...r,
+      value:
+        metric === 'points'
+          ? numeric(r.points)
+          : metric === 'gf'
+          ? numeric(r.goals_for)
+          : metric === 'ga'
+          ? numeric(r.goals_against)
+          : metric === 'gd'
+          ? numeric(r.goal_difference)
+          : 0,
+    }));
+    withMetric.sort((a, b) => (order === 'asc' ? a.value - b.value : b.value - a.value));
+    const keyFn =
+      group === 'team'
+        ? (r) => r.team
+        : group === 'manager'
+        ? (r) => r.manager
+        : group === 'season'
+        ? (r) => r.season
+        : group === 'division'
+        ? (r) => r.division
+        : group === 'position'
+        ? (r) => r.position
+        : () => '';
+
+    const seen = new Set();
+    const result = [];
+    for (const r of withMetric) {
+      const k = keyFn(r);
+      if (!k) continue;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      result.push(r);
+      if (result.length >= 50) break;
+    }
+    return result;
+  }, [getFilteredData]);
 
   const countBy = (arr, keyGetter) => {
     const map = new Map();
@@ -403,137 +447,6 @@ const Top100Archive = () => {
     };
     return { byTeam, byManager };
   }, [allPositionData, playoffWinnersSetMemo]);
-
-  const buildRecords = (metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
-    const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
-    const withMetric = rows.map((r) => ({
-      ...r,
-      value:
-        metric === 'points'
-          ? numeric(r.points)
-          : metric === 'gf'
-          ? numeric(r.goals_for)
-          : metric === 'ga'
-          ? numeric(r.goals_against)
-          : metric === 'gd'
-          ? numeric(r.goal_difference)
-          : 0,
-    }));
-    withMetric.sort((a, b) => (order === 'asc' ? a.value - b.value : b.value - a.value));
-    const keyFn =
-      group === 'team'
-        ? (r) => r.team
-        : group === 'manager'
-        ? (r) => r.manager
-        : group === 'season'
-        ? (r) => r.season
-        : group === 'division'
-        ? (r) => r.division
-        : group === 'position'
-        ? (r) => r.position
-        : () => '';
-
-    const seen = new Set();
-    const result = [];
-    for (const r of withMetric) {
-      const k = keyFn(r);
-      if (!k) continue;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      result.push(r);
-      if (result.length >= 50) break;
-    }
-    return result;
-  };
-
-  const computeThresholds = useMemo(() => {
-    const bySeasonDiv = new Map();
-    for (const r of allPositionData) {
-      const season = (r.season || '').trim();
-      const division = (r.division || '').trim();
-      const key = `${season}|${division}`;
-      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
-      bySeasonDiv.get(key).push(r);
-    }
-
-    const acc = {
-      win: new Map(),
-      autoPromo: new Map(),
-      playoffs: new Map(),
-      avoidReleg: new Map(),
-      avoidSack: new Map(),
-    };
-
-    const push = (m, div, pts) => {
-      const d = (div || '').trim();
-      if (!d) return;
-      const p = numeric(pts);
-      if (!m.has(d)) m.set(d, []);
-      m.get(d).push(p);
-    };
-
-    for (const [key, rows] of bySeasonDiv.entries()) {
-      const [, div] = key.split('|');
-      const d = parseInt(div || 0, 10);
-      const byPos = new Map();
-      for (const r of rows) byPos.set(parseInt(r.position || 0, 10), r);
-
-      if (byPos.has(1)) push(acc.win, div, byPos.get(1).points);
-      if (d >= 2 && d <= 5 && byPos.has(3)) push(acc.autoPromo, div, byPos.get(3).points);
-      if (d >= 2 && d <= 5 && byPos.has(7)) push(acc.playoffs, div, byPos.get(7).points);
-      if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
-      if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
-    }
-
-    const summarize = (m) => {
-      const out = [];
-      for (const [div, arr] of m.entries()) {
-        if (!arr.length) continue;
-        const min = Math.min(...arr);
-        const max = Math.max(...arr);
-        const avg = Math.round((arr.reduce((s, x) => s + x, 0) / arr.length) * 10) / 10;
-        out.push({ division: div, min, avg, max, samples: arr.length });
-      }
-      return out.sort((a, b) => parseInt(a.division, 10) - parseInt(b.division, 10));
-    };
-
-    return {
-      win: summarize(acc.win),
-      autoPromo: summarize(acc.autoPromo),
-      playoffs: summarize(acc.playoffs),
-      avoidReleg: summarize(acc.avoidReleg),
-      avoidSack: summarize(acc.avoidSack),
-    };
-  }, [allPositionData]);
-
-  const thresholdHistory = useMemo(() => {
-    const bySeasonDiv = new Map();
-    for (const r of allPositionData) {
-      const season = (r.season || '').trim();
-      const division = (r.division || '').trim();
-      if (!season || !division) continue;
-      const key = `${season}|${division}`;
-      if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
-      bySeasonDiv.get(key).push(r);
-    }
-    const out = { win: [], autoPromo: [], playoffs: [], avoidReleg: [], avoidSack: [] };
-    const push = (arr, season, division, posRow) => {
-      if (!posRow) return;
-      arr.push({ season, division, points: numeric(posRow.points) });
-    };
-    for (const [key, rows] of bySeasonDiv.entries()) {
-      const [season, division] = key.split('|');
-      const d = parseInt(division, 10);
-      const byPos = new Map();
-      rows.forEach((r) => byPos.set(parseInt(r.position || 0, 10), r));
-      push(out.win, season, division, byPos.get(1));
-      if (d >= 2 && d <= 5) push(out.autoPromo, season, division, byPos.get(3));
-      if (d >= 2 && d <= 5) push(out.playoffs, season, division, byPos.get(7));
-      if (d >= 1 && d <= 4) push(out.avoidReleg, season, division, byPos.get(16));
-      push(out.avoidSack, season, division, byPos.get(17));
-    }
-    return out;
-  }, [allPositionData]);
 
   /* =========================
      UI: Search Results
@@ -603,7 +516,7 @@ const Top100Archive = () => {
                       </div>
                     )}
                   </div>
-                  <div className="text-right ml-4">
+                 <div className="text-right ml-4">
                     <div className="text-3xl font-bold text-blue-600 mb-1">{team.points}</div>
                     <div className="text-sm text-gray-500">points</div>
                   </div>
@@ -786,6 +699,7 @@ const Top100Archive = () => {
   const [recordsSeason, setRecordsSeason] = useState('');
   const [recordsDivision, setRecordsDivision] = useState('');
 
+  // Depend on buildRecords to satisfy exhaustive-deps
   const recordRows = useMemo(
     () =>
       buildRecords(
@@ -795,7 +709,7 @@ const Top100Archive = () => {
         recordsSeason || null,
         recordsDivision || null
       ),
-    [recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision]
+    [buildRecords, recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision]
   );
 
   const Insights = () => {
@@ -1125,3 +1039,4 @@ const Top100Archive = () => {
 };
 
 export default Top100Archive;
+
