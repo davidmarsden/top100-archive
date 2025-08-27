@@ -242,9 +242,7 @@ const Top100Archive = () => {
   // {activeTab === 'honours' && <Winners />}
 
   // Keep rest of your render unchanged…
-};
 
-export default Top100Archive;
 
   /* =========================
      Derived data
@@ -306,9 +304,7 @@ export default Top100Archive;
     }
   };
 
-  /* =========================
-     Tags builder (uses winners)
-     ========================= */
+
   
 /* =========================
    Tags builder (uses winners)
@@ -682,6 +678,7 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
                 <th className="text-center py-4 px-4 font-bold text-blue-600">Pts</th>
               </tr>
             </thead>
+
             <tbody>
  {tableData.map((team, index) => {
   const rowTags = getTeamTags(
