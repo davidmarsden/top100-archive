@@ -1081,20 +1081,24 @@ const Top100Archive = () => {
           </div>
         </div>
 
-        {/* Sections */}
-        {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-        {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
-        {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
-        {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
-        {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
-{activeTab === 'managers' &&
-  (dataLoaded ? (
-<ManagerProfiles
-  allPositionData={allPositionData}
-  winnersSet={playoffWinnersSet /* or playoffWinnersSetMemo */}
-/>}
- 
-        {activeTab === 'honours'  && <Winners />}
+{/* Content sections */}
+{activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+{activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
+{activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
+{activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+
+{activeTab === 'managers' && (
+  dataLoaded ? (
+    <ManagerProfiles
+      allPositionData={allPositionData}
+      winnersSet={playoffWinnersSet} {/* or playoffWinnersSetMemo */}
+    />
+  ) : (
+    <DataPlaceholder />
+  )
+)}
+
+{activeTab === 'honours' && <Winners />}
 
       </div>
 
