@@ -1093,7 +1093,7 @@ const Top100Archive = () => {
   allPositionData={allPositionData}
   winnersSet={playoffWinnersSet /* or playoffWinnersSetMemo */}
 />
-  ))}
+ 
         {activeTab === 'honours'  && <Winners />}
 
       </div>
