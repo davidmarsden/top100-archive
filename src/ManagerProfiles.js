@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { Users, AlertCircle } from "lucide-react";
 
-/* ===== Helpers (must mirror App.js) ===== */
+/* ===== Helpers (mirror App.js) ===== */
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
 const isAutoPromo = (div, pos) => {
   const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
@@ -22,28 +22,28 @@ const isAutoSacked = (pos) => {
 };
 
 const normDiv = (d) => {
-  const m = String(d || '').match(/\d+/);
-  return m ? m[0] : String(d || '').trim();
+  const m = String(d || "").match(/\d+/);
+  return m ? m[0] : String(d || "").trim();
 };
 const normalizeName = (s) =>
-  String(s || '')
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/\b(fc|cf|afc|sc|club)\b/gi, ' ')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
+  String(s || "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b(fc|cf|afc|sc|club)\b/gi, " ")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 const playoffWinnerKey = (season, division, team) =>
-  `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
+  `${String(season || "").trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
 /* ===== Component ===== */
 export default function ManagerProfiles({
   allPositionData = [],
-  playoffWinnersSet,                 // preferred: a Set from App.js
-  playoffWinnersBySeasonDiv,         // legacy support: Map-like
+  playoffWinnersSet,         // preferred Set from App.js
+  playoffWinnersBySeasonDiv, // legacy Map-like support
 }) {
-  // Normalize winners into a Set
+  // Normalize winners to a Set (no unused vars)
   const winnersSet = useMemo(() => {
     if (playoffWinnersSet instanceof Set) return playoffWinnersSet;
     if (playoffWinnersBySeasonDiv && typeof playoffWinnersBySeasonDiv.forEach === "function") {
@@ -61,10 +61,10 @@ export default function ManagerProfiles({
     return new Set();
   }, [playoffWinnersSet, playoffWinnersBySeasonDiv]);
 
-  // Manager list for dropdown
+  // Dropdown manager names
   const managerNames = useMemo(
     () =>
-      [...new Set(allPositionData.map(r => (r.manager || '').trim()))]
+      [...new Set(allPositionData.map(r => (r.manager || "").trim()))]
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b)),
     [allPositionData]
@@ -73,7 +73,7 @@ export default function ManagerProfiles({
   const [teamQuery, setTeamQuery] = useState("");
   const [managerQuery, setManagerQuery] = useState(managerNames[0] || "");
 
-  // Filter/group rows by manager
+  // Filter + group by manager
   const filteredManagers = useMemo(() => {
     const qTeam = teamQuery.toLowerCase();
     const qMgr  = managerQuery.toLowerCase();
@@ -88,8 +88,7 @@ export default function ManagerProfiles({
       grouped.get(m).push(r);
     }
 
-    // sort each manager’s rows: season desc, division asc, position asc
-    for (const [mgrName, rows] of grouped.entries()) {
+    for (const [, rows] of grouped.entries()) {
       rows.sort((a, b) => {
         const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
         if (s !== 0) return s;
@@ -103,15 +102,15 @@ export default function ManagerProfiles({
   }, [allPositionData, teamQuery, managerQuery]);
 
   const ManagerCard = ({ mgrName, rows }) => {
+    // Use mgrName throughout (no-unused-vars safe)
     let titles = 0, autoPromos = 0, playoffWins = 0, releg = 0, sack = 0;
 
     const tableRows = rows.map(r => {
       const { season, division, position: pos, team } = r;
-
-      const wonTitle    = isChampion(pos);
-      const auto        = isAutoPromo(division, pos);
-      const inPlayoffs  = isPlayoffBand(division, pos);
-      const wonPlayoff  = winnersSet.has(playoffWinnerKey(season, division, team));
+      const wonTitle   = isChampion(pos);
+      const auto       = isAutoPromo(division, pos);
+      const inPlayoffs = isPlayoffBand(division, pos);
+      const wonPlayoff = winnersSet.has(playoffWinnerKey(season, division, team));
 
       if (wonTitle) titles++;
       if (auto) autoPromos++;
@@ -168,7 +167,7 @@ export default function ManagerProfiles({
             </thead>
             <tbody>
               {tableRows.map((tr, i) => (
-                <tr key={i} className="border-t">
+                <tr key={`${mgrName}-${i}`} className="border-t">
                   <td className="py-2 px-2">S{tr.season}</td>
                   <td className="py-2 px-2">D{tr.division}</td>
                   <td className="py-2 px-2">{tr.position}</td>
@@ -201,9 +200,13 @@ export default function ManagerProfiles({
             value={managerQuery}
             onChange={(e) => setManagerQuery(e.target.value)}
           >
-            {managerNames.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
+            {managerNames.length === 0 ? (
+              <option value="">No managers</option>
+            ) : (
+              managerNames.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))
+            )}
           </select>
         </div>
       </div>
