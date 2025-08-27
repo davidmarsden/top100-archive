@@ -1,8 +1,8 @@
 // src/App.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Charts from "./Charts";
-import ManagerProfiles from "./ManagerProfiles";
-import Winners from "./Winners";
+import Charts from './Charts';
+import ManagerProfiles from './ManagerProfiles';
+import Winners from './Winners';
 import {
   Search,
   BarChart3,
@@ -15,25 +15,82 @@ import {
   Database,
 } from 'lucide-react';
 
-// ------------------------------
-// Status logic helpers
-// ------------------------------
-// ------------------------------
-// Status + tag helpers (define ONCE, above component)
-// ------------------------------
+/* =========================================
+   Small helpers / stubs used in JSX
+   ========================================= */
+const numeric = (v) => {
+  const n = Number(String(v).replace(/[^0-9-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+const DataPlaceholder = () => (
+  <div className="p-8 text-center text-gray-500 bg-white rounded-xl shadow">
+    Loading data…
+  </div>
+);
+const ThresholdCard = ({ title, rows }) => (
+  <div className="border rounded-xl p-4">
+    <h4 className="font-semibold mb-2">{title}</h4>
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left text-gray-600">
+          <th className="py-1">Division</th>
+          <th className="py-1">Min</th>
+          <th className="py-1">Avg</th>
+          <th className="py-1">Max</th>
+          <th className="py-1">n</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows?.map((r, i) => (
+          <tr key={i} className="border-t">
+            <td className="py-1">{r.division}</td>
+            <td className="py-1">{r.min}</td>
+            <td className="py-1">{r.avg}</td>
+            <td className="py-1">{r.max}</td>
+            <td className="py-1">{r.samples}</td>
+          </tr>
+        )) || null}
+      </tbody>
+    </table>
+  </div>
+);
+const LegendSwatch = ({ color, label }) => (
+  <span className={`inline-flex items-center gap-2 px-2 py-1 rounded border ${color}`}>
+    <span className="inline-block w-3 h-3 rounded-full bg-white/40 border" />
+    {label}
+  </span>
+);
+const getRowStyling = (position, division) => {
+  const p = parseInt(position || 0, 10);
+  const d = parseInt(division || 0, 10);
+  if (p === 1) return 'bg-yellow-50';
+  if (d >= 2 && d <= 5 && (p === 2 || p === 3)) return 'bg-green-50';
+  if (d >= 2 && d <= 5 && p >= 4 && p <= 7) return 'bg-blue-50';
+  if (d >= 1 && d <= 4 && p >= 17 && p <= 20) return 'bg-red-50';
+  return 'bg-white';
+};
+
+/* =========================================
+   Status + tag helpers
+   ========================================= */
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
-const isD1UCL = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
-const isD1Shield = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
+const isD1UCL = (div, pos) =>
+  parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
+const isD1Shield = (div, pos) =>
+  parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
 const isAutoPromo = (div, pos) => {
-  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  const d = parseInt(div || 0, 10),
+    p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && (p === 2 || p === 3);
 };
 const isPlayoffBand = (div, pos) => {
-  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  const d = parseInt(div || 0, 10),
+    p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && p >= 4 && p <= 7;
 };
 const isRelegated = (div, pos) => {
-  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  const d = parseInt(div || 0, 10),
+    p = parseInt(pos || 0, 10);
   return d >= 1 && d <= 4 && p >= 17 && p <= 20;
 };
 const isAutoSacked = (pos) => {
@@ -61,16 +118,45 @@ const playoffWinnerKey = (season, division, team) =>
 // SINGLE SOURCE OF TRUTH — keep ONLY this getTeamTags
 const getTeamTags = (position, division, team, season, playoffWinnersSetMemo) => {
   const tags = [];
-  if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
-  if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
-  if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
-  if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-  if (isPlayoffBand(division, position) &&
-      playoffWinnersSet?.has(playoffWinnerKey(season, division, team))) {
-    tags.push({ label: 'Playoff Winner (Promoted)', style: 'bg-green-200 text-green-900 border border-green-400' });
+  if (isChampion(position))
+    tags.push({
+      label: 'Champions',
+      style: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+    });
+  if (isD1UCL(division, position))
+    tags.push({
+      label: 'SMFA Champions Cup',
+      style: 'bg-purple-100 text-purple-800 border border-purple-300',
+    });
+  if (isD1Shield(division, position))
+    tags.push({
+      label: 'SMFA Shield',
+      style: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+    });
+  if (isAutoPromo(division, position))
+    tags.push({
+      label: 'Auto-Promoted',
+      style: 'bg-green-100 text-green-800 border border-green-300',
+    });
+  if (
+    isPlayoffBand(division, position) &&
+    playoffWinnersSetMemo?.has(playoffWinnerKey(season, division, team))
+  ) {
+    tags.push({
+      label: 'Playoff Winner (Promoted)',
+      style: 'bg-green-200 text-green-900 border border-green-400',
+    });
   }
-  if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
-  if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+  if (isRelegated(division, position))
+    tags.push({
+      label: 'Relegated',
+      style: 'bg-red-100 text-red-800 border border-red-300',
+    });
+  if (isAutoSacked(position))
+    tags.push({
+      label: 'Auto-Sacked',
+      style: 'bg-rose-200 text-rose-900 border border-rose-400',
+    });
   return tags;
 };
 
@@ -79,8 +165,10 @@ const getPositionBadge = (position, division, team, season, playoffWinnersSetMem
   if (isRelegated(division, position)) return { bg: 'bg-red-600', text: 'text-white', icon: '⬇️' };
   if (isChampion(position)) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
   if (isAutoPromo(division, position)) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
-  if (isPlayoffBand(division, position) &&
-      playoffWinnersSet?.has(playoffWinnerKey(season, division, team))) {
+  if (
+    isPlayoffBand(division, position) &&
+    playoffWinnersSetMemo?.has(playoffWinnerKey(season, division, team))
+  ) {
     return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
   }
   if (isD1UCL(division, position)) return { bg: 'bg-purple-600', text: 'text-white', icon: '🏆' };
@@ -88,10 +176,9 @@ const getPositionBadge = (position, division, team, season, playoffWinnersSetMem
   return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
 };
 
-
-// ------------------------------
-// Main component
-// ------------------------------
+/* =========================================
+   Main component
+   ========================================= */
 const Top100Archive = () => {
   // --- core UI state ---
   const [activeTab, setActiveTab] = useState('search');
@@ -104,10 +191,14 @@ const Top100Archive = () => {
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // --- winners: playoff winners set (for promoted pill) ---
+  // winners set for playoff promotions
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
+  const playoffWinnersSetMemo = useMemo(
+    () => playoffWinnersSet ?? new Set(),
+    [playoffWinnersSet]
+  );
 
-  // hash -> tab sync (optional, but handy)
+  // hash -> tab sync
   useEffect(() => {
     const apply = () => {
       const h = window.location.hash.replace('#', '');
@@ -119,13 +210,13 @@ const Top100Archive = () => {
   }, []);
 
   /* =========================
-     ENV / Config (declare ONCE)
+     ENV / Config
      ========================= */
-  const SHEET_ID            = process.env.REACT_APP_SHEET_ID;
-  const API_KEY             = process.env.REACT_APP_GOOGLE_API_KEY; // one source of truth
-  const SHEET_RANGE         = 'Sorted by team!A:R';
+  const SHEET_ID = process.env.REACT_APP_SHEET_ID;
+  const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
+  const SHEET_RANGE = 'Sorted by team!A:R';
 
-  const WINNERS_SHEET_ID    = process.env.REACT_APP_WINNERS_SHEET_ID;
+  const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
   const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
 
   /* =========================
@@ -147,7 +238,6 @@ const Top100Archive = () => {
       const [headerRow, ...rows] = data.values;
       const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
 
-      // Using the known order (A:R) — safe for your sheet
       const formatted = rows
         .filter((r) => r && r.length)
         .map((row) => ({
@@ -178,10 +268,9 @@ const Top100Archive = () => {
 
   /* =========================
      Load playoff winners (Clubs sheet)
-     Builds Set: "season|divisionNumber|normalizedTeam"
      ========================= */
   const loadWinners = useCallback(async () => {
-    if (!WINNERS_SHEET_ID || !API_KEY) return; // fail-soft if env is missing
+    if (!WINNERS_SHEET_ID || !API_KEY) return;
     try {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
         WINNERS_SHEET_ID
@@ -217,48 +306,19 @@ const Top100Archive = () => {
       }
       setPlayoffWinnersSet(set);
     } catch {
-      // ignore; app still works
+      // fail soft
     }
   }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
 
-  // Kick off both loads
+  // Kick off loads
   useEffect(() => {
     loadFromGoogleSheets();
     loadWinners();
   }, [loadFromGoogleSheets, loadWinners]);
 
-  /* === rest of your component (SearchResults, LeagueTable, Insights, etc.) continues below === */
-
-  // ---- UI continues (Search, Tables, Insights, Charts, Managers, Honours) ----
-  // For brevity, keep your existing UI components exactly as before,
-  // but replace calls to getTeamTags / getPositionBadge to include playoffWinnersBySeasonDiv.
-  // Example inside LeagueTable:
-  // const tags = getTeamTags(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
-  // const badge = getPositionBadge(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
-
-  // Render tab content (add honours back):
-  // {activeTab === 'honours' && <Winners />}
-
-  // Keep rest of your render unchanged…
-
-
   /* =========================
      Derived data
      ========================= */
-
-  // Fast lookup set for playoff winners -> promotion
-const playoffWinnersSetMemo = useMemo(
-  () => playoffWinnersSet ?? new Set(),
-  [playoffWinnersSet]
-);
-
-    playoffWinnersBySeasonDiv.forEach((team, key) => {
-      const [season, division] = key.split('|');
-      s.add(playoffWinnerKey(season, division, team));
-    });
-    return s;
-  }, [playoffWinnersBySeasonDiv]);
-
   const availableSeasons = useMemo(
     () =>
       [...new Set(allPositionData.map((r) => (r.season || '').trim()))]
@@ -296,53 +356,21 @@ const playoffWinnersSetMemo = useMemo(
         return filtered.sort((a, b) => (a.manager || '').localeCompare(b.manager || ''));
       case 'division':
         return filtered.sort((a, b) => {
-          const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
+          const d =
+            parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
           return d !== 0 ? d : parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
         });
       case 'position':
       default:
-        return filtered.sort((a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10));
+        return filtered.sort(
+          (a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10)
+        );
     }
   };
 
-
-  
-/* =========================
-   Tags builder (uses winners)
-   ========================= */
-const buildRowTags = (position, division, team, season, winnersSet) => {
-  const tags = [];
-
-  if (isChampion(position))
-    tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
-  if (isD1UCL(division, position))
-    tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
-  if (isD1Shield(division, position))
-    tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
-  if (isAutoPromo(division, position))
-    tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-  if (isPlayoffBand(division, position))
-    tags.push({ label: 'Playoffs', style: 'bg-blue-100 text-blue-800 border border-blue-300' });
-  if (isRelegated(division, position))
-    tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
-  if (isAutoSacked(position))
-    tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
-
-  // Playoff Winner (promoted) — from winners sheet
-  const isWinner = winnersSet?.has(playoffWinnerKey(season, division, team));
-  if (isWinner) {
-    tags.push({
-      label: 'Playoff Winner (Promoted)',
-      style: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
-    });
-  }
-
-  return { tags, isWinner };
-};
   /* =========================
      Insights (leaders, records, thresholds)
      ========================= */
-
   const countBy = (arr, keyGetter) => {
     const map = new Map();
     for (const item of arr) {
@@ -358,15 +386,17 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
   const leaders = useMemo(() => {
     const rowsTitles = allPositionData.filter((r) => isChampion(r.position));
 
-    // Promotions = auto-promo + (playoff band & winner set match)
+    // Promotions = auto-promo + playoff winners
     const promos = [];
     for (const r of allPositionData) {
       if (isAutoPromo(r.division, r.position)) {
         promos.push(r);
         continue;
       }
-      if (isPlayoffBand(r.division, r.position) &&
-          playoffWinnersSet.has(playoffWinnerKey(r.season, r.division, r.team))) {
+      if (
+        isPlayoffBand(r.division, r.position) &&
+        playoffWinnersSetMemo.has(playoffWinnerKey(r.season, r.division, r.team))
+      ) {
         promos.push(r);
       }
     }
@@ -387,7 +417,7 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
       sackings: countBy(rowsSack, (r) => r.manager),
     };
     return { byTeam, byManager };
-  }, [allPositionData, playoffWinnersSet]);
+  }, [allPositionData, playoffWinnersSetMemo]);
 
   const buildRecords = (metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
     const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
@@ -431,7 +461,7 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
     return result;
   };
 
-    const computeThresholds = useMemo(() => {
+  const computeThresholds = useMemo(() => {
     const bySeasonDiv = new Map();
     for (const r of allPositionData) {
       const season = (r.season || '').trim();
@@ -542,10 +572,15 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
       <div className="space-y-4">
         <div className="grid gap-4">
           {filtered.map((team, index) => {
-              const tags = getTeamTags(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
-  const badge = getPositionBadge(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+            const tags = getTeamTags(
+              team.position,
+              team.division,
+              team.team,
+              team.season,
+              playoffWinnersSetMemo
+            );
 
-            const rowClass = getRowStyling(team.position, team.division, isWinner);
+            const rowClass = getRowStyling(team.position, team.division);
 
             return (
               <div
@@ -583,7 +618,11 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
                       </div>
                       <div>
                         <p className="text-gray-500">Goal Difference</p>
-                        <p className={`font-semibold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p
+                          className={`font-semibold ${
+                            numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
                           {numeric(team.goal_difference) > 0 ? '+' : ''}
                           {team.goal_difference}
                         </p>
@@ -681,56 +720,66 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
             </thead>
 
             <tbody>
- {tableData.map((team, index) => {
-  const rowTags = getTeamTags(
-    team.position,
-    selectedDivision,
-    team.team,
-    team.season,
-    playoffWinnersBySeasonDiv
-  );
-  const badge = getPositionBadge(
-    team.position,
-    selectedDivision,
-    team.team,
-    team.season,
-    playoffWinnersBySeasonDiv
-  );
+              {tableData.map((team, index) => {
+                const rowTags = getTeamTags(
+                  team.position,
+                  selectedDivision,
+                  team.team,
+                  team.season,
+                  playoffWinnersSetMemo
+                );
+                const badge = getPositionBadge(
+                  team.position,
+                  selectedDivision,
+                  team.team,
+                  team.season,
+                  playoffWinnersSetMemo
+                );
 
-  return (
-    <tr key={index} className={`${getRowStyling(team.position, selectedDivision)} border-b border-gray-100 transition-all hover:shadow-md`}>
-      <td className="py-4 px-4">
-        <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}>
-          {badge.icon ? `${badge.icon} ` : ''}{team.position}
-        </span>
-      </td>
-      <td className="py-4 px-4">
-        <div className="flex items-start gap-3">
-          <div>
-            <div className="font-bold text-gray-900 text-lg">{team.team}</div>
-            <div className="text-sm text-gray-600 flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              {team.manager || 'Unknown Manager'}
-            </div>
-            {rowTags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {rowTags.map((t, i) => (
-                  <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
-                    {t.label}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </td>
+                return (
+                  <tr
+                    key={index}
+                    className={`${getRowStyling(team.position, selectedDivision)} border-b border-gray-100 transition-all hover:shadow-md`}
+                  >
+                    <td className="py-4 px-4">
+                      <span
+                        className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}
+                      >
+                        {badge.icon ? `${badge.icon} ` : ''}
+                        {team.position}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-start gap-3">
+                        <div>
+                          <div className="font-bold text-gray-900 text-lg">{team.team}</div>
+                          <div className="text-sm text-gray-600 flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {team.manager || 'Unknown Manager'}
+                          </div>
+                          {rowTags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {rowTags.map((t, i) => (
+                                <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
+                                  {t.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
                     <td className="py-4 px-3 text-center font-semibold">{team.played}</td>
                     <td className="py-4 px-3 text-center font-bold text-green-600">{team.won}</td>
                     <td className="py-4 px-3 text-center font-semibold text-gray-600">{team.drawn}</td>
                     <td className="py-4 px-3 text-center font-bold text-red-600">{team.lost}</td>
                     <td className="py-4 px-3 text-center font-semibold">{team.goals_for}</td>
                     <td className="py-4 px-3 text-center font-semibold">{team.goals_against}</td>
-                    <td className={`py-4 px-3 text-center font-bold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td
+                      className={`py-4 px-3 text-center font-bold ${
+                        numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
                       {numeric(team.goal_difference) > 0 ? '+' : ''}
                       {team.goal_difference}
                     </td>
@@ -775,6 +824,7 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
     );
   };
 
+            
   /* =========================
      UI: Insights
      ========================= */
@@ -794,7 +844,7 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
         recordsSeason || null,
         recordsDivision || null
       ),
-    [recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision] // eslint-disable-line
+    [recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision]
   );
 
   const Insights = () => {
@@ -1011,12 +1061,12 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
             {[
-              { id: 'search',   label: 'Search',            icon: Search,   color: 'blue' },
-              { id: 'tables',   label: 'League Tables',     icon: BarChart3, color: 'purple' },
-              { id: 'insights', label: 'Insights',          icon: BarChart3, color: 'green' },
-              { id: 'charts',   label: 'Charts',            icon: BarChart3, color: 'indigo' },
-              { id: 'managers', label: 'Manager Profiles',  icon: Users,     color: 'teal' },
-													{ id: 'honours', label: 'Honours',  icon: Users,     color: 'amber' },
+              { id: 'search', label: 'Search', icon: Search, color: 'blue' },
+              { id: 'tables', label: 'League Tables', icon: BarChart3, color: 'purple' },
+              { id: 'insights', label: 'Insights', icon: BarChart3, color: 'green' },
+              { id: 'charts', label: 'Charts', icon: BarChart3, color: 'indigo' },
+              { id: 'managers', label: 'Manager Profiles', icon: Users, color: 'teal' },
+              { id: 'honours', label: 'Honours', icon: Users, color: 'amber' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1093,12 +1143,17 @@ const buildRowTags = (position, division, team, season, winnersSet) => {
         </div>
 
         {/* Content sections */}
-{activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-{activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
-{activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
-{activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
-{activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
-{activeTab === 'honours'  && <Winners />}
+        {activeTab === 'search' &&
+          (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+        {activeTab === 'tables' &&
+          (dataLoaded ? <LeagueTable /> : <DataPlaceholder />)}
+        {activeTab === 'insights' &&
+          (dataLoaded ? <Insights /> : <DataPlaceholder />)}
+        {activeTab === 'charts' &&
+          (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+        {activeTab === 'managers' &&
+          (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
+        {activeTab === 'honours' && <Winners />}
       </div>
 
       {/* Footer */}
