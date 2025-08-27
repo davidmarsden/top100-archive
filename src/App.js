@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Charts from './Charts';
 import ManagerProfiles from './ManagerProfiles';
+import Winners from './Winners';
 import {
   Search,
   BarChart3,
@@ -18,7 +19,7 @@ import {
 // ------------------------------
 // Hash routing helpers (module scope; no hooks here)
 // ------------------------------
-const ALLOWED_TABS = new Set(['search', 'tables', 'insights', 'charts', 'managers']);
+const ALLOWED_TABS = new Set(['search','tables','insights','charts','managers','honours']);
 const normalizeHashToTab = (hash) => {
   const t = (hash || '').replace('#', '').trim().toLowerCase();
   return ALLOWED_TABS.has(t) ? t : 'search';
@@ -898,6 +899,7 @@ function Top100Archive() {
               { id: 'insights', label: 'Insights',          icon: Award,     color: 'green' },
               { id: 'charts',   label: 'Charts',            icon: BarChart3, color: 'indigo' },
               { id: 'managers', label: 'Manager Profiles',  icon: Users,     color: 'teal' },
+												 { id: 'honours',  label: 'Honours',          icon: Award,     color: 'amber' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -976,6 +978,12 @@ function Top100Archive() {
         {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
         {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
         {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
+							{activeTab === 'honours' && (
+  <Winners
+    sharedSearch={searchTerm}
+    onSharedSearchChange={setSearchTerm}
+  />
+)}
       </div>
 
       {/* Footer */}
