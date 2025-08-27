@@ -91,59 +91,83 @@ const getPositionBadge = (position, division, team, season, playoffWinnersSet) =
 // ------------------------------
 // Main component
 // ------------------------------
+// ------------------------------
+// Main component
+// ------------------------------
 const Top100Archive = () => {
+  // --- core UI state ---
+  const [activeTab, setActiveTab] = useState('search');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('tables'); 
   const [selectedSeason, setSelectedSeason] = useState('25');
   const [selectedDivision, setSelectedDivision] = useState('1');
   const [sortBy, setSortBy] = useState('position');
   const [allPositionData, setAllPositionData] = useState([]);
-  const [playoffWinnersBySeasonDiv, setPlayoffWinnersBySeasonDiv] = useState(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Config
-  const SHEET_ID = process.env.REACT_APP_SHEET_ID;
-  const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-  const SHEET_RANGE = 'Sorted by team!A:R';
-  const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
-  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE;
+  // --- winners: playoff winners set (for promoted pill) ---
+  const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
 
-  // Load main league data
+  // hash -> tab sync (optional, but handy)
+  useEffect(() => {
+    const apply = () => {
+      const h = window.location.hash.replace('#', '');
+      if (h) setActiveTab(h);
+    };
+    apply();
+    window.addEventListener('hashchange', apply);
+    return () => window.removeEventListener('hashchange', apply);
+  }, []);
+
+  /* =========================
+     ENV / Config (declare ONCE)
+     ========================= */
+  const SHEET_ID            = process.env.REACT_APP_SHEET_ID;
+  const API_KEY             = process.env.REACT_APP_GOOGLE_API_KEY; // one source of truth
+  const SHEET_RANGE         = 'Sorted by team!A:R';
+
+  const WINNERS_SHEET_ID    = process.env.REACT_APP_WINNERS_SHEET_ID;
+  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
+
+  /* =========================
+     Load main league data
+     ========================= */
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+        SHEET_ID
+      )}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+
       const response = await fetch(url);
       if (!response.ok) throw new Error(`API error ${response.status}`);
       const data = await response.json();
-      if (!data.values) throw new Error("No data returned");
+      if (!data.values) throw new Error('No data returned');
 
       const [headerRow, ...rows] = data.values;
-      const idx = (names) => {
-        const candidates = Array.isArray(names) ? names : [names];
-        return headerRow.findIndex((h) => candidates.includes(h.toLowerCase()));
-      };
       const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
 
-      const formatted = rows.map((row) => ({
-        season: get(row, 0),
-        division: get(row, 1),
-        position: get(row, 2),
-        team: get(row, 3),
-        played: get(row, 4),
-        won: get(row, 5),
-        drawn: get(row, 6),
-        lost: get(row, 7),
-        goals_for: get(row, 8),
-        goals_against: get(row, 9),
-        goal_difference: get(row, 10),
-        points: get(row, 11),
-        start_date: get(row, 12),
-        manager: get(row, 13),
-      }));
+      // Using the known order (A:R) — safe for your sheet
+      const formatted = rows
+        .filter((r) => r && r.length)
+        .map((row) => ({
+          season: get(row, 0),
+          division: get(row, 1),
+          position: get(row, 2),
+          team: get(row, 3),
+          played: get(row, 4),
+          won: get(row, 5),
+          drawn: get(row, 6),
+          lost: get(row, 7),
+          goals_for: get(row, 8),
+          goals_against: get(row, 9),
+          goal_difference: get(row, 10),
+          points: get(row, 11),
+          start_date: get(row, 12),
+          manager: get(row, 13),
+        }));
 
       setAllPositionData(formatted);
       setDataLoaded(true);
@@ -154,39 +178,58 @@ const Top100Archive = () => {
     }
   }, [API_KEY, SHEET_ID, SHEET_RANGE]);
 
-  // Load playoff winners (clubs sheet)
+  /* =========================
+     Load playoff winners (Clubs sheet)
+     Builds Set: "season|divisionNumber|normalizedTeam"
+     ========================= */
   const loadWinners = useCallback(async () => {
-    if (!WINNERS_SHEET_ID || !WINNERS_CLUBS_RANGE) return;
+    if (!WINNERS_SHEET_ID || !API_KEY) return; // fail-soft if env is missing
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(WINNERS_SHEET_ID)}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+        WINNERS_SHEET_ID
+      )}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+
       const res = await fetch(url);
       if (!res.ok) return;
-      const data = await res.json();
-      if (!data.values) return;
-      const [header, ...rows] = data.values;
-      const playoffCols = [
-        { col: header.indexOf("Division 2 Play-off"), div: 2 },
-        { col: header.indexOf("Division 3 Play-off"), div: 3 },
-        { col: header.indexOf("Division 4 Play-off"), div: 4 },
-        { col: header.indexOf("Division 5 Play-off"), div: 5 },
-      ];
-      const s = new Set();
+      const json = await res.json();
+      const values = json?.values || [];
+      if (!values.length) return;
+
+      const [headers, ...rows] = values;
+      const hNorm = headers.map((h) => String(h || '').trim().toLowerCase());
+      const ixSeason = hNorm.findIndex((h) => h === 'season');
+      if (ixSeason === -1) return;
+
+      const playoffCols = hNorm
+        .map((h, i) => ({ h, i }))
+        .filter(({ h }) => /division\s*([2-5])\s*play-?off/.test(h));
+
+      const set = new Set();
       for (const row of rows) {
-        const season = row[0];
-        for (const { col, div } of playoffCols) {
-          if (col >= 0 && row[col]) {
-            s.add(playoffWinnerKey(season, div, row[col]));
-          }
+        const season = row[ixSeason];
+        if (!season) continue;
+        for (const { h, i } of playoffCols) {
+          const winner = row[i];
+          if (!winner) continue;
+          const m = /division\s*([2-5])\s*play-?off/.exec(h);
+          const div = m ? m[1] : null;
+          if (!div) continue;
+          set.add(playoffWinnerKey(season, div, winner));
         }
       }
-      setPlayoffWinnersBySeasonDiv(s);
-    } catch (_) {}
+      setPlayoffWinnersSet(set);
+    } catch {
+      // ignore; app still works
+    }
   }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
 
+  // Kick off both loads
   useEffect(() => {
     loadFromGoogleSheets();
     loadWinners();
   }, [loadFromGoogleSheets, loadWinners]);
+
+  /* === rest of your component (SearchResults, LeagueTable, Insights, etc.) continues below === */
 
   // ---- UI continues (Search, Tables, Insights, Charts, Managers, Honours) ----
   // For brevity, keep your existing UI components exactly as before,
