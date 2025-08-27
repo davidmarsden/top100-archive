@@ -469,8 +469,8 @@ for (const r of allRows) {
       <div className="space-y-4">
         <div className="grid gap-4">
           {filtered.map((team, index) => {
-            const badge = getPositionBadge(team.position, team.division);
-											const tags = getTeamTags(team.position, selectedDivision, team.team, team.season);
+ const badge   = getPositionBadge(team.position, team.division);
+const rowTags = getTeamTags(team.position, team.division, team.team, team.season);
             return (
               <div
                 key={index}
@@ -583,64 +583,66 @@ for (const r of allRows) {
                 <th className="text-center py-4 px-4 font-bold text-blue-600">Pts</th>
               </tr>
             </thead>
-            <tbody>
-              {tableData.map((team, index) => {
-                const badge = getPositionBadge(team.position, selectedDivision);
-														const tags = getTeamTags(team.position, selectedDivision, team.team, team.season);
-                const tags = getTeamTags(team.position, selectedDivision);
-                return (
-                  <tr
-                    key={index}
-                    className={`${getRowStyling(team.position, selectedDivision)} border-b border-gray-100 transition-all hover:shadow-md`}
-                  >
-                    <td className="py-4 px-4">
-                      <span
-                        className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}
-                        title={tags.map((t) => t.label).join(' • ')}
-                      >
-                        {badge.icon ? `${badge.icon} ` : ''}
-                        {team.position}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-start gap-3">
-                        <div>
-                          <div className="font-bold text-gray-900 text-lg">{team.team}</div>
-                          <div className="text-sm text-gray-600 flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {team.manager || 'Unknown Manager'}
-                          </div>
-                          {tags.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {tags.map((t, i) => (
-                                <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
-                                  {t.label}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-3 text-center font-semibold">{team.played}</td>
-                    <td className="py-4 px-3 text-center font-bold text-green-600">{team.won}</td>
-                    <td className="py-4 px-3 text-center font-semibold text-gray-600">{team.drawn}</td>
-                    <td className="py-4 px-3 text-center font-bold text-red-600">{team.lost}</td>
-                    <td className="py-4 px-3 text-center font-semibold">{team.goals_for}</td>
-                    <td className="py-4 px-3 text-center font-semibold">{team.goals_against}</td>
-                    <td className={`py-4 px-3 text-center font-bold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {numeric(team.goal_difference) > 0 ? '+' : ''}
-                      {team.goal_difference}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="inline-flex items-center justify-center w-12 h-8 bg-blue-100 text-blue-800 rounded-lg font-bold">
-                        {team.points}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+<tbody>
+  {tableData.map((team, index) => {
+    const badge   = getPositionBadge(team.position, selectedDivision);
+    const rowTags = getTeamTags(team.position, selectedDivision, team.team, team.season); // ← single declaration
+
+    return (
+      <tr
+        key={index}
+        className={`${getRowStyling(team.position, selectedDivision)} border-b border-gray-100 transition-all hover:shadow-md`}
+      >
+        <td className="py-4 px-4">
+          <span
+            className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}
+            title={rowTags.map((t) => t.label).join(' • ')}
+          >
+            {badge.icon ? `${badge.icon} ` : ''}
+            {team.position}
+          </span>
+        </td>
+        <td className="py-4 px-4">
+          <div className="flex items-start gap-3">
+            <div>
+              <div className="font-bold text-gray-900 text-lg">{team.team}</div>
+              <div className="text-sm text-gray-600 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                {team.manager || 'Unknown Manager'}
+              </div>
+
+              {rowTags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {rowTags.map((t, i) => (
+                    <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
+                      {t.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </td>
+
+        <td className="py-4 px-3 text-center font-semibold">{team.played}</td>
+        <td className="py-4 px-3 text-center font-bold text-green-600">{team.won}</td>
+        <td className="py-4 px-3 text-center font-semibold text-gray-600">{team.drawn}</td>
+        <td className="py-4 px-3 text-center font-bold text-red-600">{team.lost}</td>
+        <td className="py-4 px-3 text-center font-semibold">{team.goals_for}</td>
+        <td className="py-4 px-3 text-center font-semibold">{team.goals_against}</td>
+        <td className={`py-4 px-3 text-center font-bold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {numeric(team.goal_difference) > 0 ? '+' : ''}
+          {team.goal_difference}
+        </td>
+        <td className="py-4 px-4 text-center">
+          <span className="inline-flex items-center justify-center w-12 h-8 bg-blue-100 text-blue-800 rounded-lg font-bold">
+            {team.points}
+          </span>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
           </table>
         </div>
 
