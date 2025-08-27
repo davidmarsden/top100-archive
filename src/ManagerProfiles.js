@@ -98,7 +98,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
       map.get(name).push(r);
     }
     // sort each manager's rows by season/division/position
-    for (const [k, rows] of map.entries()) {
+    for (const [, rows] of map.entries()) {
       rows.sort((a, b) => {
         const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
         if (s) return s;
