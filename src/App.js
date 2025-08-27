@@ -1089,12 +1089,10 @@ const Top100Archive = () => {
         {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
 {activeTab === 'managers' &&
   (dataLoaded ? (
-    <ManagerProfiles
-      allPositionData={allPositionData}
-      playoffWinnersSet={playoffWinnersSet}
-    />
-  ) : (
-    <DataPlaceholder />
+<ManagerProfiles
+  allPositionData={allPositionData}
+  winnersSet={playoffWinnersSet /* or playoffWinnersSetMemo */}
+/>
   ))}
         {activeTab === 'honours'  && <Winners />}
 
