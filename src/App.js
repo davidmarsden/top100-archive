@@ -1,7 +1,8 @@
 // src/App.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Charts from './Charts';
-import ManagerProfiles from './ManagerProfiles';
+import Charts from "./Charts";
+import ManagerProfiles from "./ManagerProfiles";
+import Winners from "./Winners";
 import {
   Search,
   BarChart3,
@@ -14,20 +15,9 @@ import {
   Database,
 } from 'lucide-react';
 
-/* =========================
-   Helpers: rules + styling
-   ========================= */
-
-const numeric = (v) => (isNaN(parseInt(v || 0, 10)) ? 0 : parseInt(v, 10));
-const normalizeName = (s) =>
-  String(s || '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-
-// Competition rules
+// ------------------------------
+// Status logic helpers
+// ------------------------------
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
 const isD1UCL = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
 const isD1Shield = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
@@ -48,332 +38,175 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
-// Row + pill styling, with special case for playoff winner (promoted)
-const getRowStyling = (position, division, isPlayoffWinner) => {
+// --- normalization for playoff winners
+const normDiv = (d) => {
+  const m = String(d || '').match(/\d+/);
+  return m ? m[0] : String(d || '').trim();
+};
+const normalizeName = (s) =>
+  String(s || '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(fc|cf|afc|sc|club)\b/gi, ' ')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+const playoffWinnerKey = (season, division, team) =>
+  `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
+
+const getTeamTags = (position, division, team, season, playoffWinnersSet) => {
+  const tags = [];
+  if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
+  if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
+  if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
+  if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
+  if (isPlayoffBand(division, position) &&
+      playoffWinnersSet.has(playoffWinnerKey(season, division, team))) {
+    tags.push({ label: 'Playoff Winner (Promoted)', style: 'bg-green-200 text-green-900 border border-green-400' });
+  }
+  if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
+  if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+  return tags;
+};
+
+const getRowStyling = (position, division) => {
   if (isAutoSacked(position)) return 'bg-rose-50 border-l-4 border-rose-700 ring-1 ring-rose-200 hover:bg-rose-100';
   if (isRelegated(division, position)) return 'bg-red-50 border-l-4 border-red-700 ring-1 ring-red-200 hover:bg-red-100';
   if (isChampion(position)) return 'bg-yellow-50 border-l-4 border-yellow-500 ring-1 ring-yellow-200 hover:bg-yellow-100';
-  if (isAutoPromo(division, position) || isPlayoffWinner) return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
+  if (isAutoPromo(division, position)) return 'bg-green-50 border-l-4 border-green-600 ring-1 ring-green-200 hover:bg-green-100';
   if (isPlayoffBand(division, position)) return 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-200 hover:bg-blue-100';
   return 'bg-white hover:bg-gray-50';
 };
 
-const getPositionBadge = (position, division, isPlayoffWinner) => {
-  // strong priority ordering
+const getPositionBadge = (position, division, team, season, playoffWinnersSet) => {
   if (isAutoSacked(position)) return { bg: 'bg-rose-600', text: 'text-white', icon: '⛔' };
   if (isRelegated(division, position)) return { bg: 'bg-red-600', text: 'text-white', icon: '⬇️' };
   if (isChampion(position)) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
-  // playoff winner promoted => ⬆️ pill
-  if (isPlayoffWinner) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
   if (isAutoPromo(division, position)) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
-  if (isPlayoffBand(division, position)) return { bg: 'bg-blue-600', text: 'text-white', icon: '🏁' };
+  if (isPlayoffBand(division, position) &&
+      playoffWinnersSet.has(playoffWinnerKey(season, division, team))) {
+    return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
+  }
   if (isD1UCL(division, position)) return { bg: 'bg-purple-600', text: 'text-white', icon: '🏆' };
   if (isD1Shield(division, position)) return { bg: 'bg-indigo-600', text: 'text-white', icon: '🛡️' };
   return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
 };
 
-const playoffWinnerKey = (season, division, team) =>
-  `${String(season || '').trim()}|${String(division || '').trim()}|${normalizeName(team)}`;
-
-// Small UI helpers
-const LegendSwatch = ({ color, label }) => (
-  <div className="flex items-center gap-2">
-    <span className={`w-4 h-4 rounded border ${color}`} />
-    <span>{label}</span>
-  </div>
-);
-
-const ThresholdCard = ({ title, rows }) => (
-  <div className="bg-white rounded-xl shadow p-4">
-    <h4 className="font-semibold mb-3">{title}</h4>
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-left text-gray-600">
-          <th className="py-2">Div</th>
-          <th className="py-2">Min</th>
-          <th className="py-2">Avg</th>
-          <th className="py-2">Max</th>
-          <th className="py-2 text-right">Samples</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} className="border-t">
-            <td className="py-2">D{r.division}</td>
-            <td className="py-2">{r.min}</td>
-            <td className="py-2 font-semibold">{r.avg}</td>
-            <td className="py-2">{r.max}</td>
-            <td className="py-2 text-right">{r.samples}</td>
-          </tr>
-        ))}
-        {rows.length === 0 && (
-          <tr>
-            <td className="py-2 text-gray-500" colSpan={5}>
-              No data available.
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-);
-
-const DataPlaceholder = () => (
-  <div className="bg-white rounded-2xl p-16 shadow-xl text-center">
-    <Trophy className="w-20 h-20 text-gray-400 mx-auto mb-6" />
-    <h3 className="text-2xl font-bold text-gray-700 mb-4">Connecting to Database…</h3>
-    <p className="text-gray-600 mb-6">Please wait while we load the latest archive data.</p>
-  </div>
-);
-
-/* =========================
-   Main Component
-   ========================= */
-
+// ------------------------------
+// Main component
+// ------------------------------
 const Top100Archive = () => {
-  // UI state
-  const [activeTab, setActiveTab] = useState('tables'); // default to tables
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('tables'); 
   const [selectedSeason, setSelectedSeason] = useState('25');
   const [selectedDivision, setSelectedDivision] = useState('1');
   const [sortBy, setSortBy] = useState('position');
-
-  // Data state
   const [allPositionData, setAllPositionData] = useState([]);
+  const [playoffWinnersBySeasonDiv, setPlayoffWinnersBySeasonDiv] = useState(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Play-off winners state (season|division -> team name from winners sheet)
-  const [playoffWinnersBySeasonDiv, setPlayoffWinnersBySeasonDiv] = useState(new Map());
-
-  // Config — env required in CI
+  // Config
   const SHEET_ID = process.env.REACT_APP_SHEET_ID;
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
   const SHEET_RANGE = 'Sorted by team!A:R';
-
   const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
-  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE; // optional, can be CSV of ranges
+  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE;
 
-  // hash <-> tab sync
-  const normalizeHashToTab = (hash) => {
-    const h = String(hash || '').replace('#', '');
-    const allowed = new Set(['search', 'tables', 'insights', 'charts', 'managers']);
-    return allowed.has(h) ? h : 'tables';
-  };
-
-  useEffect(() => {
-    const applyHash = () => {
-      const target = normalizeHashToTab(window.location.hash);
-      if (window.location.hash.replace('#', '') !== target) {
-        window.location.hash = target;
-      }
-      setActiveTab(target);
-    };
-    applyHash();
-    window.addEventListener('hashchange', applyHash);
-    return () => window.removeEventListener('hashchange', applyHash);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* =========================
-     Loaders
-     ========================= */
-
-  // Archive sheet (header-aware)
+  // Load main league data
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      if (!SHEET_ID) throw new Error('Missing REACT_APP_SHEET_ID (Netlify → Environment).');
-      if (!API_KEY) throw new Error('Missing REACT_APP_GOOGLE_API_KEY (Netlify → Environment).');
-
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        SHEET_ID
-      )}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
-
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
       const response = await fetch(url);
-      if (!response.ok) {
-        let details = '';
-        try {
-          const j = await response.json();
-          details = j?.error?.message ? ` - ${j.error.message}` : '';
-        } catch (_) {}
-        throw new Error(`API Error: ${response.status}${details}`);
-      }
-
+      if (!response.ok) throw new Error(`API error ${response.status}`);
       const data = await response.json();
-      if (!data.values || data.values.length === 0) throw new Error('No data found in the sheet');
+      if (!data.values) throw new Error("No data returned");
 
       const [headerRow, ...rows] = data.values;
-
-      const norm = (s) => String(s || '').trim().toLowerCase();
       const idx = (names) => {
         const candidates = Array.isArray(names) ? names : [names];
-        const i = headerRow.findIndex((h) => candidates.includes(norm(h)));
-        return i === -1 ? null : i;
+        return headerRow.findIndex((h) => candidates.includes(h.toLowerCase()));
       };
-
-      const cSeason = idx(['season', 'seas', 's']);
-      const cDivision = idx(['div', 'division', 'd']);
-      const cPosition = idx(['pos', 'position', 'rank']);
-      const cTeam = idx(['team', 'club']);
-      const cPlayed = idx(['p', 'played', 'pld']);
-      const cWon = idx(['w', 'won']);
-      const cDrawn = idx(['d', 'drawn', 'draws']);
-      const cLost = idx(['l', 'lost']);
-      const cGF = idx(['gf', 'goals for', 'for']);
-      const cGA = idx(['ga', 'goals against', 'against', 'conceded']);
-      const cGD = idx(['gd', 'goal difference']);
-      const cPoints = idx(['pts', 'points', 'pnts']);
-      const cStart = idx(['start date', 'start', 'date']);
-      const cManager = idx(['manager', 'mgr', 'coach']);
-
       const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
 
-      const formattedData = rows
-        .filter((row) => get(row, cSeason) && get(row, cTeam))
-        .map((row) => ({
-          season: get(row, cSeason),
-          division: get(row, cDivision),
-          position: get(row, cPosition),
-          team: get(row, cTeam),
-          played: get(row, cPlayed),
-          won: get(row, cWon),
-          drawn: get(row, cDrawn),
-          lost: get(row, cLost),
-          goals_for: get(row, cGF),
-          goals_against: get(row, cGA),
-          goal_difference: get(row, cGD),
-          points: get(row, cPoints),
-          start_date: get(row, cStart),
-          manager: get(row, cManager),
-        }));
+      const formatted = rows.map((row) => ({
+        season: get(row, 0),
+        division: get(row, 1),
+        position: get(row, 2),
+        team: get(row, 3),
+        played: get(row, 4),
+        won: get(row, 5),
+        drawn: get(row, 6),
+        lost: get(row, 7),
+        goals_for: get(row, 8),
+        goals_against: get(row, 9),
+        goal_difference: get(row, 10),
+        points: get(row, 11),
+        start_date: get(row, 12),
+        manager: get(row, 13),
+      }));
 
-      setAllPositionData(formattedData);
+      setAllPositionData(formatted);
       setDataLoaded(true);
-
-      const latestSeason = Math.max(
-        ...formattedData.map((row) => parseInt(row.season, 10) || 0)
-      ).toString();
-      setSelectedSeason(latestSeason);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [API_KEY, SHEET_ID]);
+  }, [API_KEY, SHEET_ID, SHEET_RANGE]);
 
-  // Winners sheet (clubs) — robust tab & header detection
-  const loadPlayoffWinners = useCallback(async () => {
-    if (!WINNERS_SHEET_ID || !API_KEY) return; // optional
-
-    const fromEnv = (WINNERS_CLUBS_RANGE || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const candidates = fromEnv.length
-      ? fromEnv
-      : [
-          'Clubs!A:Z',
-          'clubs!A:Z',
-          'Teams!A:Z',
-          'teams!A:Z',
-          'Winners!A:Z',
-          'Honours!A:Z',
-        ];
-
-    const tryFetch = async (range) => {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        WINNERS_SHEET_ID
-      )}/values/${encodeURIComponent(range)}?key=${encodeURIComponent(API_KEY)}`;
-
+  // Load playoff winners (clubs sheet)
+  const loadWinners = useCallback(async () => {
+    if (!WINNERS_SHEET_ID || !WINNERS_CLUBS_RANGE) return;
+    try {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(WINNERS_SHEET_ID)}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
       const res = await fetch(url);
-      if (!res.ok) return null;
-      const json = await res.json();
-      const values = json?.values || [];
-      if (!values.length) return null;
-
-      const [header, ...rows] = values;
-      const norm = (s) => String(s || '').trim().toLowerCase();
-      const H = header.map(norm);
-      const ix = (aliases) => {
-        const list = Array.isArray(aliases) ? aliases : [aliases];
-        return H.findIndex((h) => list.includes(h));
-      };
-      const get = (row, i) => (i < 0 ? '' : String(row[i] ?? '').trim());
-
-      const sIx = ix(['season', 'yr', 'year']);
-
-      const d2Ix = ix([
-        'division 2 play-off',
-        'division 2 playoff',
-        'div 2 play-off',
-        'div 2 playoff',
-        'd2 play-off',
-        'd2 playoff',
-      ]);
-      const d3Ix = ix([
-        'division 3 play-off',
-        'division 3 playoff',
-        'div 3 play-off',
-        'div 3 playoff',
-        'd3 play-off',
-        'd3 playoff',
-      ]);
-      const d4Ix = ix([
-        'division 4 play-off',
-        'division 4 playoff',
-        'div 4 play-off',
-        'div 4 playoff',
-        'd4 play-off',
-        'd4 playoff',
-      ]);
-      const d5Ix = ix([
-        'division 5 play-off',
-        'division 5 playoff',
-        'div 5 play-off',
-        'div 5 playoff',
-        'd5 play-off',
-        'd5 playoff',
-      ]);
-
-      if (sIx < 0 || (d2Ix < 0 && d3Ix < 0 && d4Ix < 0 && d5Ix < 0)) return null;
-
-      const map = new Map();
-      for (const r of rows) {
-        const season = get(r, sIx);
-        if (!season) continue;
-        const d2 = get(r, d2Ix); if (d2) map.set(`${season}|2`, d2);
-        const d3 = get(r, d3Ix); if (d3) map.set(`${season}|3`, d3);
-        const d4 = get(r, d4Ix); if (d4) map.set(`${season}|4`, d4);
-        const d5 = get(r, d5Ix); if (d5) map.set(`${season}|5`, d5);
-      }
-      return map;
-    };
-
-    for (const range of candidates) {
-      try {
-        const map = await tryFetch(range);
-        if (map && map.size) {
-          setPlayoffWinnersBySeasonDiv(map);
-          return;
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.values) return;
+      const [header, ...rows] = data.values;
+      const playoffCols = [
+        { col: header.indexOf("Division 2 Play-off"), div: 2 },
+        { col: header.indexOf("Division 3 Play-off"), div: 3 },
+        { col: header.indexOf("Division 4 Play-off"), div: 4 },
+        { col: header.indexOf("Division 5 Play-off"), div: 5 },
+      ];
+      const s = new Set();
+      for (const row of rows) {
+        const season = row[0];
+        for (const { col, div } of playoffCols) {
+          if (col >= 0 && row[col]) {
+            s.add(playoffWinnerKey(season, div, row[col]));
+          }
         }
-      } catch {
-        // continue
       }
-    }
-    // leave empty if none matched
-  }, [API_KEY, WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE]);
+      setPlayoffWinnersBySeasonDiv(s);
+    } catch (_) {}
+  }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
 
   useEffect(() => {
     loadFromGoogleSheets();
-  }, [loadFromGoogleSheets]);
+    loadWinners();
+  }, [loadFromGoogleSheets, loadWinners]);
 
-  useEffect(() => {
-    loadPlayoffWinners();
-  }, [loadPlayoffWinners]);
+  // ---- UI continues (Search, Tables, Insights, Charts, Managers, Honours) ----
+  // For brevity, keep your existing UI components exactly as before,
+  // but replace calls to getTeamTags / getPositionBadge to include playoffWinnersBySeasonDiv.
+  // Example inside LeagueTable:
+  // const tags = getTeamTags(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+  // const badge = getPositionBadge(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+
+  // Render tab content (add honours back):
+  // {activeTab === 'honours' && <Winners />}
+
+  // Keep rest of your render unchanged…
+};
+
+export default Top100Archive;
 
   /* =========================
      Derived data
@@ -670,14 +503,9 @@ const Top100Archive = () => {
       <div className="space-y-4">
         <div className="grid gap-4">
           {filtered.map((team, index) => {
-            const { tags, isWinner } = getTeamTags(
-              team.position,
-              team.division,
-              team.team,
-              team.season,
-              playoffWinnersSet
-            );
-            const badge = getPositionBadge(team.position, team.division, isWinner);
+              const tags = getTeamTags(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+  const badge = getPositionBadge(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+
             const rowClass = getRowStyling(team.position, team.division, isWinner);
 
             return (
@@ -814,14 +642,9 @@ const Top100Archive = () => {
             </thead>
             <tbody>
               {tableData.map((team, index) => {
-                const { tags, isWinner } = getTeamTags(
-                  team.position,
-                  selectedDivision,
-                  team.team,
-                  team.season,
-                  playoffWinnersSet
-                );
-                const badge = getPositionBadge(team.position, selectedDivision, isWinner);
+                  const tags = getTeamTags(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+  const badge = getPositionBadge(team.position, selectedDivision, team.team, team.season, playoffWinnersBySeasonDiv);
+
                 const rowCls = getRowStyling(team.position, selectedDivision, isWinner);
 
                 return (
@@ -1150,6 +973,7 @@ const Top100Archive = () => {
               { id: 'insights', label: 'Insights',          icon: BarChart3, color: 'green' },
               { id: 'charts',   label: 'Charts',            icon: BarChart3, color: 'indigo' },
               { id: 'managers', label: 'Manager Profiles',  icon: Users,     color: 'teal' },
+													{ id: 'honours', label: 'Honours',  icon: Users,     color: 'amber' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1226,11 +1050,12 @@ const Top100Archive = () => {
         </div>
 
         {/* Content sections */}
-        {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-        {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
-        {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
-        {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
-        {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
+{activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+{activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
+{activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
+{activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+{activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
+{activeTab === 'honours'  && <Winners />}
       </div>
 
       {/* Footer */}
