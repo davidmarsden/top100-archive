@@ -1087,7 +1087,17 @@ const Top100Archive = () => {
         {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
         {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
         {activeTab === 'managers' && (dataLoaded ? <ManagerProfiles allPositionData={allPositionData} /> : <DataPlaceholder />)}
+{activeTab === 'managers' &&
+  (dataLoaded ? (
+    <ManagerProfiles
+      allPositionData={allPositionData}
+      playoffWinnersSet={playoffWinnersSetMemo}
+    />
+  ) : (
+    <DataPlaceholder />
+  ))}
         {activeTab === 'honours'  && <Winners />}
+
       </div>
 
       {/* Footer */}
