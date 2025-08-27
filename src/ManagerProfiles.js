@@ -1,19 +1,16 @@
 // src/ManagerProfiles.js
 import React, { useMemo, useState } from "react";
-import {
-  Users, Trophy, ArrowUpCircle, Play, ArrowDownCircle,
-  AlertTriangle, Search
-} from "lucide-react";
+import { Users, Trophy, AlertCircle } from "lucide-react";
 
-/* ---------- small helpers ---------- */
-const numeric = (v) => {
-  const n = parseInt(String(v ?? "").replace(/[^\d-]/g, ""), 10);
-  return Number.isFinite(n) ? n : 0;
-};
+// ---------- helpers (mirror App.js EXACTLY) ----------
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
 const isAutoPromo = (div, pos) => {
   const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && (p === 2 || p === 3);
+};
+const isPlayoffBand = (div, pos) => {
+  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  return d >= 2 && d <= 5 && p >= 4 && p <= 7;
 };
 const isRelegated = (div, pos) => {
   const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
@@ -24,257 +21,219 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
-const seasonNorm = (s) => {
-  const m = String(s || "").match(/\d+/);
-  return m ? m[0] : String(s || "").trim();
-};
 const normDiv = (d) => {
-  const m = String(d || "").match(/\d+/);
-  return m ? m[0] : String(d || "").trim();
+  const m = String(d || '').match(/\d+/);
+  return m ? m[0] : String(d || '').trim();
 };
-
-// base normalization
 const normalizeName = (s) =>
-  String(s || "")
-    .replace(/\([^)]*\)/g, " ")
-    .replace(/\b(fc|cf|cp|fk|cr|afc|sc|club)\b/gi, " ")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
+  String(s || '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(fc|cf|afc|sc|club)\b/gi, ' ')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+const playoffWinnerKey = (season, division, team) =>
+  `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
-// tolerant normalization: also strips common prefixes
-const stripPrefixes = (name) => {
-  const tokens = name.split(" ").filter(Boolean);
-  const drop = new Set([
-    "rcd","real","rb","ac","as","ss","ud","sd","cd","cf","fc","sc","afc","ssc",
-    "psv","deportivo","club","club de"
-  ]);
-  // remove up to first two tokens if they’re in the drop list or <= 3 chars
-  let i = 0;
-  while (i < tokens.length && i < 2 && (drop.has(tokens[i]) || tokens[i].length <= 3)) i++;
-  return tokens.slice(i).join(" ").trim() || name;
-};
+// ---------- component ----------
+export default function ManagerProfiles({
+  allPositionData = [],
+  playoffWinnersSet,                 // <-- pass from App.js
+  playoffWinnersBySeasonDiv,         // <-- fallback if older prop name is used
+}) {
+  // normalize winners set (tolerant to null / wrong prop name)
+  const winnersSet = useMemo(() => {
+    if (playoffWinnersSet instanceof Set) return playoffWinnersSet;
+    // some older versions passed a Map like { "S19|2" -> "Team" }, handle that too
+    if (playoffWinnersBySeasonDiv && typeof playoffWinnersBySeasonDiv.forEach === 'function') {
+      const s = new Set();
+      playoffWinnersBySeasonDiv.forEach((team, key) => {
+        // key may be "S19|2" or "19|2|<team>", try to reconstruct safely
+        const parts = String(key).split('|');
+        if (parts.length >= 2) {
+          const season = parts[0];
+          const division = parts[1];
+          s.add(playoffWinnerKey(season, division, team));
+        }
+      });
+      return s;
+    }
+    return new Set();
+  }, [playoffWinnersSet, playoffWinnersBySeasonDiv]);
 
-const keyExact = (season, division, team) =>
-  `${seasonNorm(season)}|${normDiv(division)}|${normalizeName(team)}`;
-
-const keyLoose = (season, division, team) =>
-  `${seasonNorm(season)}|${normDiv(division)}|${normalizeName(stripPrefixes(team))}`;
-
-// tolerant membership test against the winners Set
-const isPlayoffWinner = (season, division, team, winnersSet) => {
-  if (!winnersSet) return false;
-  if (winnersSet.has(keyExact(season, division, team))) return true;
-  if (winnersSet.has(keyLoose(season, division, team))) return true;
-  return false;
-};
-
-/* ----------------------------------- */
-
-export default function ManagerProfiles({ allPositionData = [], playoffWinnersSet }) {
-  // Manager list (unique + sorted)
-  const managers = useMemo(() => {
-    const set = new Set(
-      allPositionData.map((r) => (r.manager || "").trim()).filter(Boolean)
-    );
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  // managers list
+  const managerNames = useMemo(() => {
+    return [...new Set(allPositionData.map(r => (r.manager || '').trim()))]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
   }, [allPositionData]);
 
-  const [query, setQuery] = useState("");
+  const [teamQuery, setTeamQuery] = useState('');
+  const [managerQuery, setManagerQuery] = useState(managerNames[0] || '');
+
   const filteredManagers = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    if (!q) return managers;
-    return managers.filter((m) => m.toLowerCase().includes(q));
-  }, [managers, query]);
-
-  // Aggregate per manager
-  const perManager = useMemo(() => {
-    const map = new Map();
+    const qTeam = teamQuery.toLowerCase();
+    const qMgr  = managerQuery.toLowerCase();
+    const grouped = new Map();
     for (const r of allPositionData) {
-      const m = (r.manager || "").trim();
-      if (!m) continue;
-      if (!map.has(m)) {
-        map.set(m, {
-          manager: m,
-          appearances: 0,
-          titles: 0,
-          autoPromotions: 0,
-          playoffWins: 0,
-          relegations: 0,
-          sackings: 0,
-          teams: new Set(),
-          seasons: new Set(),
-          rows: [],
-        });
-      }
-      const item = map.get(m);
-      item.appearances += 1;
-      item.teams.add(r.team);
-      item.seasons.add(seasonNorm(r.season));
-      item.rows.push(r);
-
-      if (isChampion(r.position)) item.titles += 1;
-      if (isAutoPromo(r.division, r.position)) item.autoPromotions += 1;
-      if (isRelegated(r.division, r.position)) item.relegations += 1;
-      if (isAutoSacked(r.position)) item.sackings += 1;
-
-      if (isPlayoffWinner(r.season, r.division, r.team, playoffWinnersSet)) {
-        item.playoffWins += 1;
-      }
+      const mgr = (r.manager || '').trim();
+      if (!mgr) continue;
+      if (qMgr && !mgr.toLowerCase().includes(qMgr)) continue;
+      if (qTeam && !String(r.team || '').toLowerCase().includes(qTeam)) continue;
+      if (!grouped.has(mgr)) grouped.set(mgr, []);
+      grouped.get(mgr).push(r);
     }
-    for (const v of map.values()) {
-      v.teamCount = v.teams.size;
-      v.seasonCount = v.seasons.size;
-      v.teams = Array.from(v.teams).sort((a, b) => a.localeCompare(b));
-      v.seasons = Array.from(v.seasons).sort((a, b) => Number(a) - Number(b));
+    // sort each manager’s rows newest season first then by division asc then position asc
+    for (const [mgr, rows] of grouped.entries()) {
+      rows.sort((a, b) => {
+        const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
+        if (s !== 0) return s;
+        const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
+        if (d !== 0) return d;
+        return parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
+      });
     }
-    return map;
-  }, [allPositionData, playoffWinnersSet]);
+    return [...grouped.entries()]
+      .sort(([a], [b]) => a.localeCompare(b));
+  }, [allPositionData, teamQuery, managerQuery]);
 
-  const [selected, setSelected] = useState("");
-  const currentManager = useMemo(() => {
-    const pick = selected || filteredManagers[0] || "";
-    return perManager.get(pick);
-  }, [selected, filteredManagers, perManager]);
+  const ManagerCard = ({ name, rows }) => {
+    // counters
+    let titles = 0, autoPromos = 0, playoffWins = 0, releg = 0, sack = 0;
+
+    const tableRows = rows.map(r => {
+      const season = r.season, division = r.division, pos = r.position, team = r.team;
+
+      const wonTitle = isChampion(pos);
+      const auto = isAutoPromo(division, pos);
+      const inPly = isPlayoffBand(division, pos);
+
+      const wonPlayoff = winnersSet.has(playoffWinnerKey(season, division, team));
+
+      if (wonTitle) titles++;
+      if (auto) autoPromos++;
+      if (wonPlayoff) playoffWins++;
+      if (isRelegated(division, pos)) releg++;
+      if (isAutoSacked(pos)) sack++;
+
+      const notes = [];
+      if (wonPlayoff) notes.push('Playoff Winner 🏆');
+      if (wonTitle) notes.push('Champions');
+      if (auto) notes.push('Auto Promoted');
+      if (inPly && !wonPlayoff) notes.push('Playoffs');
+
+      if (isRelegated(division, pos)) notes.push('Relegated');
+      if (isAutoSacked(pos)) notes.push('Auto-Sacked');
+
+      return {
+        season,
+        division,
+        position: pos,
+        team,
+        points: r.points,
+        notes: notes.join(' • ') || '—',
+      };
+    });
+
+    return (
+      <div className="bg-white rounded-xl shadow p-4 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-slate-700" />
+            <h3 className="font-bold text-lg">{name || 'Unknown'}</h3>
+          </div>
+          <div className="flex gap-3 text-sm">
+            <Badge label="Titles" value={titles} color="yellow" />
+            <Badge label="Auto Promotions" value={autoPromos} color="green" />
+            <Badge label="Playoff Wins" value={playoffWins} color="emerald" />
+            <Badge label="Relegations" value={releg} color="red" />
+            <Badge label="Sackings" value={sack} color="rose" />
+            <Badge label="Seasons Managed" value={rows.length} color="indigo" />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-600">
+                <th className="py-2 px-2">Season</th>
+                <th className="py-2 px-2">Division</th>
+                <th className="py-2 px-2">Pos</th>
+                <th className="py-2 px-2">Team</th>
+                <th className="py-2 px-2">Pts</th>
+                <th className="py-2 px-2">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map((tr, i) => (
+                <tr key={i} className="border-t">
+                  <td className="py-2 px-2">S{tr.season}</td>
+                  <td className="py-2 px-2">D{tr.division}</td>
+                  <td className="py-2 px-2">{tr.position}</td>
+                  <td className="py-2 px-2">{tr.team}</td>
+                  <td className="py-2 px-2">{tr.points}</td>
+                  <td className="py-2 px-2">{tr.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      {/* Search + dropdown */}
-      <div className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row gap-3">
-        <div className="relative md:w-1/2">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="flex gap-3 flex-col md:flex-row">
+        <div className="relative flex-1">
           <input
-            className="w-full pl-9 pr-3 py-2 border rounded-lg"
-            placeholder="Search managers…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg"
+            placeholder="Search teams…"
+            value={teamQuery}
+            onChange={(e) => setTeamQuery(e.target.value)}
           />
         </div>
-        <select
-          className="md:w-1/2 px-3 py-2 border rounded-lg"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          {filteredManagers.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+        <div>
+          <select
+            className="px-3 py-2 border rounded-lg"
+            value={managerQuery}
+            onChange={(e) => setManagerQuery(e.target.value)}
+          >
+            {managerNames.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Summary + history */}
-      {currentManager ? (
-        <>
-          <Summary manager={currentManager} />
-          <CareerTable rows={currentManager.rows} winnersSet={playoffWinnersSet} />
-        </>
+      {filteredManagers.length === 0 ? (
+        <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded">
+          <AlertCircle className="w-5 h-5" />
+          <span>No managers match your filters.</span>
+        </div>
       ) : (
-        <div className="bg-white rounded-xl shadow p-6 text-gray-600">No manager selected.</div>
+        filteredManagers.map(([name, rows]) => (
+          <ManagerCard key={name || 'unknown'} name={name} rows={rows} />
+        ))
       )}
     </div>
   );
 }
 
-function Summary({ manager }) {
+function Badge({ label, value, color }) {
+  const colors = {
+    yellow: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    green: 'bg-green-100 text-green-800 border-green-300',
+    emerald: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    red: 'bg-red-100 text-red-800 border-red-300',
+    rose: 'bg-rose-100 text-rose-800 border-rose-300',
+    indigo: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  };
   return (
-    <div className="bg-white rounded-xl shadow p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <Users className="w-6 h-6 text-teal-700" />
-        <h2 className="text-xl font-bold">{manager.manager}</h2>
-      </div>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatBox icon={<Trophy className="w-4 h-4" />} label="Titles" value={manager.titles} tone="yellow" />
-        <StatBox icon={<ArrowUpCircle className="w-4 h-4" />} label="Auto Promotions" value={manager.autoPromotions} tone="green" />
-        <StatBox icon={<Play className="w-4 h-4" />} label="Playoff Wins" value={manager.playoffWins} tone="emerald" />
-        <StatBox icon={<ArrowDownCircle className="w-4 h-4" />} label="Relegations" value={manager.relegations} tone="red" />
-        <StatBox icon={<AlertTriangle className="w-4 h-4" />} label="Sackings" value={manager.sackings} tone="rose" />
-        <StatBox icon={<Users className="w-4 h-4" />} label="Seasons Managed" value={manager.seasonCount} tone="indigo" />
-      </div>
-
-      <div className="mt-6 text-sm text-gray-600">
-        <p><span className="font-semibold">Teams:</span> {manager.teams.join(" • ") || "—"}</p>
-        <p className="mt-1"><span className="font-semibold">Seasons:</span> {manager.seasons.join(", ") || "—"}</p>
-      </div>
-    </div>
-  );
-}
-
-function CareerTable({ rows, winnersSet }) {
-  return (
-    <div className="bg-white rounded-xl shadow overflow-hidden">
-      <div className="px-6 py-4 border-b">
-        <h3 className="font-semibold">Career History</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr className="text-left text-gray-600">
-              <th className="py-2 px-3">Season</th>
-              <th className="py-2 px-3">Division</th>
-              <th className="py-2 px-3">Pos</th>
-              <th className="py-2 px-3">Team</th>
-              <th className="py-2 px-3 text-right">Pts</th>
-              <th className="py-2 px-3">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows
-              .slice()
-              .sort((a, b) => {
-                const s = numeric(a.season) - numeric(b.season);
-                if (s !== 0) return s;
-                const d = numeric(a.division) - numeric(b.division);
-                if (d !== 0) return d;
-                return numeric(a.position) - numeric(b.position);
-              })
-              .map((r, i) => {
-                const playoffWin = isPlayoffWinner(r.season, r.division, r.team, winnersSet);
-                const notes = [
-                  isChampion(r.position) && "Champions",
-                  isAutoPromo(r.division, r.position) && "Auto-Promoted",
-                  playoffWin && "Playoff Winner 🏆",
-                  isRelegated(r.division, r.position) && "Relegated",
-                  isAutoSacked(r.position) && "Auto-Sacked",
-                ].filter(Boolean).join(" • ");
-
-                return (
-                  <tr key={i} className="border-t">
-                    <td className="py-2 px-3">S{r.season}</td>
-                    <td className="py-2 px-3">D{r.division}</td>
-                    <td className="py-2 px-3">#{r.position}</td>
-                    <td className="py-2 px-3">{r.team}</td>
-                    <td className="py-2 px-3 text-right font-semibold">{r.points}</td>
-                    <td className="py-2 px-3">{notes || "—"}</td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function StatBox({ icon, label, value, tone = "slate" }) {
-  const tones = {
-    yellow: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    green: "bg-green-100 text-green-800 border-green-300",
-    emerald: "bg-emerald-100 text-emerald-800 border-emerald-300",
-    red: "bg-red-100 text-red-800 border-red-300",
-    rose: "bg-rose-100 text-rose-800 border-rose-300",
-    indigo: "bg-indigo-100 text-indigo-800 border-indigo-300",
-    slate: "bg-slate-100 text-slate-800 border-slate-300",
-  }[tone];
-
-  return (
-    <div className={`rounded-lg border p-3 flex items-center gap-3 ${tones}`}>
-      <span className="shrink-0 p-2 rounded-lg bg-white/60">{icon}</span>
-      <div>
-        <div className="text-xs uppercase tracking-wide">{label}</div>
-        <div className="text-lg font-bold">{value}</div>
-      </div>
-    </div>
+    <span className={`px-2 py-0.5 rounded-md border text-xs font-semibold ${colors[color] || ''}`}>
+      {label} <span className="font-bold ml-1">{value}</span>
+    </span>
   );
 }
