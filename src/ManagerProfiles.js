@@ -1,6 +1,6 @@
 // src/ManagerProfiles.js
 import React, { useMemo, useState } from "react";
-import { Users, Trophy, AlertCircle } from "lucide-react";
+import { Users, AlertCircle } from "lucide-react";
 
 // ---------- helpers (mirror App.js EXACTLY) ----------
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
@@ -40,17 +40,15 @@ const playoffWinnerKey = (season, division, team) =>
 // ---------- component ----------
 export default function ManagerProfiles({
   allPositionData = [],
-  playoffWinnersSet,                 // <-- pass from App.js
-  playoffWinnersBySeasonDiv,         // <-- fallback if older prop name is used
+  playoffWinnersSet,                 // pass from App.js
+  playoffWinnersBySeasonDiv,         // fallback (older prop shape)
 }) {
-  // normalize winners set (tolerant to null / wrong prop name)
+  // Normalize winners set (tolerant to null / alt shape)
   const winnersSet = useMemo(() => {
     if (playoffWinnersSet instanceof Set) return playoffWinnersSet;
-    // some older versions passed a Map like { "S19|2" -> "Team" }, handle that too
     if (playoffWinnersBySeasonDiv && typeof playoffWinnersBySeasonDiv.forEach === 'function') {
       const s = new Set();
       playoffWinnersBySeasonDiv.forEach((team, key) => {
-        // key may be "S19|2" or "19|2|<team>", try to reconstruct safely
         const parts = String(key).split('|');
         if (parts.length >= 2) {
           const season = parts[0];
@@ -77,16 +75,18 @@ export default function ManagerProfiles({
     const qTeam = teamQuery.toLowerCase();
     const qMgr  = managerQuery.toLowerCase();
     const grouped = new Map();
+
     for (const r of allPositionData) {
-      const mgr = (r.manager || '').trim();
-      if (!mgr) continue;
-      if (qMgr && !mgr.toLowerCase().includes(qMgr)) continue;
+      const m = (r.manager || '').trim(); // use `m`, not an unused `mgr`
+      if (!m) continue;
+      if (qMgr && !m.toLowerCase().includes(qMgr)) continue;
       if (qTeam && !String(r.team || '').toLowerCase().includes(qTeam)) continue;
-      if (!grouped.has(mgr)) grouped.set(mgr, []);
-      grouped.get(mgr).push(r);
+      if (!grouped.has(m)) grouped.set(m, []);
+      grouped.get(m).push(r);
     }
+
     // sort each manager’s rows newest season first then by division asc then position asc
-    for (const [mgr, rows] of grouped.entries()) {
+    for (const [name, rows] of grouped.entries()) {
       rows.sort((a, b) => {
         const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
         if (s !== 0) return s;
@@ -95,12 +95,10 @@ export default function ManagerProfiles({
         return parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
       });
     }
-    return [...grouped.entries()]
-      .sort(([a], [b]) => a.localeCompare(b));
+    return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [allPositionData, teamQuery, managerQuery]);
 
   const ManagerCard = ({ name, rows }) => {
-    // counters
     let titles = 0, autoPromos = 0, playoffWins = 0, releg = 0, sack = 0;
 
     const tableRows = rows.map(r => {
@@ -123,7 +121,6 @@ export default function ManagerProfiles({
       if (wonTitle) notes.push('Champions');
       if (auto) notes.push('Auto Promoted');
       if (inPly && !wonPlayoff) notes.push('Playoffs');
-
       if (isRelegated(division, pos)) notes.push('Relegated');
       if (isAutoSacked(pos)) notes.push('Auto-Sacked');
 
