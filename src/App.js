@@ -1038,72 +1038,83 @@ const Top100Archive = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Search & selectors */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search teams or managers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                disabled={!dataLoaded}
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Only show season/div selectors on the Tables tab */}
-            {activeTab === 'tables' && availableSeasons.length > 0 && (
-              <>
-                <SeasonSelect
-                  value={selectedSeason}
-                  onChange={setSelectedSeason}
-                  seasons={availableSeasons}
-                />
-                <DivisionSelect
-                  value={selectedDivision}
-                  onChange={setSelectedDivision}
-                  divisions={availableDivisions}
-                />
-              </>
-            )}
-          </div>
+ {/* Main Content */}
+<div className="max-w-7xl mx-auto px-6 py-8">
+  {/* Global search bar — only on Search tab */}
+  {activeTab === 'search' && (
+    <div className="mb-8">
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search teams or managers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+            disabled={!dataLoaded}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
         </div>
+      </div>
+    </div>
+  )}
 
-{/* Content sections */}
-{activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-{activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
-{activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
-{activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+  {/* Season/Division selectors — only on League Tables tab */}
+  {activeTab === 'tables' && availableSeasons.length > 0 && (
+    <div className="mb-8">
+      <div className="flex flex-col lg:flex-row gap-4">
+        <select
+          value={selectedSeason}
+          onChange={(e) => setSelectedSeason(e.target.value)}
+          className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+        >
+          {availableSeasons.map((season) => (
+            <option key={season} value={season}>
+              Season {season}
+            </option>
+          ))}
+        </select>
 
-{activeTab === 'managers' && (
-  dataLoaded ? (
-    <>
-      {/* Tip: if you memoize, swap to winnersSet={playoffWinnersSetMemo} */}
+        <select
+          value={selectedDivision}
+          onChange={(e) => setSelectedDivision(e.target.value)}
+          className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+        >
+          {availableDivisions.map((div) => (
+            <option key={div} value={div}>
+              Division {div}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )}
+
+  {/* Content sections */}
+  {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+  {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
+  {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
+  {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+  {activeTab === 'managers' && (
+    dataLoaded ? (
       <ManagerProfiles
         allPositionData={allPositionData}
-        winnersSet={playoffWinnersSet}
+        winnersSet={playoffWinnersSet} // or playoffWinnersSetMemo
       />
-    </>
-  ) : (
-    <DataPlaceholder />
-  )
-)}
-
-{activeTab === 'honours' && <Winners />}
-
-      </div>
+    ) : (
+      <DataPlaceholder />
+    )
+  )}
+  {activeTab === 'honours' && <Winners />}
+</div>
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-800 to-slate-900 text-white mt-16">
