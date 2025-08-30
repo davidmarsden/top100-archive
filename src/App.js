@@ -1092,9 +1092,9 @@ const Top100Archive = () => {
             </div>
           </div>
         </div>
-      </footer>
-    </div>  // ← closes the outermost wrapper
-  );        // ← closes return(...)
-};          // ← closes component
+</footer>
+    </div>
+  );
+};
 
 export default Top100Archive;
