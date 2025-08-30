@@ -1048,29 +1048,24 @@ const Top100Archive = () => {
           </div>
         )}
 
-        {/* Content sections */}
-        {activeTab === "search" &&
-          (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-        {activeTab === "tables" &&
-          (dataLoaded ? <LeagueTable /> : <DataPlaceholder />)}
-        {activeTab === "insights" &&
-          (dataLoaded ? <Insights /> : <DataPlaceholder />)}
-        {activeTab === "charts" &&
-          (dataLoaded ? (
-            <Charts thresholdHistory={thresholdHistory} />
-          ) : (
-            <DataPlaceholder />
-          ))}
-        {activeTab === "managers" &&
-          (dataLoaded ? (
+{/* Content sections */}
+        {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+        {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
+        {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
+        {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+
+        {activeTab === 'managers' && (
+          dataLoaded ? (
             <ManagerProfiles
               allPositionData={allPositionData}
               winnersSet={playoffWinnersSet}
             />
           ) : (
             <DataPlaceholder />
-          ))}
-        {activeTab === "honours" && <Winners />}
+          )
+        )}
+
+        {activeTab === 'honours' && <Winners />}
       </div>
 
       {/* Footer */}
@@ -1081,9 +1076,7 @@ const Top100Archive = () => {
               <Trophy className="w-12 h-12 text-yellow-400" />
             </div>
             <h3 className="text-2xl font-bold mb-2">Soccer Manager Worlds Top 100</h3>
-            <p className="text-gray-300 mb-6">
-              Elite Community • Historical Database • 25+ Seasons
-            </p>
+            <p className="text-gray-300 mb-6">Elite Community • Historical Database • 25+ Seasons</p>
             <div className="mt-8 pt-6 border-t border-gray-700">
               <p className="text-sm text-gray-400">
                 Built for the Soccer Manager Worlds Top 100 Community •
@@ -1092,7 +1085,7 @@ const Top100Archive = () => {
             </div>
           </div>
         </div>
-</footer>
+      </footer>
     </div>
   );
 };
