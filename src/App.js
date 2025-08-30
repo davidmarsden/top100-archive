@@ -974,12 +974,12 @@ const Top100Archive = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
             {[
-              { id: "search", label: "Search", icon: Search, color: "blue" },
-              { id: "tables", label: "League Tables", icon: BarChart3, color: "purple" },
-              { id: "insights", label: "Insights", icon: BarChart3, color: "green" },
-              { id: "charts", label: "Charts", icon: BarChart3, color: "indigo" },
-              { id: "managers", label: "Manager Profiles", icon: Users, color: "teal" },
-              { id: "honours", label: "Honours", icon: Users, color: "amber" },
+              { id: 'search',   label: 'Search',            icon: Search,   color: 'blue' },
+              { id: 'tables',   label: 'League Tables',     icon: BarChart3, color: 'purple' },
+              { id: 'insights', label: 'Insights',          icon: BarChart3, color: 'green' },
+              { id: 'charts',   label: 'Charts',            icon: BarChart3, color: 'indigo' },
+              { id: 'managers', label: 'Manager Profiles',  icon: Users,     color: 'teal' },
+              { id: 'honours',  label: 'Honours',           icon: Users,     color: 'amber' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -990,7 +990,7 @@ const Top100Archive = () => {
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                   activeTab === tab.id
                     ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -1002,53 +1002,60 @@ const Top100Archive = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Global search ONLY on Search tab */}
-        {activeTab === "search" && (
-          <div className="mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search teams or managers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                  disabled={!dataLoaded}
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Season/Division Selectors (only on League Tables tab) */}
-        {activeTab === "tables" && availableSeasons.length > 0 && (
-          <div className="mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <SeasonSelect
-                value={selectedSeason}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                seasons={availableSeasons}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Global Search & selectors */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search teams or managers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                disabled={!dataLoaded}
               />
-              <DivisionSelect
-                value={selectedDivision}
-                onChange={(e) => setSelectedDivision(e.target.value)}
-                divisions={availableDivisions}
-              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          </div>
-        )}
 
-{/* Content sections */}
+            {activeTab === 'tables' && availableSeasons.length > 0 && (
+              <>
+                <select
+                  value={selectedSeason}
+                  onChange={(e) => setSelectedSeason(e.target.value)}
+                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+                >
+                  {availableSeasons.map((season) => (
+                    <option key={season} value={season}>
+                      Season {season}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedDivision}
+                  onChange={(e) => setSelectedDivision(e.target.value)}
+                  className="px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+                >
+                  {availableDivisions.map((div) => (
+                    <option key={div} value={div}>
+                      Division {div}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Content sections */}
         {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
         {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
         {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
@@ -1066,7 +1073,7 @@ const Top100Archive = () => {
         )}
 
         {activeTab === 'honours' && <Winners />}
-      </div>
+      </main>
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-800 to-slate-900 text-white mt-16">
