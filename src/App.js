@@ -200,30 +200,67 @@ const Top100Archive = () => {
       const data = await response.json();
       if (!data.values) throw new Error("No data returned");
 
-      const [, ...rows] = data.values; // skip header row
-      const get = (row, i) => (i == null ? "" : String(row[i] ?? "").trim());
+// --- build a header index once
+const [headerRow, ...rows] = data.values;
+const H = headerRow.map(h => String(h || '').trim().toLowerCase());
+const find = (...opts) => {
+  for (const o of opts) {
+    const i = H.indexOf(String(o).toLowerCase());
+    if (i >= 0) return i;
+  }
+  return -1;
+};
+const get = (row, i) => (i == null || i < 0 ? '' : String(row[i] ?? '').trim());
 
-      const formatted = rows
-        .filter((r) => r && r.length)
-        .map((row) => ({
-          season: get(row, 0),
-          division: get(row, 1),
-          position: get(row, 2),
-          team: get(row, 4),
-          played: get(row, 5),
-          won: get(row, 6),
-          drawn: get(row, 7),
-          lost: get(row, 8),
-          goals_for: get(row, 9),
-          goals_against: get(row, 10),
-          goal_difference: get(row, 11),
-          points: get(row, 12),
-          start_date: get(row, 13-14),
-          manager: get(row, 15),
-        }));
+// indices (robust to column shuffles / renames)
+const iSeason     = find('season');
+const iDivision   = find('division', 'div');
+const iPosition   = find('position', 'pos');
+const iTeam       = find('team', 'club');
 
-      setAllPositionData(formatted);
-      setDataLoaded(true);
+const iPlayed     = find('p', 'played');
+const iWon        = find('w', 'won');
+const iDrawn      = find('d', 'drawn');
+const iLost       = find('l', 'lost');
+const iGF         = find('gf', 'goals for', 'goals_for');
+const iGA         = find('ga', 'goals against', 'goals_against');
+const iGD         = find('gd', 'goal difference', 'goal_difference');
+const iPts        = find('pts', 'points');
+
+// Start date split across two columns (month + year)
+const iStartMonth = find('start month', 'month', 'start date (month)');
+const iStartYear  = find('start year',  'year',  'start date (year)');
+
+// Manager
+const iManager    = find('manager', 'manager name');
+
+const formatted = rows
+  .filter(r => r && r.length)
+  .map(row => {
+    const startMonth = get(row, iStartMonth);
+    const startYear  = get(row, iStartYear);
+    const start_date = [startMonth, startYear].filter(Boolean).join(' '); // e.g., "Aug 15" or "Aug 2015"
+
+    return {
+      season:          get(row, iSeason),
+      division:        get(row, iDivision),
+      position:        get(row, iPosition),
+      team:            get(row, iTeam),
+      played:          get(row, iPlayed),
+      won:             get(row, iWon),
+      drawn:           get(row, iDrawn),
+      lost:            get(row, iLost),
+      goals_for:       get(row, iGF),
+      goals_against:   get(row, iGA),
+      goal_difference: get(row, iGD),
+      points:          get(row, iPts),
+      start_date,                        // ← composed from month + year
+      manager:         get(row, iManager),
+    };
+  });
+
+setAllPositionData(formatted);
+setDataLoaded(true);
     } catch (e) {
       setError(e.message);
     } finally {
