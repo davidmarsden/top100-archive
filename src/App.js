@@ -1,8 +1,5 @@
 // src/App.js
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Charts from "./Charts";
-import ManagerProfiles from "./ManagerProfiles";
-import Winners from "./Winners";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
   BarChart3,
@@ -13,29 +10,34 @@ import {
   AlertCircle,
   SortAsc,
   Database,
-} from 'lucide-react';
+} from "lucide-react";
+import Charts from "./Charts";
+import ManagerProfiles from "./ManagerProfiles";
+import Winners from "./Winners";
 
 /* =========================
-   Helpers (status, normalize, styling)
+   Helpers & Status Logic
    ========================= */
-const numeric = (v) => {
-  const n = parseFloat(v);
-  return Number.isNaN(n) ? 0 : n;
-};
+const numeric = (x) => (Number.isFinite(parseInt(x, 10)) ? parseInt(x, 10) : 0);
 
-const isChampion   = (pos) => parseInt(pos || 0, 10) === 1;
-const isD1UCL      = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
-const isD1Shield   = (div, pos) => parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
-const isAutoPromo  = (div, pos) => {
-  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
+const isD1UCL = (div, pos) =>
+  parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 2 && parseInt(pos || 0, 10) <= 4;
+const isD1Shield = (div, pos) =>
+  parseInt(div || 0, 10) === 1 && parseInt(pos || 0, 10) >= 5 && parseInt(pos || 0, 10) <= 10;
+const isAutoPromo = (div, pos) => {
+  const d = parseInt(div || 0, 10),
+    p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && (p === 2 || p === 3);
 };
 const isPlayoffBand = (div, pos) => {
-  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  const d = parseInt(div || 0, 10),
+    p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && p >= 4 && p <= 7;
 };
 const isRelegated = (div, pos) => {
-  const d = parseInt(div || 0, 10), p = parseInt(pos || 0, 10);
+  const d = parseInt(div || 0, 10),
+    p = parseInt(pos || 0, 10);
   return d >= 1 && d <= 4 && p >= 17 && p <= 20;
 };
 const isAutoSacked = (pos) => {
@@ -43,60 +45,107 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
-const getRowStyling = (position, division) => {
-  if (isAutoSacked(position)) return "bg-rose-50";
-  if (isRelegated(division, position)) return "bg-red-50";
-  if (isChampion(position)) return "bg-yellow-50";
-  if (isAutoPromo(division, position)) return "bg-green-50";
-  if (isPlayoffBand(division, position)) return "bg-blue-50";
-  if (isD1UCL(division, position)) return "bg-purple-50";
-  if (isD1Shield(division, position)) return "bg-indigo-50";
-  return "";
-};
-
-// normalization used for playoff winners matching
+// normalization for winners
 const normDiv = (d) => {
-  const m = String(d || '').match(/\d+/);
-  return m ? m[0] : String(d || '').trim();
+  const m = String(d || "").match(/\d+/);
+  return m ? m[0] : String(d || "").trim();
 };
 const normalizeName = (s) =>
-  String(s || '')
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/\b(fc|cf|afc|sc|club)\b/gi, ' ')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
+  String(s || "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b(fc|cf|afc|sc|club)\b/gi, " ")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 const playoffWinnerKey = (season, division, team) =>
-  `${String(season || '').trim()}|${normDiv(division)}|${normalizeName(team)}`;
+  `${String(season || "").trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
-// Tags and badge
-const getTeamTags = (position, division, team, season, winnersSet) => {
+// small UI helpers
+const LegendSwatch = ({ color, label }) => (
+  <span className={`inline-flex items-center gap-2 px-2 py-1 rounded border ${color}`}>
+    <span className="inline-block w-3 h-3 rounded-full bg-white/60 border" />
+    <span className="text-sm">{label}</span>
+  </span>
+);
+
+const DataPlaceholder = () => (
+  <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
+    Loading data…
+  </div>
+);
+
+// pill/tag helpers
+const getTeamTags = (position, division, team, season, playoffWinnersSet) => {
   const tags = [];
-  if (isChampion(position)) tags.push({ label: 'Champions', style: 'bg-yellow-100 text-yellow-800 border border-yellow-300' });
-  if (isD1UCL(division, position)) tags.push({ label: 'SMFA Champions Cup', style: 'bg-purple-100 text-purple-800 border border-purple-300' });
-  if (isD1Shield(division, position)) tags.push({ label: 'SMFA Shield', style: 'bg-indigo-100 text-indigo-800 border border-indigo-300' });
-  if (isAutoPromo(division, position)) tags.push({ label: 'Auto-Promoted', style: 'bg-green-100 text-green-800 border border-green-300' });
-  if (isPlayoffBand(division, position) && winnersSet?.has(playoffWinnerKey(season, division, team))) {
-    tags.push({ label: 'Playoff Winner (Promoted)', style: 'bg-emerald-100 text-emerald-800 border border-emerald-300' });
+  if (isChampion(position))
+    tags.push({
+      label: "Champions",
+      style: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    });
+  if (isD1UCL(division, position))
+    tags.push({
+      label: "SMFA Champions Cup",
+      style: "bg-purple-100 text-purple-800 border border-purple-300",
+    });
+  if (isD1Shield(division, position))
+    tags.push({
+      label: "SMFA Shield",
+      style: "bg-indigo-100 text-indigo-800 border border-indigo-300",
+    });
+  if (isAutoPromo(division, position))
+    tags.push({
+      label: "Auto-Promoted",
+      style: "bg-green-100 text-green-800 border border-green-300",
+    });
+  if (isPlayoffBand(division, position))
+    tags.push({
+      label: "Playoffs",
+      style: "bg-blue-100 text-blue-800 border border-blue-300",
+    });
+  if (isRelegated(division, position))
+    tags.push({
+      label: "Relegated",
+      style: "bg-red-100 text-red-800 border border-red-300",
+    });
+  if (isAutoSacked(position))
+    tags.push({
+      label: "Auto-Sacked",
+      style: "bg-rose-200 text-rose-900 border border-rose-400",
+    });
+
+  // playoff winner promoted (from winners sheet)
+  if (playoffWinnersSet?.has(playoffWinnerKey(season, division, team))) {
+    tags.push({
+      label: "Playoff Winner (Promoted)",
+      style: "bg-emerald-100 text-emerald-800 border border-emerald-300",
+    });
   }
-  if (isRelegated(division, position)) tags.push({ label: 'Relegated', style: 'bg-red-100 text-red-800 border border-red-300' });
-  if (isAutoSacked(position)) tags.push({ label: 'Auto-Sacked', style: 'bg-rose-200 text-rose-900 border border-rose-400' });
+
   return tags;
 };
 
-const getPositionBadge = (position, division, team, season, winnersSet) => {
-  if (isAutoSacked(position)) return { bg: 'bg-rose-600', text: 'text-white', icon: '⛔' };
-  if (isRelegated(division, position)) return { bg: 'bg-red-600', text: 'text-white', icon: '⬇️' };
-  if (isChampion(position)) return { bg: 'bg-yellow-500', text: 'text-white', icon: '👑' };
-  if (isAutoPromo(division, position)) return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
-  if (isPlayoffBand(division, position) && winnersSet?.has(playoffWinnerKey(season, division, team))) {
-    return { bg: 'bg-green-600', text: 'text-white', icon: '⬆️' };
-  }
-  if (isD1UCL(division, position)) return { bg: 'bg-purple-600', text: 'text-white', icon: '🏆' };
-  if (isD1Shield(division, position)) return { bg: 'bg-indigo-600', text: 'text-white', icon: '🛡️' };
-  return { bg: 'bg-gray-200', text: 'text-gray-800', icon: '' };
+const getPositionBadge = (position, division, team, season, playoffWinnersSet) => {
+  if (isAutoSacked(position)) return { bg: "bg-rose-600", text: "text-white", icon: "⛔" };
+  if (isRelegated(division, position)) return { bg: "bg-red-600", text: "text-white", icon: "⬇️" };
+  if (isChampion(position)) return { bg: "bg-yellow-500", text: "text-white", icon: "👑" };
+  if (isAutoPromo(division, position)) return { bg: "bg-green-600", text: "text-white", icon: "⬆️" };
+  if (isPlayoffBand(division, position) &&
+    playoffWinnersSet?.has(playoffWinnerKey(season, division, team)))
+    return { bg: "bg-green-600", text: "text-white", icon: "⬆️" };
+  if (isD1UCL(division, position)) return { bg: "bg-purple-600", text: "text-white", icon: "🏆" };
+  if (isD1Shield(division, position)) return { bg: "bg-indigo-600", text: "text-white", icon: "🛡️" };
+  return { bg: "bg-gray-200", text: "text-gray-800", icon: "" };
+};
+
+const getRowStyling = (position, division) => {
+  if (isChampion(position)) return "bg-yellow-50";
+  if (isAutoPromo(division, position)) return "bg-green-50";
+  if (isRelegated(division, position)) return "bg-red-50";
+  if (isPlayoffBand(division, position)) return "bg-blue-50";
+  if (isAutoSacked(position)) return "bg-rose-50";
+  return "bg-white";
 };
 
 /* =========================
@@ -104,41 +153,36 @@ const getPositionBadge = (position, division, team, season, winnersSet) => {
    ========================= */
 const Top100Archive = () => {
   // core UI state
-  const [activeTab, setActiveTab] = useState('search');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeason, setSelectedSeason] = useState('25');
-  const [selectedDivision, setSelectedDivision] = useState('1');
-  const [sortBy, setSortBy] = useState('position');
-
+  const [activeTab, setActiveTab] = useState("search");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSeason, setSelectedSeason] = useState("25");
+  const [selectedDivision, setSelectedDivision] = useState("1");
+  const [sortBy, setSortBy] = useState("position");
   const [allPositionData, setAllPositionData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // winners set for playoff winners
+  // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
-  const winnersSetMemo = useMemo(() => (playoffWinnersSet instanceof Set ? playoffWinnersSet : new Set()), [playoffWinnersSet]);
 
   // hash -> tab sync
   useEffect(() => {
     const apply = () => {
-      const h = window.location.hash.replace('#', '');
+      const h = window.location.hash.replace("#", "");
       if (h) setActiveTab(h);
     };
     apply();
-    window.addEventListener('hashchange', apply);
-    return () => window.removeEventListener('hashchange', apply);
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
   }, []);
 
-  /* =========================
-     ENV / Config
-     ========================= */
-  const SHEET_ID            = process.env.REACT_APP_SHEET_ID;
-  const API_KEY             = process.env.REACT_APP_GOOGLE_API_KEY;
-  const SHEET_RANGE         = 'Sorted by team!A:R';
-
-  const WINNERS_SHEET_ID    = process.env.REACT_APP_WINNERS_SHEET_ID;
-  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
+  // env
+  const SHEET_ID = process.env.REACT_APP_SHEET_ID;
+  const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
+  const SHEET_RANGE = "Sorted by team!A:R";
+  const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
+  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || "Clubs!A:Z";
 
   /* =========================
      Load main league data
@@ -147,14 +191,17 @@ const Top100Archive = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+        SHEET_ID
+      )}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+
       const response = await fetch(url);
       if (!response.ok) throw new Error(`API error ${response.status}`);
       const data = await response.json();
-      if (!data.values) throw new Error('No data returned');
+      if (!data.values) throw new Error("No data returned");
 
-      const [headerRow, ...rows] = data.values;
-      const get = (row, i) => (i == null ? '' : String(row[i] ?? '').trim());
+      const [, ...rows] = data.values; // skip header row
+      const get = (row, i) => (i == null ? "" : String(row[i] ?? "").trim());
 
       const formatted = rows
         .filter((r) => r && r.length)
@@ -182,16 +229,18 @@ const Top100Archive = () => {
     } finally {
       setLoading(false);
     }
-  }, [API_KEY, SHEET_ID]);
+  }, [API_KEY, SHEET_ID, SHEET_RANGE]);
 
   /* =========================
-     Load playoff winners (Clubs sheet)
-     builds Set: "season|divisionNum|normalizedTeam"
+     Load playoff winners
      ========================= */
   const loadWinners = useCallback(async () => {
     if (!WINNERS_SHEET_ID || !API_KEY) return;
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(WINNERS_SHEET_ID)}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+        WINNERS_SHEET_ID
+      )}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+
       const res = await fetch(url);
       if (!res.ok) return;
       const json = await res.json();
@@ -199,8 +248,8 @@ const Top100Archive = () => {
       if (!values.length) return;
 
       const [headers, ...rows] = values;
-      const hNorm = headers.map((h) => String(h || '').trim().toLowerCase());
-      const ixSeason = hNorm.findIndex((h) => h === 'season');
+      const hNorm = headers.map((h) => String(h || "").trim().toLowerCase());
+      const ixSeason = hNorm.findIndex((h) => h === "season");
       if (ixSeason === -1) return;
 
       const playoffCols = hNorm
@@ -222,22 +271,22 @@ const Top100Archive = () => {
       }
       setPlayoffWinnersSet(set);
     } catch {
-      // ignore; app still works
+      // fail-soft
     }
   }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
 
-  // kick off data loads
+  // kick off loads
   useEffect(() => {
     loadFromGoogleSheets();
     loadWinners();
   }, [loadFromGoogleSheets, loadWinners]);
 
 /* =========================
-     Derived data
+     Derived lists & filters
      ========================= */
   const availableSeasons = useMemo(
     () =>
-      [...new Set(allPositionData.map((r) => (r.season || '').trim()))]
+      [...new Set(allPositionData.map((r) => (r.season || "").trim()))]
         .filter(Boolean)
         .sort((a, b) => b.localeCompare(a)),
     [allPositionData]
@@ -248,8 +297,8 @@ const Top100Archive = () => {
       [
         ...new Set(
           allPositionData
-            .filter((r) => (r.season || '').trim() === (selectedSeason || '').trim())
-            .map((r) => (r.division || '').trim())
+            .filter((r) => (r.season || "").trim() === (selectedSeason || "").trim())
+            .map((r) => (r.division || "").trim())
         ),
       ]
         .filter(Boolean)
@@ -257,30 +306,39 @@ const Top100Archive = () => {
     [allPositionData, selectedSeason]
   );
 
-  const getFilteredData = (season = null, division = null, sortOrder = 'position') => {
-    let filtered = [...allPositionData];
-    if (season)   filtered = filtered.filter((r) => (r.season || '').trim() === (season || '').trim());
-    if (division) filtered = filtered.filter((r) => (r.division || '').trim() === (division || '').trim());
+  const getFilteredData = useCallback(
+    (season = null, division = null, sortOrder = "position") => {
+      let filtered = [...allPositionData];
+      if (season)
+        filtered = filtered.filter((r) => (r.season || "").trim() === (season || "").trim());
+      if (division)
+        filtered = filtered.filter((r) => (r.division || "").trim() === (division || "").trim());
 
-    switch (sortOrder) {
-      case 'points':
-        return filtered.sort((a, b) => numeric(b.points) - numeric(a.points));
-      case 'team':
-        return filtered.sort((a, b) => a.team.localeCompare(b.team));
-      case 'manager':
-        return filtered.sort((a, b) => (a.manager || '').localeCompare(b.manager || ''));
-      case 'division':
-        return filtered.sort((a, b) => {
-          const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
-          return d !== 0 ? d : parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
-        });
-      case 'position':
-      default:
-        return filtered.sort((a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10));
-    }
-  };
+      switch (sortOrder) {
+        case "points":
+          return filtered.sort((a, b) => numeric(b.points) - numeric(a.points));
+        case "team":
+          return filtered.sort((a, b) => a.team.localeCompare(b.team));
+        case "manager":
+          return filtered.sort((a, b) => (a.manager || "").localeCompare(b.manager || ""));
+        case "division":
+          return filtered.sort((a, b) => {
+            const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
+            return d !== 0 ? d : parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
+          });
+        case "position":
+        default:
+          return filtered.sort(
+            (a, b) => parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10)
+          );
+      }
+    },
+    [allPositionData]
+  );
 
-  // leaders: titles, promotions (auto + playoff winners), relegations, sackings
+  /* =========================
+     Leaders, Records, Thresholds
+     ========================= */
   const countBy = (arr, keyGetter) => {
     const map = new Map();
     for (const item of arr) {
@@ -296,85 +354,90 @@ const Top100Archive = () => {
   const leaders = useMemo(() => {
     const rowsTitles = allPositionData.filter((r) => isChampion(r.position));
 
+    // promotions: auto + playoff winners
     const promos = [];
     for (const r of allPositionData) {
       if (isAutoPromo(r.division, r.position)) {
         promos.push(r);
         continue;
       }
-      if (isPlayoffBand(r.division, r.position) &&
-          winnersSetMemo.has(playoffWinnerKey(r.season, r.division, r.team))) {
+      if (
+        isPlayoffBand(r.division, r.position) &&
+        playoffWinnersSet?.has(playoffWinnerKey(r.season, r.division, r.team))
+      ) {
         promos.push(r);
       }
     }
 
     const rowsReleg = allPositionData.filter((r) => isRelegated(r.division, r.position));
-    const rowsSack  = allPositionData.filter((r) => isAutoSacked(r.position));
+    const rowsSack = allPositionData.filter((r) => isAutoSacked(r.position));
 
     const byTeam = {
-      titles:      countBy(rowsTitles, (r) => r.team),
-      promotions:  countBy(promos,     (r) => r.team),
-      relegations: countBy(rowsReleg,  (r) => r.team),
-      sackings:    countBy(rowsSack,   (r) => r.team),
+      titles: countBy(rowsTitles, (r) => r.team),
+      promotions: countBy(promos, (r) => r.team),
+      relegations: countBy(rowsReleg, (r) => r.team),
+      sackings: countBy(rowsSack, (r) => r.team),
     };
     const byManager = {
-      titles:      countBy(rowsTitles, (r) => r.manager),
-      promotions:  countBy(promos,     (r) => r.manager),
-      relegations: countBy(rowsReleg,  (r) => r.manager),
-      sackings:    countBy(rowsSack,   (r) => r.manager),
+      titles: countBy(rowsTitles, (r) => r.manager),
+      promotions: countBy(promos, (r) => r.manager),
+      relegations: countBy(rowsReleg, (r) => r.manager),
+      sackings: countBy(rowsSack, (r) => r.manager),
     };
     return { byTeam, byManager };
-  }, [allPositionData, winnersSetMemo]);
+  }, [allPositionData, playoffWinnersSet]);
 
-  // records builder
-  const buildRecords = useCallback((metric = 'points', group = 'team', order = 'desc', seasonFilter, divisionFilter) => {
-    const rows = getFilteredData(seasonFilter || null, divisionFilter || null, 'position');
-    const withMetric = rows.map((r) => ({
-      ...r,
-      value:
-        metric === 'points'
-          ? numeric(r.points)
-          : metric === 'gf'
-          ? numeric(r.goals_for)
-          : metric === 'ga'
-          ? numeric(r.goals_against)
-          : metric === 'gd'
-          ? numeric(r.goal_difference)
-          : 0,
-    }));
-    withMetric.sort((a, b) => (order === 'asc' ? a.value - b.value : b.value - a.value));
+  const buildRecords = useCallback(
+    (metric = "points", group = "team", order = "desc", seasonFilter, divisionFilter) => {
+      const rows = getFilteredData(seasonFilter || null, divisionFilter || null, "position");
+      const withMetric = rows.map((r) => ({
+        ...r,
+        value:
+          metric === "points"
+            ? numeric(r.points)
+            : metric === "gf"
+            ? numeric(r.goals_for)
+            : metric === "ga"
+            ? numeric(r.goals_against)
+            : metric === "gd"
+            ? numeric(r.goal_difference)
+            : 0,
+      }));
+      withMetric.sort((a, b) => (order === "asc" ? a.value - b.value : b.value - a.value));
 
-    const keyFn =
-      group === 'team'
-        ? (r) => r.team
-        : group === 'manager'
-        ? (r) => r.manager
-        : group === 'season'
-        ? (r) => r.season
-        : group === 'division'
-        ? (r) => r.division
-        : group === 'position'
-        ? (r) => r.position
-        : () => '';
+      const keyFn =
+        group === "team"
+          ? (r) => r.team
+          : group === "manager"
+          ? (r) => r.manager
+          : group === "season"
+          ? (r) => r.season
+          : group === "division"
+          ? (r) => r.division
+          : group === "position"
+          ? (r) => r.position
+          : () => "";
 
-    const seen = new Set();
-    const result = [];
-    for (const r of withMetric) {
-      const k = keyFn(r);
-      if (!k) continue;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      result.push(r);
-      if (result.length >= 50) break;
-    }
-    return result;
-  }, [allPositionData]);
+      const seen = new Set();
+      const result = [];
+      for (const r of withMetric) {
+        const k = keyFn(r);
+        if (!k) continue;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        result.push(r);
+        if (result.length >= 50) break;
+      }
+      return result;
+    },
+    [getFilteredData]
+  );
 
   const computeThresholds = useMemo(() => {
     const bySeasonDiv = new Map();
     for (const r of allPositionData) {
-      const season = (r.season || '').trim();
-      const division = (r.division || '').trim();
+      const season = (r.season || "").trim();
+      const division = (r.division || "").trim();
       const key = `${season}|${division}`;
       if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
       bySeasonDiv.get(key).push(r);
@@ -388,8 +451,8 @@ const Top100Archive = () => {
       avoidSack: new Map(),
     };
 
-    const pushPts = (m, div, pts) => {
-      const d = (div || '').trim();
+    const push = (m, div, pts) => {
+      const d = (div || "").trim();
       if (!d) return;
       const p = numeric(pts);
       if (!m.has(d)) m.set(d, []);
@@ -397,16 +460,16 @@ const Top100Archive = () => {
     };
 
     for (const [key, rows] of bySeasonDiv.entries()) {
-      const [, div] = key.split('|');
+      const [, div] = key.split("|");
       const d = parseInt(div || 0, 10);
       const byPos = new Map();
       for (const r of rows) byPos.set(parseInt(r.position || 0, 10), r);
 
-      if (byPos.has(1)) pushPts(acc.win, div, byPos.get(1).points);
-      if (d >= 2 && d <= 5 && byPos.has(3)) pushPts(acc.autoPromo, div, byPos.get(3).points);
-      if (d >= 2 && d <= 5 && byPos.has(7)) pushPts(acc.playoffs, div, byPos.get(7).points);
-      if (d >= 1 && d <= 4 && byPos.has(16)) pushPts(acc.avoidReleg, div, byPos.get(16).points);
-      if (byPos.has(17)) pushPts(acc.avoidSack, div, byPos.get(17).points);
+      if (byPos.has(1)) push(acc.win, div, byPos.get(1).points);
+      if (d >= 2 && d <= 5 && byPos.has(3)) push(acc.autoPromo, div, byPos.get(3).points);
+      if (d >= 2 && d <= 5 && byPos.has(7)) push(acc.playoffs, div, byPos.get(7).points);
+      if (d >= 1 && d <= 4 && byPos.has(16)) push(acc.avoidReleg, div, byPos.get(16).points);
+      if (byPos.has(17)) push(acc.avoidSack, div, byPos.get(17).points);
     }
 
     const summarize = (m) => {
@@ -433,98 +496,34 @@ const Top100Archive = () => {
   const thresholdHistory = useMemo(() => {
     const bySeasonDiv = new Map();
     for (const r of allPositionData) {
-      const season = (r.season || '').trim();
-      const division = (r.division || '').trim();
+      const season = (r.season || "").trim();
+      const division = (r.division || "").trim();
       if (!season || !division) continue;
       const key = `${season}|${division}`;
       if (!bySeasonDiv.has(key)) bySeasonDiv.set(key, []);
       bySeasonDiv.get(key).push(r);
     }
     const out = { win: [], autoPromo: [], playoffs: [], avoidReleg: [], avoidSack: [] };
-    const pushRow = (arr, season, division, posRow) => {
+    const push = (arr, season, division, posRow) => {
       if (!posRow) return;
       arr.push({ season, division, points: numeric(posRow.points) });
     };
     for (const [key, rows] of bySeasonDiv.entries()) {
-      const [season, division] = key.split('|');
+      const [season, division] = key.split("|");
       const d = parseInt(division, 10);
       const byPos = new Map();
       rows.forEach((r) => byPos.set(parseInt(r.position || 0, 10), r));
-      pushRow(out.win, season, division, byPos.get(1));
-      if (d >= 2 && d <= 5) pushRow(out.autoPromo, season, division, byPos.get(3));
-      if (d >= 2 && d <= 5) pushRow(out.playoffs, season, division, byPos.get(7));
-      if (d >= 1 && d <= 4) pushRow(out.avoidReleg, season, division, byPos.get(16));
-      pushRow(out.avoidSack, season, division, byPos.get(17));
+      push(out.win, season, division, byPos.get(1));
+      if (d >= 2 && d <= 5) push(out.autoPromo, season, division, byPos.get(3));
+      if (d >= 2 && d <= 5) push(out.playoffs, season, division, byPos.get(7));
+      if (d >= 1 && d <= 4) push(out.avoidReleg, season, division, byPos.get(16));
+      push(out.avoidSack, season, division, byPos.get(17));
     }
     return out;
   }, [allPositionData]);
 
-  // memoized records rows (ESLint: include buildRecords)
-  const [leadersView, setLeadersView] = useState('team');
-  const [recordsMetric, setRecordsMetric] = useState('points');
-  const [recordsGroup, setRecordsGroup] = useState('team');
-  const [recordsOrder, setRecordsOrder] = useState('desc');
-  const [recordsSeason, setRecordsSeason] = useState('');
-  const [recordsDivision, setRecordsDivision] = useState('');
-
-  const recordRows = useMemo(
-    () =>
-      buildRecords(
-        recordsMetric,
-        recordsGroup,
-        recordsOrder,
-        recordsSeason || null,
-        recordsDivision || null
-      ),
-    [buildRecords, recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision]
-  );
-
   /* =========================
-     Small presentational bits
-     ========================= */
-  const DataPlaceholder = () => (
-    <div className="text-center py-16 bg-white rounded-xl shadow">
-      <Loader className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-      <p className="text-gray-500">Loading data…</p>
-    </div>
-  );
-
-  const LegendSwatch = ({ color, label }) => (
-    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold border ${color}`}>
-      {label}
-    </span>
-  );
-
-  const ThresholdCard = ({ title, rows }) => (
-    <div className="bg-white rounded-lg border shadow p-4">
-      <h4 className="font-semibold mb-3">{title}</h4>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-gray-600">
-            <th className="py-1 px-2">Div</th>
-            <th className="py-1 px-2">Min</th>
-            <th className="py-1 px-2">Avg</th>
-            <th className="py-1 px-2">Max</th>
-            <th className="py-1 px-2">n</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t">
-              <td className="py-1 px-2">{r.division}</td>
-              <td className="py-1 px-2">{r.min}</td>
-              <td className="py-1 px-2">{r.avg}</td>
-              <td className="py-1 px-2">{r.max}</td>
-              <td className="py-1 px-2">{r.samples}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  /* =========================
-     UI: Search Results
+     Inline UI Components
      ========================= */
   const SearchResults = () => {
     const filtered = allPositionData
@@ -545,30 +544,40 @@ const Top100Archive = () => {
       <div className="space-y-4">
         <div className="grid gap-4">
           {filtered.map((team, index) => {
-            const tags = getTeamTags(team.position, team.division, team.team, team.season, winnersSetMemo);
-            const badge = getPositionBadge(team.position, team.division, team.team, team.season, winnersSetMemo);
+            const tags = getTeamTags(
+              team.position,
+              team.division,
+              team.team,
+              team.season,
+              playoffWinnersSet
+            );
+            const badge = getPositionBadge(
+              team.position,
+              team.division,
+              team.team,
+              team.season,
+              playoffWinnersSet
+            );
             const rowClass = getRowStyling(team.position, team.division);
 
             return (
-              <div
-                key={index}
-                className={`${rowClass} rounded-xl p-6 bg-white shadow-lg transition-all hover:shadow-xl`}
-              >
+              <div key={index} className={`${rowClass} rounded-xl p-6 shadow-lg transition-all hover:shadow-xl`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <h4 className="text-xl font-bold text-gray-900">{team.team}</h4>
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-semibold ${badge.bg} ${badge.text}`}
-                        title={tags.map((t) => t.label).join(' • ')}
+                        title={tags.map((t) => t.label).join(" • ")}
                       >
-                        {badge.icon ? `${badge.icon} ` : ''}#{team.position}
+                        {badge.icon ? `${badge.icon} ` : ""}
+                        #{team.position}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-gray-500">Manager</p>
-                        <p className="font-semibold">{team.manager || 'Unknown'}</p>
+                        <p className="font-semibold">{team.manager || "Unknown"}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Season & Division</p>
@@ -584,8 +593,12 @@ const Top100Archive = () => {
                       </div>
                       <div>
                         <p className="text-gray-500">Goal Difference</p>
-                        <p className={`font-semibold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {numeric(team.goal_difference) > 0 ? '+' : ''}
+                        <p
+                          className={`font-semibold ${
+                            numeric(team.goal_difference) >= 0 ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {numeric(team.goal_difference) > 0 ? "+" : ""}
                           {team.goal_difference}
                         </p>
                       </div>
@@ -621,9 +634,6 @@ const Top100Archive = () => {
     );
   };
 
-  /* =========================
-     UI: League Table
-     ========================= */
   const LeagueTable = () => {
     const tableData = getFilteredData(selectedSeason, selectedDivision, sortBy);
 
@@ -643,16 +653,16 @@ const Top100Archive = () => {
             {/* Sort Controls */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { id: 'position', label: 'Position', icon: Trophy },
-                { id: 'points',   label: 'Points',   icon: Target },
-                { id: 'team',     label: 'Team A-Z', icon: SortAsc },
-                { id: 'manager',  label: 'Manager A-Z', icon: Users },
+                { id: "position", label: "Position", icon: Trophy },
+                { id: "points", label: "Points", icon: Target },
+                { id: "team", label: "Team A-Z", icon: SortAsc },
+                { id: "manager", label: "Manager A-Z", icon: Users },
               ].map((sort) => (
                 <button
                   key={sort.id}
                   onClick={() => setSortBy(sort.id)}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    sortBy === sort.id ? 'bg-white text-blue-600 shadow-lg' : 'bg-blue-500 hover:bg-blue-400 text-white'
+                    sortBy === sort.id ? "bg-white text-blue-600 shadow-lg" : "bg-blue-500 hover:bg-blue-400 text-white"
                   }`}
                 >
                   <sort.icon className="w-4 h-4" />
@@ -683,14 +693,30 @@ const Top100Archive = () => {
 
             <tbody>
               {tableData.map((team, index) => {
-                const rowTags = getTeamTags(team.position, team.division, team.team, team.season, winnersSetMemo);
-                const badge = getPositionBadge(team.position, team.division, team.team, team.season, winnersSetMemo);
+                const rowTags = getTeamTags(
+                  team.position,
+                  team.division,
+                  team.team,
+                  team.season,
+                  playoffWinnersSet
+                );
+                const badge = getPositionBadge(
+                  team.position,
+                  team.division,
+                  team.team,
+                  team.season,
+                  playoffWinnersSet
+                );
 
                 return (
-                  <tr key={index} className={`${getRowStyling(team.position, team.division)} border-b border-gray-100 transition-all hover:shadow-md`}>
+                  <tr
+                    key={index}
+                    className={`${getRowStyling(team.position, team.division)} border-b border-gray-100 transition-all hover:shadow-md`}
+                  >
                     <td className="py-4 px-4">
                       <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}>
-                        {badge.icon ? `${badge.icon} ` : ''}{team.position}
+                        {badge.icon ? `${badge.icon} ` : ""}
+                        {team.position}
                       </span>
                     </td>
                     <td className="py-4 px-4">
@@ -699,7 +725,7 @@ const Top100Archive = () => {
                           <div className="font-bold text-gray-900 text-lg">{team.team}</div>
                           <div className="text-sm text-gray-600 flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {team.manager || 'Unknown Manager'}
+                            {team.manager || "Unknown Manager"}
                           </div>
                           {rowTags.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
@@ -719,8 +745,12 @@ const Top100Archive = () => {
                     <td className="py-4 px-3 text-center font-bold text-red-600">{team.lost}</td>
                     <td className="py-4 px-3 text-center font-semibold">{team.goals_for}</td>
                     <td className="py-4 px-3 text-center font-semibold">{team.goals_against}</td>
-                    <td className={`py-4 px-3 text-center font-bold ${numeric(team.goal_difference) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {numeric(team.goal_difference) > 0 ? '+' : ''}
+                    <td
+                      className={`py-4 px-3 text-center font-bold ${
+                        numeric(team.goal_difference) >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {numeric(team.goal_difference) > 0 ? "+" : ""}
                       {team.goal_difference}
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -753,7 +783,9 @@ const Top100Archive = () => {
             <div className="text-right text-sm text-gray-600">
               <p className="font-semibold">Current View:</p>
               <p>Sorted by: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</p>
-              <p>Season {selectedSeason} Division {selectedDivision}</p>
+              <p>
+                Season {selectedSeason} Division {selectedDivision}
+              </p>
               <p>{tableData.length} teams displayed</p>
             </div>
           </div>
@@ -762,26 +794,69 @@ const Top100Archive = () => {
     );
   };
 
-  /* =========================
-     UI: Insights
-     ========================= */
-  const Insights = () => {
-    const src = leadersView === 'team' ? leaders.byTeam : leaders.byManager;
+  const [leadersView, setLeadersView] = useState("team");
+  const [recordsMetric, setRecordsMetric] = useState("points");
+  const [recordsGroup, setRecordsGroup] = useState("team");
+  const [recordsOrder, setRecordsOrder] = useState("desc");
+  const [recordsSeason, setRecordsSeason] = useState("");
+  const [recordsDivision, setRecordsDivision] = useState("");
 
+  const recordRows = useMemo(
+    () =>
+      buildRecords(
+        recordsMetric,
+        recordsGroup,
+        recordsOrder,
+        recordsSeason || null,
+        recordsDivision || null
+      ),
+    [buildRecords, recordsMetric, recordsGroup, recordsOrder, recordsSeason, recordsDivision]
+  );
+
+  const ThresholdCard = ({ title, rows }) => (
+    <div className="border rounded-lg p-4 bg-white">
+      <h4 className="font-semibold mb-2">{title}</h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-gray-600">
+            <th className="py-1">Division</th>
+            <th className="py-1">Min</th>
+            <th className="py-1">Avg</th>
+            <th className="py-1">Max</th>
+            <th className="py-1">N</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t">
+              <td className="py-1">D{r.division}</td>
+              <td className="py-1">{r.min}</td>
+              <td className="py-1">{r.avg}</td>
+              <td className="py-1">{r.max}</td>
+              <td className="py-1">{r.samples}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const Insights = () => {
+    const src = leadersView === "team" ? leaders.byTeam : leaders.byManager;
     const LeaderTable = ({ title, rows }) => (
       <div className="bg-white rounded-xl shadow p-4">
         <h4 className="font-semibold mb-3">{title}</h4>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-600">
-              <th className="py-2">{leadersView === 'team' ? 'Team' : 'Manager'}</th>
+              <th className="py-2">{leadersView === "team" ? "Team" : "Manager"}</th>
               <th className="py-2 text-right">Count</th>
             </tr>
           </thead>
           <tbody>
             {rows.slice(0, 15).map((r, i) => (
               <tr key={i} className="border-t">
-                <td className="py-2">{r.key || 'Unknown'}</td>
+                <td className="py-2">{r.key || "Unknown"}</td>
                 <td className="py-2 text-right font-semibold">{r.count}</td>
               </tr>
             ))}
@@ -800,14 +875,14 @@ const Top100Archive = () => {
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => setLeadersView('team')}
-                className={`px-3 py-1 rounded ${leadersView === 'team' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+                onClick={() => setLeadersView("team")}
+                className={`px-3 py-1 rounded ${leadersView === "team" ? "bg-blue-600 text-white" : "bg-gray-100"}`}
               >
                 Teams
               </button>
               <button
-                onClick={() => setLeadersView('manager')}
-                className={`px-3 py-1 rounded ${leadersView === 'manager' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+                onClick={() => setLeadersView("manager")}
+                className={`px-3 py-1 rounded ${leadersView === "manager" ? "bg-blue-600 text-white" : "bg-gray-100"}`}
               >
                 Managers
               </button>
@@ -884,7 +959,7 @@ const Top100Archive = () => {
                 {recordRows.map((r, i) => (
                   <tr key={i} className="border-t">
                     <td className="py-2 px-2">{r.team}</td>
-                    <td className="py-2 px-2">{r.manager || 'Unknown'}</td>
+                    <td className="py-2 px-2">{r.manager || "Unknown"}</td>
                     <td className="py-2 px-2">{r.season}</td>
                     <td className="py-2 px-2">{r.division}</td>
                     <td className="py-2 px-2">{r.position}</td>
@@ -904,21 +979,21 @@ const Top100Archive = () => {
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Thresholds */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="w-5 h-5 text-green-700" />
-              <h3 className="text-xl font-bold">Points Thresholds (Min / Avg / Max)</h3>
-            </div>
+        {/* Thresholds */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="w-5 h-5 text-green-700" />
+            <h3 className="text-xl font-bold">Points Thresholds (Min / Avg / Max)</h3>
+          </div>
 
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-              <ThresholdCard title="Win Division (Pos 1)" rows={computeThresholds.win} />
-              <ThresholdCard title="Auto-Promotion (Pos 3 in D2–D5)" rows={computeThresholds.autoPromo} />
-              <ThresholdCard title="Make Playoffs (Pos 7 in D2–D5)" rows={computeThresholds.playoffs} />
-              <ThresholdCard title="Avoid Relegation (Pos 16 in D1–D4)" rows={computeThresholds.avoidReleg} />
-              <ThresholdCard title="Avoid Sacking (Pos 17 in all Divs)" rows={computeThresholds.avoidSack} />
-            </div>
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <ThresholdCard title="Win Division (Pos 1)" rows={computeThresholds.win} />
+            <ThresholdCard title="Auto-Promotion (Pos 3 in D2–D5)" rows={computeThresholds.autoPromo} />
+            <ThresholdCard title="Make Playoffs (Pos 7 in D2–D5)" rows={computeThresholds.playoffs} />
+            <ThresholdCard title="Avoid Relegation (Pos 16 in D1–D4)" rows={computeThresholds.avoidReleg} />
+            <ThresholdCard title="Avoid Sacking (Pos 17 in all Divs)" rows={computeThresholds.avoidSack} />
           </div>
         </div>
       </div>
@@ -979,12 +1054,12 @@ const Top100Archive = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-wrap gap-2 py-4">
             {[
-              { id: 'search',   label: 'Search',            icon: Search,   color: 'blue' },
-              { id: 'tables',   label: 'League Tables',     icon: BarChart3, color: 'purple' },
-              { id: 'insights', label: 'Insights',          icon: BarChart3, color: 'green' },
-              { id: 'charts',   label: 'Charts',            icon: BarChart3, color: 'indigo' },
-              { id: 'managers', label: 'Manager Profiles',  icon: Users,     color: 'teal' },
-              { id: 'honours',  label: 'Honours',           icon: Users,     color: 'amber' },
+              { id: "search", label: "Search", icon: Search, color: "blue" },
+              { id: "tables", label: "League Tables", icon: BarChart3, color: "purple" },
+              { id: "insights", label: "Insights", icon: BarChart3, color: "green" },
+              { id: "charts", label: "Charts", icon: BarChart3, color: "indigo" },
+              { id: "managers", label: "Manager Profiles", icon: Users, color: "teal" },
+              { id: "honours", label: "Honours", icon: Trophy, color: "amber" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -995,7 +1070,7 @@ const Top100Archive = () => {
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                   activeTab === tab.id
                     ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -1007,41 +1082,39 @@ const Top100Archive = () => {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Global Search only on Search tab */}
-        {activeTab === 'search' && (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Search input only on Search tab */}
+        {activeTab === "search" && (
           <div className="mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search teams or managers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                  disabled={!dataLoaded}
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search teams or managers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                disabled={!dataLoaded}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
         )}
 
         {/* Season/Division selectors only on Tables tab */}
-        {activeTab === 'tables' && availableSeasons.length > 0 && (
-          <div className="mb-6 flex flex-wrap gap-4">
+        {activeTab === "tables" && availableSeasons.length > 0 && (
+          <div className="mb-6 flex gap-3 flex-wrap">
             <select
               value={selectedSeason}
               onChange={(e) => setSelectedSeason(e.target.value)}
-              className="px-4 py-3 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+              className="px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
             >
               {availableSeasons.map((season) => (
                 <option key={season} value={season}>
@@ -1052,7 +1125,7 @@ const Top100Archive = () => {
             <select
               value={selectedDivision}
               onChange={(e) => setSelectedDivision(e.target.value)}
-              className="px-4 py-3 text-lg border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
+              className="px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 bg-white"
             >
               {availableDivisions.map((div) => (
                 <option key={div} value={div}>
@@ -1064,20 +1137,19 @@ const Top100Archive = () => {
         )}
 
         {/* Content sections */}
-        {activeTab === 'search'   && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
-        {activeTab === 'tables'   && (dataLoaded ? <LeagueTable />   : <DataPlaceholder />)}
-        {activeTab === 'insights' && (dataLoaded ? <Insights />      : <DataPlaceholder />)}
-        {activeTab === 'charts'   && (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
-        {activeTab === 'managers' && (dataLoaded ? (
-          <ManagerProfiles
-            allPositionData={allPositionData}
-            winnersSet={winnersSetMemo}
-          />
-        ) : (
-          <DataPlaceholder />
-        ))}
-        {activeTab === 'honours' && <Winners />}
-      </main>
+        {activeTab === "search" && (dataLoaded ? <SearchResults /> : <DataPlaceholder />)}
+        {activeTab === "tables" && (dataLoaded ? <LeagueTable /> : <DataPlaceholder />)}
+        {activeTab === "insights" && (dataLoaded ? <Insights /> : <DataPlaceholder />)}
+        {activeTab === "charts" &&
+          (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
+        {activeTab === "managers" &&
+          (dataLoaded ? (
+            <ManagerProfiles allPositionData={allPositionData} winnersSet={playoffWinnersSet} />
+          ) : (
+            <DataPlaceholder />
+          ))}
+        {activeTab === "honours" && <Winners />}
+      </div>
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-800 to-slate-900 text-white mt-16">
