@@ -54,13 +54,8 @@ const playoffWinnerKey = (season, division, team) =>
    Small UI bits
 ------------------------------ */
 const StatPill = ({ label, value, color }) => (
-  <span
-    className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold border ${color}`}
-  >
-    {label}{" "}
-    <span className="inline-block px-1.5 py-0.5 bg-white/70 rounded">
-      {value}
-    </span>
+  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold border ${color}`}>
+    {label} <span className="inline-block px-1.5 py-0.5 bg-white/70 rounded">{value}</span>
   </span>
 );
 
@@ -73,15 +68,23 @@ const SectionTitle = ({ children }) => (
 
 /* Badge next to position */
 const posBadge = ({ division, position, isPlayoffWinner }) => {
-  if (isAutoSacked(position))
-    return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
-  if (isRelegated(division, position))
-    return { bg: "bg-red-600", text: "text-white", content: "⬇️" };
-  if (isChampion(position))
-    return { bg: "bg-yellow-500", text: "text-white", content: "👑" };
-  if (isAutoPromoPos(division, position) || isPlayoffWinner)
-    return { bg: "bg-green-600", text: "text-white", content: "⬆️" };
+  if (isAutoSacked(position)) return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
+  if (isRelegated(division, position)) return { bg: "bg-red-600", text: "text-white", content: "⬇️" };
+  if (isChampion(position)) return { bg: "bg-yellow-500", text: "text-white", content: "👑" };
+  if (isAutoPromoPos(division, position) || isPlayoffWinner) return { bg: "bg-green-600", text: "text-white", content: "⬆️" };
   return { bg: "bg-gray-200", text: "text-gray-800", content: "" };
+};
+
+/* Utility: split multi-manager names like "Kennedy / Marsden" */
+const splitManagers = (raw) => {
+  const s = String(raw || "").trim();
+  if (!s) return ["???"];
+  const parts = s
+    .split("/")
+    .map((x) => x.trim())
+    .filter(Boolean);
+  // If it was a multi-name, return individuals + the combined label.
+  return parts.length > 1 ? [...parts, s] : parts;
 };
 
 /* ------------------------------
@@ -94,13 +97,14 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
     [winnersSet]
   );
 
-  // unique manager names
+  // unique manager names: include each individual from "A / B" plus the combined label
   const managerNames = useMemo(() => {
     const names = new Set();
-    allPositionData.forEach((r) => {
-      const m = (r.manager || "").trim();
-      names.add(m || "???");
-    });
+    for (const r of allPositionData) {
+      for (const n of splitManagers(r.manager)) {
+        names.add(n || "???");
+      }
+    }
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [allPositionData]);
 
@@ -109,36 +113,35 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
   const filteredManagers = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return managerNames.filter((n) =>
-      needle ? n.toLowerCase().includes(needle) : true
-    );
+    return managerNames.filter((n) => (needle ? n.toLowerCase().includes(needle) : true));
   }, [managerNames, search]);
 
-  // group rows by manager
+  // group rows by EACH manager token (so “A / B” contributes to A and to B, and to “A / B”)
   const rowsByManager = useMemo(() => {
     const map = new Map();
     for (const r of allPositionData) {
-      const name = (r.manager || "???").trim() || "???";
-      if (!map.has(name)) map.set(name, []);
-      map.get(name).push(r);
+      const tokens = splitManagers(r.manager);
+      for (const t of tokens) {
+        const key = t || "???";
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(r);
+      }
     }
-    // stable sort per manager
+    // sort each group
     for (const [, rows] of map.entries()) {
       rows.sort((a, b) => {
         const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
         if (s) return s;
         const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
         if (d) return d;
-        return (
-          parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10)
-        );
+        return parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
       });
     }
     return map;
   }, [allPositionData]);
 
-  const visibleManagers = (selectedManager ? [selectedManager] : filteredManagers).filter(
-    (n) => rowsByManager.has(n)
+  const visibleManagers = (selectedManager ? [selectedManager] : filteredManagers).filter((n) =>
+    rowsByManager.has(n)
   );
 
   const ManagerCard = ({ name }) => {
@@ -146,17 +149,13 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
     // counts
     const titles = rows.filter((r) => isChampion(r.position)).length;
-    const autoPromos = rows.filter((r) => isAutoPromoPos(r.division, r.position)).length;
+    const autoPromosBase = rows.filter((r) => isAutoPromoPos(r.division, r.position)).length;
     const titlePromos = rows.filter((r) => isTitlePromo(r.division, r.position)).length;
     const playoffWins = rows.filter(
-      (r) =>
-        isPlayoffBand(r.division, r.position) &&
-        winners.has(playoffWinnerKey(r.season, r.division, r.team))
+      (r) => isPlayoffBand(r.division, r.position) && winners.has(playoffWinnerKey(r.season, r.division, r.team))
     ).length;
 
-    // NEW: Total promotions = title promotions + auto promotions + playoff wins
-    const totalPromos = titlePromos + autoPromos + playoffWins;
-
+    const totalPromos = titlePromos + autoPromosBase + playoffWins;
     const relegations = rows.filter((r) => isRelegated(r.division, r.position)).length;
     const sackings = rows.filter((r) => isAutoSacked(r.position)).length;
     const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
@@ -169,41 +168,15 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
         {/* Stats row */}
         <div className="flex flex-wrap gap-2">
-          <StatPill
-            label="⬆️ Total Promotions"
-            value={totalPromos}
-            color="bg-emerald-50 text-emerald-800 border-emerald-200"
-          />
-          <StatPill
-            label="🏆 Titles"
-            value={titles}
-            color="bg-yellow-50 text-yellow-800 border-yellow-200"
-          />
-          <StatPill
-            label="⬆️ Auto Promotions"
-            value={autoPromos + titlePromos /* show auto incl. champions? choose one */}
-            color="bg-green-50 text-green-800 border-green-200"
-          />
-          <StatPill
-            label="🎟️ Playoff Wins"
-            value={playoffWins}
-            color="bg-emerald-50 text-emerald-800 border-emerald-200"
-          />
-          <StatPill
-            label="⬇️ Relegations"
-            value={relegations}
-            color="bg-red-50 text-red-800 border-red-200"
-          />
-          <StatPill
-            label="⛔ Sackings"
-            value={sackings}
-            color="bg-rose-50 text-rose-900 border-rose-200"
-          />
-          <StatPill
-            label="📅 Seasons Managed"
-            value={seasonsManaged}
-            color="bg-indigo-50 text-indigo-800 border-indigo-200"
-          />
+          <StatPill label="⬆️ Total Promotions" value={totalPromos} color="bg-emerald-50 text-emerald-800 border-emerald-200" />
+          <StatPill label="🏆 Titles" value={titles} color="bg-yellow-50 text-yellow-800 border-yellow-200" />
+          {/* Keep “Auto Promotions” as “non-playoff promotions” (2–3 + champions). 
+              If you want strictly positions 2–3, change to value={autoPromosBase}. */}
+          <StatPill label="⬆️ Auto Promotions" value={autoPromosBase + titlePromos} color="bg-green-50 text-green-800 border-green-200" />
+          <StatPill label="🎟️ Playoff Wins" value={playoffWins} color="bg-emerald-50 text-emerald-800 border-emerald-200" />
+          <StatPill label="⬇️ Relegations" value={relegations} color="bg-red-50 text-red-800 border-red-200" />
+          <StatPill label="⛔ Sackings" value={sackings} color="bg-rose-50 text-rose-900 border-rose-200" />
+          <StatPill label="📅 Seasons Managed" value={seasonsManaged} color="bg-indigo-50 text-indigo-800 border-indigo-200" />
         </div>
 
         {/* Career history */}
@@ -221,25 +194,15 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
             </thead>
             <tbody>
               {rows.map((r, i) => {
-                const winner = winners.has(
-                  playoffWinnerKey(r.season, r.division, r.team)
-                );
+                const winner = winners.has(playoffWinnerKey(r.season, r.division, r.team));
 
                 const notes = [];
                 if (isChampion(r.position)) {
-                  // D1 champions are just "Champions", D2–D5 also promoted
-                  if (isTitlePromo(r.division, r.position)) {
-                    notes.push("Promoted as Champions");
-                  } else {
-                    notes.push("Champions");
-                  }
+                  if (isTitlePromo(r.division, r.position)) notes.push("Promoted as Champions");
+                  else notes.push("Champions");
                 }
-                if (isAutoPromoPos(r.division, r.position)) {
-                  notes.push("Auto-Promoted");
-                }
-                if (isPlayoffBand(r.division, r.position) && winner) {
-                  notes.push("Playoff Winner (Promoted)");
-                }
+                if (isAutoPromoPos(r.division, r.position)) notes.push("Auto-Promoted");
+                if (isPlayoffBand(r.division, r.position) && winner) notes.push("Playoff Winner (Promoted)");
                 if (isRelegated(r.division, r.position)) notes.push("Relegated");
                 if (isAutoSacked(r.position)) notes.push("Auto-Sacked");
 
@@ -290,7 +253,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             className="w-full pl-9 pr-3 py-2 border rounded-lg"
-            placeholder="Search teams or managers…"
+            placeholder="Search managers… (e.g., Kennedy or Marsden)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -316,9 +279,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
           <ManagerCard key={n || "unknown"} name={n} />
         ))}
         {!visibleManagers.length && (
-          <div className="text-center text-gray-500 py-12">
-            No managers match your search.
-          </div>
+          <div className="text-center text-gray-500 py-12">No managers match your search.</div>
         )}
       </div>
     </div>
