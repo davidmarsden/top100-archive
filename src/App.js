@@ -606,8 +606,17 @@ setDataLoaded(true);
         return parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
       });
 
-    return (
-      <div className="space-y-4">
+return (
+  <div className="space-y-4">
+    <button
+      onClick={() => openClubChart("Hamburger SV")}
+      className="mb-4 px-4 py-3 rounded-lg bg-red-600 text-white font-bold"
+    >
+      TEST HAMBURG CHART
+    </button>
+
+    <div className="grid gap-4">
+
         <div className="grid gap-4">
           {filtered.map((team, index) => {
             const tags = getTeamTags(
