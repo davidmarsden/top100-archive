@@ -191,7 +191,30 @@ const Top100Archive = () => {
     });
   };
 
+const buildManagerCareer = (managerName) =>
+  allPositionData
+    .filter((r) => r.manager === managerName)
+    .map((r) => ({
+      season: `S${r.season}`,
+      club: r.team,
+      manager: r.manager,
+      division: Number(r.division),
+      position: Number(r.position),
+      globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.season.replace("S", "")) -
+        Number(b.season.replace("S", ""))
+    );
 
+const openManagerChart = (managerName) => {
+  setHistoryChart({
+    title: `${managerName} career`,
+    subtitle: "Manager career rank by season",
+    data: buildManagerCareer(managerName),
+  });
+};
 
   // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
@@ -703,6 +726,17 @@ const SearchResults = () => {
                   >
                     📈 Club History
                   </button>
+
+{team.manager && (
+  <button
+    type="button"
+    onClick={() => openManagerChart(team.manager)}
+    className="mt-3 ml-2 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
+  >
+    👤 Manager Career
+  </button>
+)}
+
                 </div>
 
                 <div className="text-right ml-4">
