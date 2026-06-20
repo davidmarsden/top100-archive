@@ -189,6 +189,9 @@ const Top100Archive = () => {
       data: buildClubTrajectory(clubName),
     });
   };
+
+
+
   // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
 
@@ -675,6 +678,24 @@ setDataLoaded(true);
                         ))}
                       </div>
                     )}
+
+
+{tags.length > 0 && (
+  <div className="mt-3 flex flex-wrap gap-2">
+    {tags.map((t, i) => (
+      <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
+        {t.label}
+      </span>
+    ))}
+  </div>
+)}
+
+<button
+  onClick={() => openClubChart(team.team)}
+  className="mt-3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+>
+  📈 Club History
+</button>
                   </div>
                   <div className="text-right ml-4">
                     <div className="text-3xl font-bold text-blue-600 mb-1">{team.points}</div>
@@ -1223,7 +1244,7 @@ setDataLoaded(true);
               <Trophy className="w-12 h-12 text-yellow-400" />
             </div>
             <h3 className="text-2xl font-bold mb-2">Soccer Manager Worlds Top 100</h3>
-            <p className="text-gray-300 mb-6">Elite Community • Historical Database • 25+ Seasons</p>
+            <p className="text-gray-300 mb-6">Elite Community • Historical Database • 27 Seasons</p>
             <div className="mt-8 pt-6 border-t border-gray-700">
               <p className="text-sm text-gray-400">
                 Built for the Soccer Manager Worlds Top 100 Community •
@@ -1232,7 +1253,15 @@ setDataLoaded(true);
             </div>
           </div>
         </div>
-      </footer>
+</footer>
+
+      <HistoryChartModal
+        isOpen={!!historyChart}
+        onClose={() => setHistoryChart(null)}
+        title={historyChart?.title}
+        subtitle={historyChart?.subtitle}
+        data={historyChart?.data || []}
+      />
     </div>
   );
 };
