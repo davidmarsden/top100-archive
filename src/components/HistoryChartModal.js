@@ -25,26 +25,38 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
   const hasData = Array.isArray(data) && data.length >= 2;
 
   return (
-    <div className="history-modal-backdrop" onClick={onClose}>
-      <div className="history-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="history-modal-header">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h2>{title || "History chart"}</h2>
-            {subtitle && <p>{subtitle}</p>}
+            <h2 className="text-2xl font-bold text-gray-900">
+              {title || "History chart"}
+            </h2>
+            {subtitle && <p className="text-gray-500 mt-1">{subtitle}</p>}
           </div>
 
-          <button className="history-modal-close" onClick={onClose}>
+          <button
+            onClick={onClose}
+            className="text-3xl leading-none text-gray-400 hover:text-gray-800"
+            aria-label="Close chart"
+          >
             ×
           </button>
         </div>
 
         {!hasData ? (
-          <div className="history-modal-empty">
+          <div className="py-16 text-center text-gray-500">
             Not enough historical data to draw a chart yet.
           </div>
         ) : (
-          <div className="history-chart-wrap">
-            <ResponsiveContainer width="100%" height={360}>
+          <div className="w-full h-96">
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={data}
                 margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
@@ -52,30 +64,19 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="season" />
                 <YAxis
-                  dataKey="globalRank"
                   reversed
                   domain={["dataMin", "dataMax"]}
                   tickFormatter={(value) => `#${value}`}
-                  label={{
-                    value: "Overall rank",
-                    angle: -90,
-                    position: "insideLeft",
-                  }}
                 />
                 <Tooltip
-                  formatter={(value, name) => {
-                    if (name === "globalRank") return [`#${value}`, "Overall rank"];
-                    return [value, name];
-                  }}
-                  labelFormatter={(season) => `Season ${season}`}
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null;
 
                     const row = payload[0].payload;
 
                     return (
-                      <div className="history-tooltip">
-                        <strong>Season {label}</strong>
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
+                        <div className="font-bold mb-1">{label}</div>
                         <div>{row.club}</div>
                         {row.manager && <div>Manager: {row.manager}</div>}
                         <div>Division: {row.division}</div>
@@ -88,7 +89,6 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
                 <Line
                   type="monotone"
                   dataKey="globalRank"
-                  name="globalRank"
                   strokeWidth={3}
                   dot={{ r: 4 }}
                   activeDot={{ r: 7 }}
