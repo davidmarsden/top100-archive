@@ -191,30 +191,36 @@ const Top100Archive = () => {
     });
   };
 
-const buildManagerCareer = (managerName) =>
-  allPositionData
-    .filter((r) => r.manager === managerName)
-    .map((r) => ({
-      season: `S${r.season}`,
-      club: r.team,
-      manager: r.manager,
-      division: Number(r.division),
-      position: Number(r.position),
-      globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
-    }))
-    .sort(
-      (a, b) =>
-        Number(a.season.replace("S", "")) -
-        Number(b.season.replace("S", ""))
-    );
+const buildManagerCareer = (managerName) => {
+  let previousClub = null;
 
-const openManagerChart = (managerName) => {
-  setHistoryChart({
-    title: `${managerName} career`,
-    subtitle: "Manager career rank by season",
-    data: buildManagerCareer(managerName),
-  });
+  return allPositionData
+    .filter((r) => r.manager === managerName)
+    .sort((a, b) => Number(a.season) - Number(b.season))
+    .map((r) => {
+      const clubChanged = previousClub && previousClub !== r.team;
+      const isFirstClub = !previousClub;
+
+      previousClub = r.team;
+
+      return {
+        season: `S${r.season}`,
+        club: r.team,
+        manager: r.manager,
+        division: Number(r.division),
+        position: Number(r.position),
+        points: Number(r.points),
+        globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
+        eventLabel: isFirstClub
+          ? `Started at ${r.team}`
+          : clubChanged
+          ? `Joined ${r.team}`
+          : "",
+      };
+    });
 };
+
+
 
   // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
