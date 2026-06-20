@@ -14,6 +14,7 @@ import {
 import Charts from "./Charts";
 import ManagerProfiles from "./ManagerProfiles";
 import Winners from "./Winners";
+import HistoryChartModal from "./components/HistoryChartModal";
 
 /* =========================
    Helpers & Status Logic
