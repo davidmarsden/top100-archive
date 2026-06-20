@@ -163,6 +163,32 @@ const Top100Archive = () => {
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  const [historyChart, setHistoryChart] = useState(null);
+
+  const buildClubTrajectory = (clubName) =>
+    allPositionData
+      .filter((r) => r.team === clubName)
+      .map((r) => ({
+        season: `S${r.season}`,
+        club: r.team,
+        manager: r.manager,
+        division: Number(r.division),
+        position: Number(r.position),
+        globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
+      }))
+      .sort(
+        (a, b) =>
+          Number(a.season.replace("S", "")) -
+          Number(b.season.replace("S", ""))
+      );
+
+  const openClubChart = (clubName) => {
+    setHistoryChart({
+      title: `${clubName} trajectory`,
+      subtitle: "Overall Top 100 league rank by season",
+      data: buildClubTrajectory(clubName),
+    });
+  };
   // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
 
