@@ -688,27 +688,26 @@ return (
                       </div>
                     )}
 
-
 {tags.length > 0 && (
-  <div className="mt-3 flex flex-wrap gap-2">
-    {tags.map((t, i) => (
-      <span
-        key={i}
-        className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}
-      >
-        {t.label}
-      </span>
-    ))}
-  </div>
-)}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {tags.map((t, i) => (
+                          <span
+                            key={i}
+                            className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}
+                          >
+                            {t.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-<button
-  type="button"
-  onClick={() => openClubChart(team.team)}
-  className="mt-3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
->
-  📈 Club History
-</button>
+                    <button
+                      type="button"
+                      onClick={() => openClubChart(team.team)}
+                      className="mt-3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                    >
+                      📈 Club History
+                    </button>
                   </div>
                   <div className="text-right ml-4">
                     <div className="text-3xl font-bold text-blue-600 mb-1">{team.points}</div>
