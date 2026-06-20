@@ -692,7 +692,10 @@ return (
 {tags.length > 0 && (
   <div className="mt-3 flex flex-wrap gap-2">
     {tags.map((t, i) => (
-      <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
+      <span
+        key={i}
+        className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}
+      >
         {t.label}
       </span>
     ))}
@@ -700,6 +703,7 @@ return (
 )}
 
 <button
+  type="button"
   onClick={() => openClubChart(team.team)}
   className="mt-3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
 >
