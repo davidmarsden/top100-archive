@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 
 const ordinal = (n) => {
@@ -82,6 +83,12 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
                         <div>Division: {row.division}</div>
                         <div>Position: {ordinal(row.position)}</div>
                         <div>Overall rank: #{row.globalRank}</div>
+{row.points && <div>Points: {row.points}</div>}
+{row.eventLabel && (
+  <div className="mt-1 font-semibold text-blue-700">
+    {row.eventLabel}
+  </div>
+)}
                       </div>
                     );
                   }}
@@ -93,6 +100,20 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
                   dot={{ r: 4 }}
                   activeDot={{ r: 7 }}
                 />
+{data
+  .filter((row) => row.eventLabel)
+  .map((row) => (
+    <ReferenceLine
+      key={`${row.season}-${row.eventLabel}`}
+      x={row.season}
+      strokeDasharray="4 4"
+      label={{
+        value: row.eventLabel,
+        position: "top",
+        fontSize: 11,
+      }}
+    />
+  ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
