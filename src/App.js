@@ -166,6 +166,8 @@ const Top100Archive = () => {
 
   const [historyChart, setHistoryChart] = useState(null);
 
+const [comparisonManagers, setComparisonManagers] = useState([]);
+
   const buildClubTrajectory = (clubName) =>
     allPositionData
       .filter((r) => r.team === clubName)
@@ -228,7 +230,52 @@ const openManagerChart = (managerName) => {
   });
 };
 
+const toggleComparisonManager = (managerName) => {
+  setComparisonManagers((current) =>
+    current.includes(managerName)
+      ? current.filter((m) => m !== managerName)
+      : [...current, managerName].slice(0, 4)
+  );
+};
 
+const buildManagerComparison = (managerNames) => {
+  const seasons = [...new Set(allPositionData.map((r) => `S${r.season}`))]
+    .sort((a, b) => Number(a.replace("S", "")) - Number(b.replace("S", "")));
+
+  return seasons.map((season) => {
+    const row = { season };
+
+    managerNames.forEach((managerName) => {
+      const match = allPositionData.find(
+        (r) => r.manager === managerName && `S${r.season}` === season
+      );
+
+      if (match) {
+        row[managerName] =
+          ((Number(match.division) - 1) * 20) + Number(match.position);
+
+        row[`${managerName}_club`] = match.team;
+        row[`${managerName}_division`] = match.division;
+        row[`${managerName}_position`] = match.position;
+        row[`${managerName}_points`] = match.points;
+      }
+    });
+
+    return row;
+  });
+};
+
+const openManagerComparisonChart = () => {
+  setHistoryChart({
+    title: "Manager comparison",
+    subtitle: comparisonManagers.join(" vs "),
+    data: buildManagerComparison(comparisonManagers),
+    series: comparisonManagers.map((managerName) => ({
+      dataKey: managerName,
+      label: managerName,
+    })),
+  });
+};
 
 
 
@@ -720,6 +767,33 @@ const SearchResults = () => {
                         {team.goal_difference}
                       </p>
                     </div>
+
+{comparisonManagers.length > 0 && (
+  <div className="bg-white rounded-xl shadow p-4 flex flex-wrap items-center gap-3">
+    <span className="font-semibold text-gray-700">
+      Comparing: {comparisonManagers.join(", ")}
+    </span>
+
+    {comparisonManagers.length >= 2 && (
+      <button
+        type="button"
+        onClick={openManagerComparisonChart}
+        className="px-3 py-2 rounded-lg bg-purple-700 text-white text-sm font-semibold hover:bg-purple-800"
+      >
+        ⚔️ Compare Managers
+      </button>
+    )}
+
+    <button
+      type="button"
+      onClick={() => setComparisonManagers([])}
+      className="px-3 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm font-semibold hover:bg-gray-300"
+    >
+      Clear
+    </button>
+  </div>
+)}
+
                   </div>
 
                   {tags.length > 0 && (
@@ -753,7 +827,26 @@ const SearchResults = () => {
   </button>
 )}
 
-                </div>
+{team.manager && (
+  <button
+    type="button"
+    onClick={() => toggleComparisonManager(team.manager)}
+    className={`mt-3 ml-2 px-3 py-2 rounded-lg text-white text-sm font-semibold ${
+      comparisonManagers.includes(team.manager)
+        ? "bg-gray-700 hover:bg-gray-800"
+        : "bg-pink-600 hover:bg-pink-700"
+    }`}
+  >
+    {comparisonManagers.includes(team.manager)
+      ? "✓ Selected"
+      : "⚔️ Compare Manager"}
+  </button>
+)}
+
+
+  </div>
+
+                
 
                 <div className="text-right ml-4">
                   <div className="text-3xl font-bold text-blue-600 mb-1">
@@ -1319,13 +1412,14 @@ const SearchResults = () => {
         </div>
 </footer>
 
-      <HistoryChartModal
-        isOpen={!!historyChart}
-        onClose={() => setHistoryChart(null)}
-        title={historyChart?.title}
-        subtitle={historyChart?.subtitle}
-        data={historyChart?.data || []}
-      />
+<HistoryChartModal
+  isOpen={!!historyChart}
+  onClose={() => setHistoryChart(null)}
+  title={historyChart?.title}
+  subtitle={historyChart?.subtitle}
+  data={historyChart?.data || []}
+  series={historyChart?.series}
+/>
     </div>
   );
 };
