@@ -183,11 +183,17 @@ const [comparisonManagers, setComparisonManagers] = useState([]);
     });
   };
 
+const managerMatches = (rawManager, managerName) =>
+  String(rawManager || "")
+    .split("/")
+    .map((m) => m.trim())
+    .includes(managerName);
+
 const buildManagerCareer = (managerName) => {
   let previousClub = null;
 
   return allPositionData
-    .filter((r) => r.manager === managerName)
+    .filter((r) => managerMatches(r.manager, managerName))
     .sort((a, b) => Number(a.season) - Number(b.season))
     .map((r) => {
       const isFirstClub = !previousClub;
@@ -263,7 +269,7 @@ const buildManagerComparison = (managerNames) => {
 
     managerNames.forEach((managerName) => {
       const match = allPositionData.find(
-        (r) => r.manager === managerName && `S${r.season}` === season
+        (r) => managerMatches(r.manager, managerName) && `S${r.season}` === season
       );
 
       if (match) {
