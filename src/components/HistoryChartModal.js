@@ -355,21 +355,24 @@ const clubChangeMarkers = !series
   );
 })}
 
-                {clubChangeMarkers.map((marker) => (
-  <ReferenceLine
-    key={`${marker.season}-${marker.club}`}
-    x={marker.season}
-    stroke="#6B7280"
-    strokeDasharray="4 4"
-    ifOverflow="extendDomain"
-    label={{
-      value: marker.label,
-      position: "top",
-      fontSize: 11,
-      fill: "#374151",
-    }}
-  />
-))}
+                {data
+  .filter((row) => row.eventLabel)
+  .map((row) => (
+    <ReferenceLine
+      key={`${row.season}-${row.eventLabel}`}
+      x={row.season}
+      stroke="#6B7280"
+      strokeDasharray="4 4"
+      ifOverflow="extendDomain"
+      label={{
+        value: row.eventLabel,
+        position: "top",
+        fontSize: 11,
+        fill: "#374151",
+      }}
+    />
+  ))}
+
               </LineChart>
             </ResponsiveContainer>
           </div>
