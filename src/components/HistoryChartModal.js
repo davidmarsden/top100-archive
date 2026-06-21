@@ -224,9 +224,7 @@ const HistoryChartModal = ({
         </div>
 
         
-<div className="text-xs text-gray-500 mb-2">
-  Club change markers found: {eventRows.length}
-</div>
+
 
 <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-4">
   <span>👑 Champions</span>
