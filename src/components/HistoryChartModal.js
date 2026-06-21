@@ -30,42 +30,116 @@ const lineColors = [
   "#EC4899",
 ];
 
-const CustomDot = ({ cx, cy, payload }) => {
-  if (cx == null || cy == null) return null;
+const CustomDot = (props) => {
+  const { cx, cy, payload } = props;
 
-  const labels = payload?.labels || [];
-
-  let icon = null;
-
-  if (labels.includes("Champions")) icon = "👑";
-  else if (labels.includes("Auto-promoted") || labels.includes("Playoff winners")) icon = "⬆️";
-  else if (labels.includes("Relegated")) icon = "⬇️";
-  else if (labels.includes("Auto-sacked")) icon = "⛔";
-
-  if (!icon) {
+  if (!payload?.labels?.length) {
     return (
       <circle
         cx={cx}
         cy={cy}
         r={4}
-        fill="white"
+        fill="#3B82F6"
         stroke="#3B82F6"
-        strokeWidth={2}
       />
     );
+  }
+
+  const icons = [];
+
+  if (payload.labels.includes("Promotion")) {
+    icons.push("⬆️");
+  }
+
+  if (payload.labels.includes("Relegation")) {
+    icons.push("⬇️");
+  }
+
+  if (payload.labels.includes("Title")) {
+    icons.push("👑");
   }
 
   return (
     <text
       x={cx}
-      y={cy}
+      y={cy + 5}
       textAnchor="middle"
-      dominantBaseline="central"
-      fontSize={16}
+      fontSize="18"
     >
-      {icon}
+      {icons.join("")}
     </text>
   );
+};
+
+const CustomDot = ({ cx, cy, payload }) => {
+  if (!payload?.labels?.length) {
+    return <circle cx={cx} cy={cy} r={4} fill="#3B82F6" />;
+  }
+
+  if (payload.labels.includes("Promotion")) {
+    return (
+      <g>
+        <rect
+          x={cx - 9}
+          y={cy - 9}
+          width={18}
+          height={18}
+          rx={3}
+          fill="#22C55E"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          ↑
+        </text>
+      </g>
+    );
+  }
+
+  if (payload.labels.includes("Relegation")) {
+    return (
+      <g>
+        <rect
+          x={cx - 9}
+          y={cy - 9}
+          width={18}
+          height={18}
+          rx={3}
+          fill="#EF4444"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          ↓
+        </text>
+      </g>
+    );
+  }
+
+  if (payload.labels.includes("Title")) {
+    return (
+      <text
+        x={cx}
+        y={cy + 6}
+        textAnchor="middle"
+        fontSize="18"
+      >
+        👑
+      </text>
+    );
+  }
+
+  return <circle cx={cx} cy={cy} r={4} fill="#3B82F6" />;
 };
 
 const HistoryChartModal = ({
