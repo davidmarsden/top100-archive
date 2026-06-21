@@ -30,20 +30,7 @@ const lineColors = [
   "#EC4899",
 ];
 
-const CustomDot = (props) => {
-  const { cx, cy, payload } = props;
 
-  if (!payload?.labels?.length) {
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={4}
-        fill="#3B82F6"
-        stroke="#3B82F6"
-      />
-    );
-  }
 
   const icons = [];
 
