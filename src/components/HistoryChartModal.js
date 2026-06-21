@@ -111,11 +111,7 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [], series
           </div>
         ))}
 
-        {row.eventLabel && (
-          <div className="mt-2 font-semibold text-blue-700">
-            {row.eventLabel}
-          </div>
-        )}
+
       </div>
     );
   }}
@@ -149,6 +145,9 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [], series
     );
   }
 )}
+    {data
+  .filter((row) => row.eventLabel)
+  .map((row) => (
     <ReferenceLine
       key={`${row.season}-${row.eventLabel}`}
       x={row.season}
