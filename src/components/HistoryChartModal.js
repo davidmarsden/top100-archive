@@ -128,26 +128,6 @@ const HistoryChartModal = ({
   const hasData = Array.isArray(data) && data.length >= 2;
   const chartSeries = series || [{ dataKey: "globalRank", label: "Overall rank" }];
 
-const clubChangeMarkers = !series
-  ? data
-      .map((row, index) => {
-        if (index === 0) return null;
-
-        const previousClub = data[index - 1]?.club;
-        const currentClub = row.club;
-
-        if (!previousClub || !currentClub || previousClub === currentClub) {
-          return null;
-        }
-
-        return {
-          season: row.season,
-          club: currentClub,
-          label: `Joined ${currentClub}`,
-        };
-      })
-      .filter(Boolean)
-  : [];
 
   return (
     <div
