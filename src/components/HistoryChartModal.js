@@ -36,10 +36,7 @@ const lineColors = [
 const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (cx == null || cy == null) return null;
 
-  const labels =
-    payload?.labels ||
-    payload?.[`${dataKey}_labels`] ||
-    [];
+  const labels = payload?.labels || payload?.[`${dataKey}_labels`] || [];
 
   if (!labels.length) {
     return (
@@ -62,11 +59,22 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
     );
   }
 
-  if (labels.includes("Auto-promoted") || labels.includes("Playoff winners")) {
+  if (labels.includes("Auto-promoted")) {
     return (
       <g>
         <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#16A34A" />
         <text x={cx} y={cy + 5} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
+          ↑
+        </text>
+      </g>
+    );
+  }
+
+  if (labels.includes("Playoff winners")) {
+    return (
+      <g>
+        <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#FACC15" />
+        <text x={cx} y={cy + 5} textAnchor="middle" fill="#111827" fontSize="12" fontWeight="bold">
           ↑
         </text>
       </g>
@@ -327,19 +335,31 @@ const HistoryChartModal = ({
 })}
 
                 {data
-                  .filter((row) => row.eventLabel)
-                  .map((row) => (
-                    <ReferenceLine
-                      key={`${row.season}-${row.eventLabel}`}
-                      x={row.season}
-                      strokeDasharray="4 4"
-                      label={{
-                        value: row.eventLabel,
-                        position: "top",
-                        fontSize: 11,
-                      }}
-                    />
-                  ))}
+  .filter((row, index) => {
+    if (index === 0) return false;
+
+    const currentClub = row.club;
+
+    if (!currentClub) return false;
+
+    const previousClub = data[index - 1]?.club;
+
+    return previousClub && currentClub !== previousClub;
+  })
+  .map((row) => (
+    <ReferenceLine
+      key={`${row.season}-${row.club}`}
+      x={row.season}
+      stroke="#9CA3AF"
+      strokeDasharray="4 4"
+      label={{
+        value: `Joined ${row.club}`,
+        position: "top",
+        fontSize: 11,
+        fill: "#6B7280",
+      }}
+    />
+  ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
