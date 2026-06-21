@@ -127,7 +127,7 @@ const HistoryChartModal = ({
 
   const hasData = Array.isArray(data) && data.length >= 2;
   const chartSeries = series || [{ dataKey: "globalRank", label: "Overall rank" }];
-
+const eventRows = data.filter((row) => row.eventLabel);
 
   return (
     <div
@@ -168,6 +168,11 @@ const HistoryChartModal = ({
     {showEventIcons ? "Hide event badges" : "Show event badges"}
   </button>
 </div>
+
+<div className="text-xs text-gray-500 mb-2">
+  Club change markers found: {eventRows.length}
+</div>
+
 
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
@@ -313,23 +318,23 @@ const HistoryChartModal = ({
 
                 <Legend />
 
-{data
-  .filter((row) => row.eventLabel)
-  .map((row) => (
-    <ReferenceLine
-      key={`${row.season}-${row.eventLabel}`}
-      x={row.season}
-      stroke="#6B7280"
-      strokeDasharray="4 4"
-      ifOverflow="extendDomain"
-      label={{
-        value: row.eventLabel,
-        position: "top",
-        fontSize: 11,
-        fill: "#374151",
-      }}
-    />
-  ))}
+
+
+{eventRows.map((row) => (
+  <ReferenceLine
+    key={`${row.season}-${row.eventLabel}`}
+    x={row.season}
+    stroke="#6B7280"
+    strokeDasharray="4 4"
+    ifOverflow="extendDomain"
+    label={{
+      value: row.eventLabel,
+      position: "insideTop",
+      fontSize: 11,
+      fill: "#374151",
+    }}
+  />
+))}
 
 {chartSeries.map((s, index) => {
   const stroke = lineColors[index % lineColors.length];
