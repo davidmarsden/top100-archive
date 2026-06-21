@@ -20,6 +20,21 @@ const ordinal = (n) => {
   return `${num}${suffix}`;
 };
 
+const getClubColor = (clubName) => {
+  if (!clubName) return "#6B7280";
+
+  let hash = 0;
+  for (let i = 0; i < clubName.length; i++) {
+    hash = clubName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const hue = Math.abs(hash) % 360;
+
+  return `hsl(${hue}, 65%, 45%)`;
+};
+
+
+
 const lineColors = [
   "#3B82F6",
   "#EF4444",
@@ -33,7 +48,8 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (cx == null || cy == null) return null;
 
   const labels = payload?.labels || payload?.[`${dataKey}_labels`] || [];
-  const eventLabel = payload?.eventLabel;
+const eventLabel = payload?.eventLabel;
+const clubColor = getClubColor(eventLabel);
 
   const normalDot = (
     <circle
@@ -142,7 +158,7 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   y1={28}
   x2={cx}
   y2={cy - 12}
-  stroke="#6B7280"
+  stroke={clubColor}
   strokeDasharray="4 4"
 />
 <text
@@ -150,7 +166,8 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   y={18}
   textAnchor="middle"
   fontSize="11"
-  fill="#374151"
+  fill={clubColor}
+  fontWeight="600"
 >
   {eventLabel}
 </text>
