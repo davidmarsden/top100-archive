@@ -1326,8 +1326,13 @@ const SearchResults = () => {
     );
   };
 
-{/* Hero Header */}
-<div className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
+};
+
+  return (
+    <>
+      <div className="min-h-screen bg-gray-50">
+        {/* Hero Header */}
+        <div className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
   <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-950 to-pink-300 opacity-90" />
   <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_70%_40%,#f9a8d4_0,transparent_35%)]" />
 
@@ -1499,18 +1504,20 @@ const SearchResults = () => {
         </div>
 </footer>
 
-<HistoryChartModal
-  isOpen={!!historyChart}
-  onClose={() => setHistoryChart(null)}
-  title={historyChart?.title}
-  subtitle={historyChart?.subtitle}
-  data={historyChart?.data || []}
-  series={historyChart?.series}
-  summary={historyChart?.summary}
-  showEventIcons={showEventIcons}
-  setShowEventIcons={setShowEventIcons}
-/>
-    </div>
+</div>
+
+      <HistoryChartModal
+        isOpen={!!historyChart}
+        onClose={() => setHistoryChart(null)}
+        title={historyChart?.title}
+        subtitle={historyChart?.subtitle}
+        data={historyChart?.data || []}
+        series={historyChart?.series}
+        summary={historyChart?.summary}
+        showEventIcons={showEventIcons}
+        setShowEventIcons={setShowEventIcons}
+      />
+    </>
   );
 };
 
