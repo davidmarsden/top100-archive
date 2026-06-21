@@ -1375,6 +1375,7 @@ const SearchResults = () => {
       </div>
     </div>
   </div>
+</div>
 
       {/* Navigation */}
       <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
