@@ -20,7 +20,7 @@ const ordinal = (n) => {
   return `${num}${suffix}`;
 };
 
-const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
+const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [], series }) => {
   if (!isOpen) return null;
 
   const hasData = Array.isArray(data) && data.length >= 2;
