@@ -226,8 +226,8 @@ const buildManagerCareer = (managerName) => {
       previousClub = r.team;
 
       return makeHistoryPoint(r, {
-        eventLabel: clubChanged ? `Joined ${r.team}` : "",
-      });
+  eventLabel: clubChanged ? r.team : "",
+});
     });
 };
 
