@@ -164,7 +164,7 @@ const Top100Archive = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-
+  const [showEventIcons, setShowEventIcons] = useState(true);
   const [historyChart, setHistoryChart] = useState(null);
 
 const [comparisonManagers, setComparisonManagers] = useState([]);
@@ -1505,6 +1505,8 @@ const SearchResults = () => {
   data={historyChart?.data || []}
   series={historyChart?.series}
   summary={historyChart?.summary}
+  showEventIcons={showEventIcons}
+  dot={showEventIcons ? <CustomDot /> : { r: 4 }}
 />
     </div>
   );
