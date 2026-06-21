@@ -1345,7 +1345,7 @@ const SearchResults = () => {
 </div>
 
       <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 text-pink-200 drop-shadow">
-        FULL ALL SEASONS ARCHIVE
+        TOP 100 ALL SEASONS ARCHIVE
       </h1>
 
       <p className="text-xl md:text-2xl text-pink-100/90 mb-8">
