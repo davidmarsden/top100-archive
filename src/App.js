@@ -164,7 +164,7 @@ const Top100Archive = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [showEventIcons] = useState(true);
+  const [showEventIcons, setShowEventIcons] = useState(true);
   const [historyChart, setHistoryChart] = useState(null);
 
 const [comparisonManagers, setComparisonManagers] = useState([]);
@@ -293,17 +293,21 @@ const buildManagerComparison = (managerNames) => {
 
     managerNames.forEach((managerName) => {
       const match = allPositionData.find(
-        (r) => managerMatches(r.manager, managerName) && `S${r.season}` === season
+        (r) =>
+          managerMatches(r.manager, managerName) &&
+          `S${r.season}` === season
       );
 
       if (match) {
-        row[managerName] =
+        const rank =
           ((Number(match.division) - 1) * 20) + Number(match.position);
 
+        row[managerName] = rank;
         row[`${managerName}_club`] = match.team;
-        row[`${managerName}_division`] = match.division;
-        row[`${managerName}_position`] = match.position;
-        row[`${managerName}_points`] = match.points;
+        row[`${managerName}_division`] = Number(match.division);
+        row[`${managerName}_position`] = Number(match.position);
+        row[`${managerName}_points`] = Number(match.points);
+        row[`${managerName}_labels`] = getHistoryLabels(match);
       }
     });
 
@@ -1506,7 +1510,7 @@ const SearchResults = () => {
   series={historyChart?.series}
   summary={historyChart?.summary}
   showEventIcons={showEventIcons}
-  dot={{ r: 4 }}
+  setShowEventIcons={setShowEventIcons}
 />
     </div>
   );
