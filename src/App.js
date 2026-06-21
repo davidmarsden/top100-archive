@@ -221,7 +221,7 @@ const buildManagerCareer = (managerName) => {
     })
     .map((r) => {
       const clubChanged = previousClub && previousClub !== r.team;
-      const isFirstClub = !previousClub;
+      
 
       previousClub = r.team;
 
