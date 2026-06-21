@@ -1340,7 +1340,7 @@ const SearchResults = () => {
   <img
     src="https://anotherurl.wordpress.com/wp-content/uploads/2025/05/1000017272.png"
     alt="Top 100"
-    className="h-28 md:h-36" drop-shadow-lg"
+    className="h-28 md:h-36 drop-shadow-lg"
   />
 </div>
 
