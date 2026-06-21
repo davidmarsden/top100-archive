@@ -1338,7 +1338,7 @@ const SearchResults = () => {
     <div className="text-center">
       <div className="flex justify-center mb-6">
   <img
-    src="https://anotherurl.wordpress.com/wp-content/uploads/2025/04/original-logo.png"
+    src="https://anotherurl.wordpress.com/wp-content/uploads/2025/05/1000017272.png"
     alt="Top 100"
     className="h-20 md:h-24 drop-shadow-lg"
   />
