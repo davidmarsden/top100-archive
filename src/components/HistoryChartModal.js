@@ -30,126 +30,7 @@ const lineColors = [
   "#EC4899",
 ];
 
-const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
-  if (cx == null || cy == null) return null;
 
-  const labels = payload?.labels || payload?.[`${dataKey}_labels`] || [];
-
-  if (!labels.length) {
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={4}
-        fill="white"
-        stroke={stroke || "#3B82F6"}
-        strokeWidth={2}
-      />
-    );
-  }
-
-  if (labels.includes("Champions")) {
-    return (
-      <text x={cx} y={cy + 6} textAnchor="middle" fontSize="18">
-        👑
-      </text>
-    );
-  }
-
-  if (labels.includes("Auto-promoted")) {
-    return (
-      <g>
-        <rect
-          x={cx - 8}
-          y={cy - 8}
-          width={16}
-          height={16}
-          rx={3}
-          fill="#16A34A"
-        />
-        <text
-          x={cx}
-          y={cy + 5}
-          textAnchor="middle"
-          fill="white"
-          fontSize="12"
-          fontWeight="bold"
-        >
-          ↑
-        </text>
-      </g>
-    );
-  }
-
-  if (labels.includes("Playoff winners")) {
-    return (
-      <g>
-        <rect
-          x={cx - 8}
-          y={cy - 8}
-          width={16}
-          height={16}
-          rx={3}
-          fill="#FACC15"
-        />
-        <text
-          x={cx}
-          y={cy + 5}
-          textAnchor="middle"
-          fill="#111827"
-          fontSize="12"
-          fontWeight="bold"
-        >
-          ↑
-        </text>
-      </g>
-    );
-  }
-
-  if (labels.includes("Relegated")) {
-    return (
-      <g>
-        <rect
-          x={cx - 8}
-          y={cy - 8}
-          width={16}
-          height={16}
-          rx={3}
-          fill="#DC2626"
-        />
-        <text
-          x={cx}
-          y={cy + 5}
-          textAnchor="middle"
-          fill="white"
-          fontSize="12"
-          fontWeight="bold"
-        >
-          ↓
-        </text>
-      </g>
-    );
-  }
-
-  if (labels.includes("Auto-sacked")) {
-    return (
-      <text x={cx} y={cy + 6} textAnchor="middle" fontSize="16">
-        ⛔
-      </text>
-    );
-  }
-
-  return (
-    <circle
-      cx={cx}
-      cy={cy}
-      r={4}
-      fill="white"
-      stroke={stroke || "#3B82F6"}
-      strokeWidth={2}
-    />
-  );
-};
 
 const HistoryChartModal = ({
   isOpen,
@@ -383,44 +264,20 @@ const eventRows = careerData.filter((row) => row.eventLabel);
                 ))}
 
                 {chartSeries.map((s, index) => {
-                  const stroke = lineColors[index % lineColors.length];
-
-                  return (
-                    <Line
-  type="monotone"
-  dataKey="eventRank"
-  stroke="transparent"
-  dot={({ cx, cy, payload }) => {
-    if (!payload?.eventLabel || cx == null || cy == null) return null;
-
-    return (
-      <g>
-        <line
-          x1={cx}
-          y1={20}
-          x2={cx}
-          y2={cy - 10}
-          stroke="#9CA3AF"
-          strokeDasharray="4 4"
-        />
-        <text
-          x={cx}
-          y={14}
-          textAnchor="middle"
-          fontSize="11"
-          fill="#374151"
-        >
-          {payload.eventLabel}
-        </text>
-      </g>
-    );
-  }}
-  activeDot={false}
-  legendType="none"
-  connectNulls={false}
-/>
-                  );
-                })}
+  return (
+    <Line
+      key={s.dataKey}
+      type="monotone"
+      dataKey={s.dataKey}
+      name={s.label}
+      stroke={lineColors[index % lineColors.length]}
+      strokeWidth={3}
+      dot={{ r: 4 }}
+      activeDot={{ r: 7 }}
+      connectNulls
+    />
+  );
+})}
               </LineChart>
             </ResponsiveContainer>
           </div>
