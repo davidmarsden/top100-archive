@@ -313,7 +313,25 @@ const HistoryChartModal = ({
 
                 <Legend />
 
-                {chartSeries.map((s, index) => {
+{data
+  .filter((row) => row.eventLabel)
+  .map((row) => (
+    <ReferenceLine
+      key={`${row.season}-${row.eventLabel}`}
+      x={row.season}
+      stroke="#6B7280"
+      strokeDasharray="4 4"
+      ifOverflow="extendDomain"
+      label={{
+        value: row.eventLabel,
+        position: "top",
+        fontSize: 11,
+        fill: "#374151",
+      }}
+    />
+  ))}
+
+{chartSeries.map((s, index) => {
   const stroke = lineColors[index % lineColors.length];
 
   return (
@@ -334,24 +352,6 @@ const HistoryChartModal = ({
     />
   );
 })}
-
-                {data
-  .filter((row) => row.eventLabel)
-  .map((row) => (
-    <ReferenceLine
-      key={`${row.season}-${row.eventLabel}`}
-      x={row.season}
-      stroke="#6B7280"
-      strokeDasharray="4 4"
-      ifOverflow="extendDomain"
-      label={{
-        value: row.eventLabel,
-        position: "top",
-        fontSize: 11,
-        fill: "#374151",
-      }}
-    />
-  ))}
 
               </LineChart>
             </ResponsiveContainer>
