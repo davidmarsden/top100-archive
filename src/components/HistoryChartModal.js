@@ -128,6 +128,27 @@ const HistoryChartModal = ({
   const hasData = Array.isArray(data) && data.length >= 2;
   const chartSeries = series || [{ dataKey: "globalRank", label: "Overall rank" }];
 
+const clubChangeMarkers = !series
+  ? data
+      .map((row, index) => {
+        if (index === 0) return null;
+
+        const previousClub = data[index - 1]?.club;
+        const currentClub = row.club;
+
+        if (!previousClub || !currentClub || previousClub === currentClub) {
+          return null;
+        }
+
+        return {
+          season: row.season,
+          club: currentClub,
+          label: `Joined ${currentClub}`,
+        };
+      })
+      .filter(Boolean)
+  : [];
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
@@ -334,22 +355,21 @@ const HistoryChartModal = ({
   );
 })}
 
-                {data
-  .filter((row) => row.eventLabel)
-  .map((row) => (
-    <ReferenceLine
-      key={`${row.season}-${row.eventLabel}`}
-      x={row.season}
-      stroke="#9CA3AF"
-      strokeDasharray="4 4"
-      label={{
-        value: row.eventLabel,
-        position: "top",
-        fontSize: 11,
-        fill: "#6B7280",
-      }}
-    />
-  ))}
+                {clubChangeMarkers.map((marker) => (
+  <ReferenceLine
+    key={`${marker.season}-${marker.club}`}
+    x={marker.season}
+    stroke="#6B7280"
+    strokeDasharray="4 4"
+    ifOverflow="extendDomain"
+    label={{
+      value: marker.label,
+      position: "top",
+      fontSize: 11,
+      fill: "#374151",
+    }}
+  />
+))}
               </LineChart>
             </ResponsiveContainer>
           </div>
