@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Legend,
 } from "recharts";
 
 const ordinal = (n) => {
@@ -70,45 +71,84 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [], series
                   tickFormatter={(value) => `#${value}`}
                 />
                 <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
+  content={({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
 
-                    const row = payload[0].payload;
+    const row = payload[0].payload;
 
-                    return (
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
-                        <div className="font-bold mb-1">{label}</div>
-                        <div>{row.club}</div>
-                        {row.manager && <div>Manager: {row.manager}</div>}
-                        <div>Division: {row.division}</div>
-                        <div>Position: {ordinal(row.position)}</div>
-                        <div>Overall rank: #{row.globalRank}</div>
-{row.points && <div>Points: {row.points}</div>}
-{row.eventLabel && (
-  <div className="mt-1 font-semibold text-blue-700">
-    {row.eventLabel}
-  </div>
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
+        <div className="font-bold mb-2">{label}</div>
+
+        {payload.map((entry, idx) => (
+          <div key={idx} className="mb-2">
+            <div
+              className="font-semibold"
+              style={{ color: entry.color }}
+            >
+              {entry.name}
+            </div>
+
+            <div>Rank: #{entry.value}</div>
+
+            {row[`${entry.name}_club`] && (
+              <div>Club: {row[`${entry.name}_club`]}</div>
+            )}
+
+            {row[`${entry.name}_division`] && (
+              <div>Division: {row[`${entry.name}_division`]}</div>
+            )}
+
+            {row[`${entry.name}_position`] && (
+              <div>
+                Position: {ordinal(row[`${entry.name}_position`])}
+              </div>
+            )}
+
+            {row[`${entry.name}_points`] && (
+              <div>Points: {row[`${entry.name}_points`]}</div>
+            )}
+          </div>
+        ))}
+
+        {row.eventLabel && (
+          <div className="mt-2 font-semibold text-blue-700">
+            {row.eventLabel}
+          </div>
+        )}
+      </div>
+    );
+  }}
+/>
+
+<Legend />
+
+{(series || [{ dataKey: "globalRank", label: "Overall rank" }]).map(
+  (s, index) => {
+    const colors = [
+      "#3B82F6",
+      "#EF4444",
+      "#10B981",
+      "#F59E0B",
+      "#8B5CF6",
+      "#EC4899",
+    ];
+
+    return (
+      <Line
+        key={s.dataKey}
+        type="monotone"
+        dataKey={s.dataKey}
+        name={s.label}
+        stroke={colors[index % colors.length]}
+        strokeWidth={3}
+        dot={{ r: 4 }}
+        activeDot={{ r: 7 }}
+        connectNulls
+      />
+    );
+  }
 )}
-                      </div>
-                    );
-                  }}
-                />
-{(series || [{ dataKey: "globalRank", label: "Overall rank" }]).map((s) => (
-  <Line
-    key={s.dataKey}
-    type="monotone"
-    dataKey={s.dataKey}
-    name={s.label}
-    strokeWidth={3}
-    dot={{ r: 4 }}
-    activeDot={{ r: 7 }}
-    connectNulls
-  />
-))}
-
-{data
-  .filter((row) => row.eventLabel)
-  .map((row) => (
     <ReferenceLine
       key={`${row.season}-${row.eventLabel}`}
       x={row.season}
