@@ -1478,7 +1478,7 @@ const SearchResults = () => {
             <DataPlaceholder />
           ))}
         {activeTab === "honours" && <Winners />}
-      </div>
+     
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-800 to-slate-900 text-white mt-16">
