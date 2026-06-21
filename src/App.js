@@ -1410,8 +1410,7 @@ const SearchResults = () => {
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                   activeTab === tab.id
                     ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-                    : "bg-[#e9a6ad]
-hover:bg-[#de8f99]"
+                    : "bg-[#e9a6ad] hover:bg-[#de8f99] text-gray-900"
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
