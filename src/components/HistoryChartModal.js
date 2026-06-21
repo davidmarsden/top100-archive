@@ -169,8 +169,12 @@ const HistoryChartModal = ({
     { dataKey: "globalRank", label: "Overall rank" },
   ];
 
-  const careerData = data;
-  const eventRows = careerData.filter((row) => row.eventLabel);
+  const careerData = data.map((row) => ({
+  ...row,
+  eventRank: row.eventLabel ? row.globalRank : null,
+}));
+
+const eventRows = careerData.filter((row) => row.eventLabel);
 
   return (
     <div
@@ -383,22 +387,38 @@ const HistoryChartModal = ({
 
                   return (
                     <Line
-                      key={s.dataKey}
-                      type="monotone"
-                      dataKey={s.dataKey}
-                      name={s.label}
-                      stroke={stroke}
-                      strokeWidth={3}
-                      dot={
-                        showEventIcons ? (
-                          <CustomDot dataKey={s.dataKey} stroke={stroke} />
-                        ) : (
-                          { r: 4 }
-                        )
-                      }
-                      activeDot={{ r: 7 }}
-                      connectNulls
-                    />
+  type="monotone"
+  dataKey="eventRank"
+  stroke="transparent"
+  dot={({ cx, cy, payload }) => {
+    if (!payload?.eventLabel || cx == null || cy == null) return null;
+
+    return (
+      <g>
+        <line
+          x1={cx}
+          y1={20}
+          x2={cx}
+          y2={cy - 10}
+          stroke="#9CA3AF"
+          strokeDasharray="4 4"
+        />
+        <text
+          x={cx}
+          y={14}
+          textAnchor="middle"
+          fontSize="11"
+          fill="#374151"
+        >
+          {payload.eventLabel}
+        </text>
+      </g>
+    );
+  }}
+  activeDot={false}
+  legendType="none"
+  connectNulls={false}
+/>
                   );
                 })}
               </LineChart>
