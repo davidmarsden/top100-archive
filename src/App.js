@@ -194,7 +194,31 @@ const buildManagerCareer = (managerName) => {
 
   return allPositionData
     .filter((r) => managerMatches(r.manager, managerName))
-    .sort((a, b) => Number(a.season) - Number(b.season))
+    .sort((a, b) => {
+  const seasonDiff = Number(a.season) - Number(b.season);
+  if (seasonDiff !== 0) return seasonDiff;
+
+  const nextSeason = String(Number(a.season) + 1);
+
+  const aContinuesNextSeason = allPositionData.some(
+    (r) =>
+      String(r.season) === nextSeason &&
+      managerMatches(r.manager, managerName) &&
+      r.team === a.team
+  );
+
+  const bContinuesNextSeason = allPositionData.some(
+    (r) =>
+      String(r.season) === nextSeason &&
+      managerMatches(r.manager, managerName) &&
+      r.team === b.team
+  );
+
+  if (aContinuesNextSeason && !bContinuesNextSeason) return 1;
+  if (!aContinuesNextSeason && bContinuesNextSeason) return -1;
+
+  return Number(a.division) - Number(b.division);
+})
     .map((r) => {
       const isFirstClub = !previousClub;
       const clubChanged = previousClub && previousClub !== r.team;
