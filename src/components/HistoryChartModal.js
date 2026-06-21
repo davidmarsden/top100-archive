@@ -335,25 +335,15 @@ const HistoryChartModal = ({
 })}
 
                 {data
-  .filter((row, index) => {
-    if (index === 0) return false;
-
-    const currentClub = row.club;
-
-    if (!currentClub) return false;
-
-    const previousClub = data[index - 1]?.club;
-
-    return previousClub && currentClub !== previousClub;
-  })
+  .filter((row) => row.eventLabel)
   .map((row) => (
     <ReferenceLine
-      key={`${row.season}-${row.club}`}
+      key={`${row.season}-${row.eventLabel}`}
       x={row.season}
       stroke="#9CA3AF"
       strokeDasharray="4 4"
       label={{
-        value: `Joined ${row.club}`,
+        value: row.eventLabel,
         position: "top",
         fontSize: 11,
         fill: "#6B7280",
