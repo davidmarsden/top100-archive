@@ -181,7 +181,7 @@ const HistoryChartModal = ({
   ];
 
   const careerData = data;
-  const eventRows = careerData.filter((row) => row.eventLabel);
+  
 
   return (
     <div
@@ -223,10 +223,7 @@ const HistoryChartModal = ({
           </button>
         </div>
 
-        <div className="text-xs text-gray-500 mb-2">
-          Club change markers found: {eventRows.length}
-        </div>
-
+        
 <div className="text-xs text-gray-500 mb-2">
   Club change markers found: {eventRows.length}
 </div>
