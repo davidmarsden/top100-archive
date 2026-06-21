@@ -63,43 +63,6 @@ const normalizeName = (s) =>
 const playoffWinnerKey = (season, division, team) =>
   `${String(season || "").trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
-const getHistoryLabels = (r) => {
-  const labels = [];
-
-  if (isChampion(r.position)) labels.push("Champions");
-  if (isAutoPromo(r.division, r.position)) labels.push("Auto-promoted");
-
-  if (
-    isPlayoffBand(r.division, r.position) &&
-    playoffWinnersSet?.has(playoffWinnerKey(r.season, r.division, r.team))
-  ) {
-    labels.push("Playoff winners");
-  }
-
-  if (isRelegated(r.division, r.position)) labels.push("Relegated");
-  if (isAutoSacked(r.position)) labels.push("Auto-sacked");
-  if (isD1UCL(r.division, r.position)) labels.push("SMFA Champions Cup");
-  if (isD1Shield(r.division, r.position)) labels.push("SMFA Shield");
-
-  return labels;
-};
-
-const makeHistoryPoint = (r, extra = {}) => ({
-  season: `S${r.season}`,
-  club: r.team,
-  manager: r.manager,
-  division: Number(r.division),
-  position: Number(r.position),
-  points: Number(r.points),
-  played: Number(r.played),
-  won: Number(r.won),
-  drawn: Number(r.drawn),
-  lost: Number(r.lost),
-  goalDifference: Number(r.goal_difference),
-  globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
-  labels: getHistoryLabels(r),
-  ...extra,
-});
 
 // small UI helpers
 const LegendSwatch = ({ color, label }) => (
@@ -334,6 +297,45 @@ const openManagerComparisonChart = () => {
 
   // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
+
+const getHistoryLabels = (r) => {
+  const labels = [];
+
+  if (isChampion(r.position)) labels.push("Champions");
+  if (isAutoPromo(r.division, r.position)) labels.push("Auto-promoted");
+
+  if (
+    isPlayoffBand(r.division, r.position) &&
+    playoffWinnersSet?.has(playoffWinnerKey(r.season, r.division, r.team))
+  ) {
+    labels.push("Playoff winners");
+  }
+
+  if (isRelegated(r.division, r.position)) labels.push("Relegated");
+  if (isAutoSacked(r.position)) labels.push("Auto-sacked");
+  if (isD1UCL(r.division, r.position)) labels.push("SMFA Champions Cup");
+  if (isD1Shield(r.division, r.position)) labels.push("SMFA Shield");
+
+  return labels;
+};
+
+const makeHistoryPoint = (r, extra = {}) => ({
+  season: `S${r.season}`,
+  club: r.team,
+  manager: r.manager,
+  division: Number(r.division),
+  position: Number(r.position),
+  points: Number(r.points),
+  played: Number(r.played),
+  won: Number(r.won),
+  drawn: Number(r.drawn),
+  lost: Number(r.lost),
+  goalDifference: Number(r.goal_difference),
+  globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
+  labels: getHistoryLabels(r),
+  ...extra,
+});
+
 
   // hash -> tab sync
   useEffect(() => {
