@@ -93,13 +93,19 @@ const HistoryChartModal = ({ isOpen, onClose, title, subtitle, data = [] }) => {
                     );
                   }}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="globalRank"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 7 }}
-                />
+{(series || [{ dataKey: "globalRank", label: "Overall rank" }]).map((s) => (
+  <Line
+    key={s.dataKey}
+    type="monotone"
+    dataKey={s.dataKey}
+    name={s.label}
+    strokeWidth={3}
+    dot={{ r: 4 }}
+    activeDot={{ r: 7 }}
+    connectNulls
+  />
+))}
+
 {data
   .filter((row) => row.eventLabel)
   .map((row) => (
