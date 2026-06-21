@@ -30,6 +30,44 @@ const lineColors = [
   "#EC4899",
 ];
 
+const CustomDot = ({ cx, cy, payload }) => {
+  if (cx == null || cy == null) return null;
+
+  const labels = payload?.labels || [];
+
+  let icon = null;
+
+  if (labels.includes("Champions")) icon = "👑";
+  else if (labels.includes("Auto-promoted") || labels.includes("Playoff winners")) icon = "⬆️";
+  else if (labels.includes("Relegated")) icon = "⬇️";
+  else if (labels.includes("Auto-sacked")) icon = "⛔";
+
+  if (!icon) {
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={4}
+        fill="white"
+        stroke="#3B82F6"
+        strokeWidth={2}
+      />
+    );
+  }
+
+  return (
+    <text
+      x={cx}
+      y={cy}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={16}
+    >
+      {icon}
+    </text>
+  );
+};
+
 const HistoryChartModal = ({
   isOpen,
   onClose,
@@ -222,7 +260,7 @@ const HistoryChartModal = ({
                     name={s.label}
                     stroke={lineColors[index % lineColors.length]}
                     strokeWidth={3}
-                    dot={{ r: 4 }}
+                    dot={<CustomDot />}
                     activeDot={{ r: 7 }}
                     connectNulls
                   />
