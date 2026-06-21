@@ -1357,7 +1357,7 @@ const SearchResults = () => {
         FULL 27 SEASONS DATA ARCHIVE
       </h1>
 
-      <p className="text-xl md:text-2xl text-[#f0b6be] mb-8"">
+      <p> className="text-xl md:text-2xl text-[#f0b6be] mb-8"">
         Soccer Manager Worlds Elite Community • Complete Historical Database
       </p>
 
