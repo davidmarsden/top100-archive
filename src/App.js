@@ -1334,13 +1334,15 @@ const SearchResults = () => {
   <div className="relative max-w-7xl mx-auto px-6 py-12">
     <div className="text-center">
       <div className="flex justify-center mb-6">
-        <div className="bg-pink-200/10 border border-pink-200/30 rounded-full p-4">
-          <Trophy className="w-16 h-16 text-yellow-300" />
-        </div>
-      </div>
+  <img
+    src="https://anotherurl.wordpress.com/wp-content/uploads/2025/03/transparent-logo.png"
+    alt="Top 100"
+    className="h-20 md:h-24 drop-shadow-lg"
+  />
+</div>
 
       <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 text-pink-200 drop-shadow">
-        TOP 100 ARCHIVE
+        FULL ALL SEASONS ARCHIVE
       </h1>
 
       <p className="text-xl md:text-2xl text-pink-100/90 mb-8">
