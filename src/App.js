@@ -1326,54 +1326,54 @@ const SearchResults = () => {
     );
   };
 
-/* =========================
-     Layout (Hero + Tabs)
-     ========================= */
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <div className="bg-white bg-opacity-10 rounded-full p-4">
-                <Trophy className="w-16 h-16 text-yellow-400" />
-              </div>
-            </div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-yellow-400 via-blue-300 to-purple-300 bg-clip-text text-transparent">
-              TOP 100 ARCHIVE
-            </h1>
-            <p className="text-xl md:text-2xl text-blue-200 mb-8">
-              Soccer Manager Worlds Elite Community • Complete Historical Database
-            </p>
+{/* Hero Header */}
+<div className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
+  <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-950 to-pink-300 opacity-90" />
+  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_70%_40%,#f9a8d4_0,transparent_35%)]" />
 
-            {/* Status Indicator */}
-            <div className="flex items-center justify-center gap-3 text-lg">
-              {loading ? (
-                <>
-                  <Loader className="w-5 h-5 animate-spin text-yellow-400" />
-                  <span className="text-blue-200">Loading historical data...</span>
-                </>
-              ) : error ? (
-                <>
-                  <AlertCircle className="w-5 h-5 text-red-400" />
-                  <span className="text-red-300">Database Error: {error}</span>
-                </>
-              ) : dataLoaded ? (
-                <>
-                  <Database className="w-5 h-5 text-green-400" />
-                  <span className="text-green-300">✅ Live Database Connected</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-5 h-5 text-yellow-400" />
-                  <span className="text-yellow-300">⚙️ Setup Required</span>
-                </>
-              )}
-            </div>
-          </div>
+  <div className="relative max-w-7xl mx-auto px-6 py-12">
+    <div className="text-center">
+      <div className="flex justify-center mb-6">
+        <div className="bg-pink-200/10 border border-pink-200/30 rounded-full p-4">
+          <Trophy className="w-16 h-16 text-yellow-300" />
         </div>
       </div>
+
+      <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 text-pink-200 drop-shadow">
+        TOP 100 ARCHIVE
+      </h1>
+
+      <p className="text-xl md:text-2xl text-pink-100/90 mb-8">
+        Soccer Manager Worlds Elite Community • Complete Historical Database
+      </p>
+
+      {/* Status Indicator */}
+      <div className="flex items-center justify-center gap-3 text-lg">
+        {loading ? (
+          <>
+            <Loader className="w-5 h-5 animate-spin text-yellow-300" />
+            <span className="text-pink-100">Loading historical data...</span>
+          </>
+        ) : error ? (
+          <>
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-300">Database Error: {error}</span>
+          </>
+        ) : dataLoaded ? (
+          <>
+            <Database className="w-5 h-5 text-green-300" />
+            <span className="text-green-300">✅ Live Database Connected</span>
+          </>
+        ) : (
+          <>
+            <AlertCircle className="w-5 h-5 text-yellow-300" />
+            <span className="text-yellow-300">⚙️ Setup Required</span>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
 
       {/* Navigation */}
       <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
