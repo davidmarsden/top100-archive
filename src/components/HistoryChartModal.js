@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
   Legend,
 } from "recharts";
 
@@ -30,7 +29,136 @@ const lineColors = [
   "#EC4899",
 ];
 
+const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
+  if (cx == null || cy == null) return null;
 
+  const labels = payload?.labels || payload?.[`${dataKey}_labels`] || [];
+  const eventLabel = payload?.eventLabel;
+
+  const normalDot = (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={4}
+      fill="white"
+      stroke={stroke || "#3B82F6"}
+      strokeWidth={2}
+    />
+  );
+
+  let badge = normalDot;
+
+  if (labels.includes("Champions")) {
+    badge = (
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize="18">
+        👑
+      </text>
+    );
+  } else if (labels.includes("Auto-promoted")) {
+    badge = (
+      <g>
+        <rect
+          x={cx - 8}
+          y={cy - 8}
+          width={16}
+          height={16}
+          rx={3}
+          fill="#16A34A"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          ↑
+        </text>
+      </g>
+    );
+  } else if (labels.includes("Playoff winners")) {
+    badge = (
+      <g>
+        <rect
+          x={cx - 8}
+          y={cy - 8}
+          width={16}
+          height={16}
+          rx={3}
+          fill="#FACC15"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="#111827"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          ↑
+        </text>
+      </g>
+    );
+  } else if (labels.includes("Relegated")) {
+    badge = (
+      <g>
+        <rect
+          x={cx - 8}
+          y={cy - 8}
+          width={16}
+          height={16}
+          rx={3}
+          fill="#DC2626"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          ↓
+        </text>
+      </g>
+    );
+  } else if (labels.includes("Auto-sacked")) {
+    badge = (
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize="16">
+        ⛔
+      </text>
+    );
+  }
+
+  return (
+    <g>
+      {eventLabel && (
+        <>
+          <line
+            x1={cx}
+            y1={8}
+            x2={cx}
+            y2={cy - 12}
+            stroke="#6B7280"
+            strokeDasharray="4 4"
+          />
+          <text
+            x={cx}
+            y={0}
+            textAnchor="middle"
+            fontSize="11"
+            fill="#374151"
+          >
+            {eventLabel}
+          </text>
+        </>
+      )}
+
+      {badge}
+    </g>
+  );
+};
 
 const HistoryChartModal = ({
   isOpen,
@@ -50,12 +178,8 @@ const HistoryChartModal = ({
     { dataKey: "globalRank", label: "Overall rank" },
   ];
 
-  const careerData = data.map((row) => ({
-  ...row,
-  eventRank: row.eventLabel ? row.globalRank : null,
-}));
-
-const eventRows = careerData.filter((row) => row.eventLabel);
+  const careerData = data;
+  const eventRows = careerData.filter((row) => row.eventLabel);
 
   return (
     <div
@@ -143,7 +267,7 @@ const eventRows = careerData.filter((row) => row.eventLabel);
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={careerData}
-                margin={{ top: 36, right: 30, left: 10, bottom: 20 }}
+                margin={{ top: 56, right: 30, left: 10, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="season" />
@@ -247,37 +371,29 @@ const eventRows = careerData.filter((row) => row.eventLabel);
 
                 <Legend />
 
-                {eventRows.map((row) => (
-                  <ReferenceLine
-                    key={`${row.season}-${row.eventLabel}`}
-                    x={row.season}
-                    stroke="#6B7280"
-                    strokeDasharray="4 4"
-                    ifOverflow="extendDomain"
-                    label={{
-                      value: row.eventLabel,
-                      position: "insideTop",
-                      fontSize: 11,
-                      fill: "#374151",
-                    }}
-                  />
-                ))}
-
                 {chartSeries.map((s, index) => {
-  return (
-    <Line
-      key={s.dataKey}
-      type="monotone"
-      dataKey={s.dataKey}
-      name={s.label}
-      stroke={lineColors[index % lineColors.length]}
-      strokeWidth={3}
-      dot={{ r: 4 }}
-      activeDot={{ r: 7 }}
-      connectNulls
-    />
-  );
-})}
+                  const stroke = lineColors[index % lineColors.length];
+
+                  return (
+                    <Line
+                      key={s.dataKey}
+                      type="monotone"
+                      dataKey={s.dataKey}
+                      name={s.label}
+                      stroke={stroke}
+                      strokeWidth={3}
+                      dot={
+                        showEventIcons ? (
+                          <CustomDot dataKey={s.dataKey} stroke={stroke} />
+                        ) : (
+                          { r: 4 }
+                        )
+                      }
+                      activeDot={{ r: 7 }}
+                      connectNulls
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
