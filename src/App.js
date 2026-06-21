@@ -219,22 +219,19 @@ const buildManagerCareer = (managerName) => {
 
       return Number(a.division) - Number(b.division);
     })
-    .map((r, index) => {
-      const currentClub = r.team;
-      const clubChanged = previousClub && previousClub !== currentClub;
+    .map((r) => {
+      const clubChanged = previousClub && previousClub !== r.team;
+      const isFirstClub = !previousClub;
 
-      const point = makeHistoryPoint(r, {
-        eventLabel:
-          index === 0
-            ? ""
-            : clubChanged
-            ? `Joined ${currentClub}`
-            : "",
+      previousClub = r.team;
+
+      return makeHistoryPoint(r, {
+        eventLabel: isFirstClub
+          ? `Started at ${r.team}`
+          : clubChanged
+          ? `Joined ${r.team}`
+          : "",
       });
-
-      previousClub = currentClub;
-
-      return point;
     });
 };
 
