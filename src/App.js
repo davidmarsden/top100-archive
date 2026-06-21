@@ -63,6 +63,44 @@ const normalizeName = (s) =>
 const playoffWinnerKey = (season, division, team) =>
   `${String(season || "").trim()}|${normDiv(division)}|${normalizeName(team)}`;
 
+const getHistoryLabels = (r) => {
+  const labels = [];
+
+  if (isChampion(r.position)) labels.push("Champions");
+  if (isAutoPromo(r.division, r.position)) labels.push("Auto-promoted");
+
+  if (
+    isPlayoffBand(r.division, r.position) &&
+    playoffWinnersSet?.has(playoffWinnerKey(r.season, r.division, r.team))
+  ) {
+    labels.push("Playoff winners");
+  }
+
+  if (isRelegated(r.division, r.position)) labels.push("Relegated");
+  if (isAutoSacked(r.position)) labels.push("Auto-sacked");
+  if (isD1UCL(r.division, r.position)) labels.push("SMFA Champions Cup");
+  if (isD1Shield(r.division, r.position)) labels.push("SMFA Shield");
+
+  return labels;
+};
+
+const makeHistoryPoint = (r, extra = {}) => ({
+  season: `S${r.season}`,
+  club: r.team,
+  manager: r.manager,
+  division: Number(r.division),
+  position: Number(r.position),
+  points: Number(r.points),
+  played: Number(r.played),
+  won: Number(r.won),
+  drawn: Number(r.drawn),
+  lost: Number(r.lost),
+  goalDifference: Number(r.goal_difference),
+  globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
+  labels: getHistoryLabels(r),
+  ...extra,
+});
+
 // small UI helpers
 const LegendSwatch = ({ color, label }) => (
   <span className={`inline-flex items-center gap-2 px-2 py-1 rounded border ${color}`}>
@@ -169,22 +207,11 @@ const Top100Archive = () => {
 const [comparisonManagers, setComparisonManagers] = useState([]);
 
   const buildClubTrajectory = (clubName) =>
-    allPositionData
-      .filter((r) => r.team === clubName)
-      .map((r) => ({
-        season: `S${r.season}`,
-        club: r.team,
-        manager: r.manager,
-        division: Number(r.division),
-        position: Number(r.position),
-        globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
-      }))
-      .sort(
-        (a, b) =>
-          Number(a.season.replace("S", "")) -
-          Number(b.season.replace("S", ""))
-      );
-
+  allPositionData
+    .filter((r) => r.team === clubName)
+    .sort((a, b) => Number(a.season) - Number(b.season))
+    .map((r) => makeHistoryPoint(r));
+        
   const openClubChart = (clubName) => {
     setHistoryChart({
       title: `${clubName} trajectory`,
@@ -200,33 +227,59 @@ const buildManagerCareer = (managerName) => {
     .filter((r) => r.manager === managerName)
     .sort((a, b) => Number(a.season) - Number(b.season))
     .map((r) => {
-      const clubChanged = previousClub && previousClub !== r.team;
       const isFirstClub = !previousClub;
+      const clubChanged = previousClub && previousClub !== r.team;
 
       previousClub = r.team;
 
-      return {
-        season: `S${r.season}`,
-        club: r.team,
-        manager: r.manager,
-        division: Number(r.division),
-        position: Number(r.position),
-        points: Number(r.points),
-        globalRank: ((Number(r.division) - 1) * 20) + Number(r.position),
+      return makeHistoryPoint(r, {
         eventLabel: isFirstClub
           ? `Started at ${r.team}`
           : clubChanged
           ? `Joined ${r.team}`
           : "",
-      };
+      });
     });
 };
 
+const buildManagerSummary = (careerData) => {
+  if (!careerData.length) return null;
+
+  const clubs = [...new Set(careerData.map((r) => r.club))];
+  const ranks = careerData.map((r) => r.globalRank).filter(Number.isFinite);
+
+  return {
+    seasons: careerData.length,
+    clubs: clubs.length,
+    clubList: clubs.join(", "),
+    bestRank: Math.min(...ranks),
+    worstRank: Math.max(...ranks),
+    averageRank: Math.round(
+      ranks.reduce((total, rank) => total + rank, 0) / ranks.length
+    ),
+    titles: careerData.filter((r) => r.labels.includes("Champions")).length,
+    promotions: careerData.filter(
+      (r) =>
+        r.labels.includes("Auto-promoted") ||
+        r.labels.includes("Playoff winners")
+    ).length,
+    relegations: careerData.filter((r) =>
+      r.labels.includes("Relegated")
+    ).length,
+    sackings: careerData.filter((r) =>
+      r.labels.includes("Auto-sacked")
+    ).length,
+  };
+};
+
 const openManagerChart = (managerName) => {
+  const data = buildManagerCareer(managerName);
+
   setHistoryChart({
     title: `${managerName} career`,
     subtitle: "Manager career rank by season",
-    data: buildManagerCareer(managerName),
+    data,
+    summary: buildManagerSummary(data),
   });
 };
 
@@ -1419,6 +1472,7 @@ const SearchResults = () => {
   subtitle={historyChart?.subtitle}
   data={historyChart?.data || []}
   series={historyChart?.series}
+  summary={historyChart?.summary}
 />
     </div>
   );
