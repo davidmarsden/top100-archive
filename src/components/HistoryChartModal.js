@@ -30,9 +30,6 @@ const lineColors = [
   "#EC4899",
 ];
 
-
-
-  
 const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (cx == null || cy == null) return null;
 
@@ -62,8 +59,22 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (labels.includes("Auto-promoted")) {
     return (
       <g>
-        <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#16A34A" />
-        <text x={cx} y={cy + 5} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
+        <rect
+          x={cx - 8}
+          y={cy - 8}
+          width={16}
+          height={16}
+          rx={3}
+          fill="#16A34A"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
           ↑
         </text>
       </g>
@@ -73,8 +84,22 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (labels.includes("Playoff winners")) {
     return (
       <g>
-        <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#FACC15" />
-        <text x={cx} y={cy + 5} textAnchor="middle" fill="#111827" fontSize="12" fontWeight="bold">
+        <rect
+          x={cx - 8}
+          y={cy - 8}
+          width={16}
+          height={16}
+          rx={3}
+          fill="#FACC15"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="#111827"
+          fontSize="12"
+          fontWeight="bold"
+        >
           ↑
         </text>
       </g>
@@ -84,8 +109,22 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (labels.includes("Relegated")) {
     return (
       <g>
-        <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#DC2626" />
-        <text x={cx} y={cy + 5} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
+        <rect
+          x={cx - 8}
+          y={cy - 8}
+          width={16}
+          height={16}
+          rx={3}
+          fill="#DC2626"
+        />
+        <text
+          x={cx}
+          y={cy + 5}
+          textAnchor="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
           ↓
         </text>
       </g>
@@ -126,8 +165,12 @@ const HistoryChartModal = ({
   if (!isOpen) return null;
 
   const hasData = Array.isArray(data) && data.length >= 2;
-  const chartSeries = series || [{ dataKey: "globalRank", label: "Overall rank" }];
-const eventRows = data.filter((row) => row.eventLabel);
+  const chartSeries = series || [
+    { dataKey: "globalRank", label: "Overall rank" },
+  ];
+
+  const careerData = data;
+  const eventRows = careerData.filter((row) => row.eventLabel);
 
   return (
     <div
@@ -155,24 +198,23 @@ const eventRows = data.filter((row) => row.eventLabel);
           </button>
         </div>
 
-<div className="mb-4">
-  <button
-    type="button"
-    onClick={() => setShowEventIcons?.(!showEventIcons)}
-    className={`px-3 py-2 rounded-lg text-sm font-semibold ${
-      showEventIcons
-        ? "bg-blue-600 text-white hover:bg-blue-700"
-        : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-    }`}
-  >
-    {showEventIcons ? "Hide event badges" : "Show event badges"}
-  </button>
-</div>
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowEventIcons?.(!showEventIcons)}
+            className={`px-3 py-2 rounded-lg text-sm font-semibold ${
+              showEventIcons
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+            }`}
+          >
+            {showEventIcons ? "Hide event badges" : "Show event badges"}
+          </button>
+        </div>
 
-<div className="text-xs text-gray-500 mb-2">
-  Club change markers found: {eventRows.length}
-</div>
-
+        <div className="text-xs text-gray-500 mb-2">
+          Club change markers found: {eventRows.length}
+        </div>
 
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
@@ -215,8 +257,8 @@ const eventRows = data.filter((row) => row.eventLabel);
           <div className="w-full h-96">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={data}
-                margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                data={careerData}
+                margin={{ top: 36, right: 30, left: 10, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="season" />
@@ -254,7 +296,9 @@ const eventRows = data.filter((row) => row.eventLabel);
                               )}
 
                               {row[`${entry.name}_division`] && (
-                                <div>Division: {row[`${entry.name}_division`]}</div>
+                                <div>
+                                  Division: {row[`${entry.name}_division`]}
+                                </div>
                               )}
 
                               {row[`${entry.name}_position`] && (
@@ -318,46 +362,45 @@ const eventRows = data.filter((row) => row.eventLabel);
 
                 <Legend />
 
+                {eventRows.map((row) => (
+                  <ReferenceLine
+                    key={`${row.season}-${row.eventLabel}`}
+                    x={row.season}
+                    stroke="#6B7280"
+                    strokeDasharray="4 4"
+                    ifOverflow="extendDomain"
+                    label={{
+                      value: row.eventLabel,
+                      position: "insideTop",
+                      fontSize: 11,
+                      fill: "#374151",
+                    }}
+                  />
+                ))}
 
+                {chartSeries.map((s, index) => {
+                  const stroke = lineColors[index % lineColors.length];
 
-{eventRows.map((row) => (
-  <ReferenceLine
-    key={`${row.season}-${row.eventLabel}`}
-    x={row.season}
-    stroke="#6B7280"
-    strokeDasharray="4 4"
-    ifOverflow="extendDomain"
-    label={{
-      value: row.eventLabel,
-      position: "insideTop",
-      fontSize: 11,
-      fill: "#374151",
-    }}
-  />
-))}
-
-{chartSeries.map((s, index) => {
-  const stroke = lineColors[index % lineColors.length];
-
-  return (
-    <Line
-      key={s.dataKey}
-      type="monotone"
-      dataKey={s.dataKey}
-      name={s.label}
-      stroke={stroke}
-      strokeWidth={3}
-      dot={
-        showEventIcons
-          ? <CustomDot dataKey={s.dataKey} stroke={stroke} />
-          : { r: 4 }
-      }
-      activeDot={{ r: 7 }}
-      connectNulls
-    />
-  );
-})}
-
+                  return (
+                    <Line
+                      key={s.dataKey}
+                      type="monotone"
+                      dataKey={s.dataKey}
+                      name={s.label}
+                      stroke={stroke}
+                      strokeWidth={3}
+                      dot={
+                        showEventIcons ? (
+                          <CustomDot dataKey={s.dataKey} stroke={stroke} />
+                        ) : (
+                          { r: 4 }
+                        )
+                      }
+                      activeDot={{ r: 7 }}
+                      connectNulls
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
