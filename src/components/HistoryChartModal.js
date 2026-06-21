@@ -131,27 +131,29 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
     );
   }
 
+
+
   return (
     <g>
       {eventLabel && (
         <>
           <line
-            x1={cx}
-            y1={8}
-            x2={cx}
-            y2={cy - 12}
-            stroke="#6B7280"
-            strokeDasharray="4 4"
-          />
-          <text
-            x={cx}
-            y={0}
-            textAnchor="middle"
-            fontSize="11"
-            fill="#374151"
-          >
-            {eventLabel}
-          </text>
+  x1={cx}
+  y1={28}
+  x2={cx}
+  y2={cy - 12}
+  stroke="#6B7280"
+  strokeDasharray="4 4"
+/>
+<text
+  x={cx}
+  y={18}
+  textAnchor="middle"
+  fontSize="11"
+  fill="#374151"
+>
+  {eventLabel}
+</text>
         </>
       )}
 
@@ -224,6 +226,37 @@ const HistoryChartModal = ({
         <div className="text-xs text-gray-500 mb-2">
           Club change markers found: {eventRows.length}
         </div>
+
+<div className="text-xs text-gray-500 mb-2">
+  Club change markers found: {eventRows.length}
+</div>
+
+<div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-4">
+  <span>👑 Champions</span>
+  <span>
+    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-green-600 text-white font-bold">
+      ↑
+    </span>{" "}
+    Auto-promoted
+  </span>
+  <span>
+    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-yellow-300 text-gray-900 font-bold">
+      ↑
+    </span>{" "}
+    Playoff winners
+  </span>
+  <span>
+    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-red-600 text-white font-bold">
+      ↓
+    </span>{" "}
+    Relegated
+  </span>
+  <span>⛔ Auto-sacked</span>
+  <span>
+    <span className="inline-block w-5 border-t border-dashed border-gray-500 align-middle"></span>{" "}
+    Club change
+  </span>
+</div>
 
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
