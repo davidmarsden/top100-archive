@@ -195,43 +195,46 @@ const buildManagerCareer = (managerName) => {
   return allPositionData
     .filter((r) => managerMatches(r.manager, managerName))
     .sort((a, b) => {
-  const seasonDiff = Number(a.season) - Number(b.season);
-  if (seasonDiff !== 0) return seasonDiff;
+      const seasonDiff = Number(a.season) - Number(b.season);
+      if (seasonDiff !== 0) return seasonDiff;
 
-  const nextSeason = String(Number(a.season) + 1);
+      const nextSeason = String(Number(a.season) + 1);
 
-  const aContinuesNextSeason = allPositionData.some(
-    (r) =>
-      String(r.season) === nextSeason &&
-      managerMatches(r.manager, managerName) &&
-      r.team === a.team
-  );
+      const aContinuesNextSeason = allPositionData.some(
+        (r2) =>
+          String(r2.season) === nextSeason &&
+          managerMatches(r2.manager, managerName) &&
+          r2.team === a.team
+      );
 
-  const bContinuesNextSeason = allPositionData.some(
-    (r) =>
-      String(r.season) === nextSeason &&
-      managerMatches(r.manager, managerName) &&
-      r.team === b.team
-  );
+      const bContinuesNextSeason = allPositionData.some(
+        (r2) =>
+          String(r2.season) === nextSeason &&
+          managerMatches(r2.manager, managerName) &&
+          r2.team === b.team
+      );
 
-  if (aContinuesNextSeason && !bContinuesNextSeason) return 1;
-  if (!aContinuesNextSeason && bContinuesNextSeason) return -1;
+      if (aContinuesNextSeason && !bContinuesNextSeason) return 1;
+      if (!aContinuesNextSeason && bContinuesNextSeason) return -1;
 
-  return Number(a.division) - Number(b.division);
-})
-    .map((r) => {
-      const isFirstClub = !previousClub;
-      const clubChanged = previousClub && previousClub !== r.team;
+      return Number(a.division) - Number(b.division);
+    })
+    .map((r, index) => {
+      const currentClub = r.team;
+      const clubChanged = previousClub && previousClub !== currentClub;
 
-      previousClub = r.team;
-
-      return makeHistoryPoint(r, {
-        eventLabel: isFirstClub
-          ? `Started at ${r.team}`
-          : clubChanged
-          ? `Joined ${r.team}`
-          : "",
+      const point = makeHistoryPoint(r, {
+        eventLabel:
+          index === 0
+            ? ""
+            : clubChanged
+            ? `Joined ${currentClub}`
+            : "",
       });
+
+      previousClub = currentClub;
+
+      return point;
     });
 };
 
