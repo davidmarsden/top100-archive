@@ -33,10 +33,26 @@ const lineColors = [
 
 
   
-const CustomDot = ({ cx, cy, payload }) => {
+const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   if (cx == null || cy == null) return null;
 
-  const labels = payload?.labels || [];
+  const labels =
+    payload?.labels ||
+    payload?.[`${dataKey}_labels`] ||
+    [];
+
+  if (!labels.length) {
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={4}
+        fill="white"
+        stroke={stroke || "#3B82F6"}
+        strokeWidth={2}
+      />
+    );
+  }
 
   if (labels.includes("Champions")) {
     return (
@@ -77,7 +93,14 @@ const CustomDot = ({ cx, cy, payload }) => {
   }
 
   return (
-    <circle cx={cx} cy={cy} r={4} fill="white" stroke="#3B82F6" strokeWidth={2} />
+    <circle
+      cx={cx}
+      cy={cy}
+      r={4}
+      fill="white"
+      stroke={stroke || "#3B82F6"}
+      strokeWidth={2}
+    />
   );
 };
 
@@ -89,6 +112,8 @@ const HistoryChartModal = ({
   data = [],
   series,
   summary,
+  showEventIcons = true,
+  setShowEventIcons,
 }) => {
   if (!isOpen) return null;
 
@@ -120,6 +145,20 @@ const HistoryChartModal = ({
             ×
           </button>
         </div>
+
+<div className="mb-4">
+  <button
+    type="button"
+    onClick={() => setShowEventIcons?.(!showEventIcons)}
+    className={`px-3 py-2 rounded-lg text-sm font-semibold ${
+      showEventIcons
+        ? "bg-blue-600 text-white hover:bg-blue-700"
+        : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+    }`}
+  >
+    {showEventIcons ? "Hide event badges" : "Show event badges"}
+  </button>
+</div>
 
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
@@ -265,19 +304,27 @@ const HistoryChartModal = ({
 
                 <Legend />
 
-                {chartSeries.map((s, index) => (
-                  <Line
-                    key={s.dataKey}
-                    type="monotone"
-                    dataKey={s.dataKey}
-                    name={s.label}
-                    stroke={lineColors[index % lineColors.length]}
-                    strokeWidth={3}
-                    dot={<CustomDot />}
-                    activeDot={{ r: 7 }}
-                    connectNulls
-                  />
-                ))}
+                {chartSeries.map((s, index) => {
+  const stroke = lineColors[index % lineColors.length];
+
+  return (
+    <Line
+      key={s.dataKey}
+      type="monotone"
+      dataKey={s.dataKey}
+      name={s.label}
+      stroke={stroke}
+      strokeWidth={3}
+      dot={
+        showEventIcons
+          ? <CustomDot dataKey={s.dataKey} stroke={stroke} />
+          : { r: 4 }
+      }
+      activeDot={{ r: 7 }}
+      connectNulls
+    />
+  );
+})}
 
                 {data
                   .filter((row) => row.eventLabel)
