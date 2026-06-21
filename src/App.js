@@ -1506,7 +1506,7 @@ const SearchResults = () => {
   series={historyChart?.series}
   summary={historyChart?.summary}
   showEventIcons={showEventIcons}
-  dot={showEventIcons ? <CustomDot /> : { r: 4 }}
+  dot={{ r: 4 }}
 />
     </div>
   );
