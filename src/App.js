@@ -1331,7 +1331,7 @@ const SearchResults = () => {
       <div className="min-h-screen bg-gray-50">
         {/* Hero Header */}
         <div className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
-  <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-950 to-pink-300 opacity-90" />
+  <div className="absolute inset-0 bg-gradient-to-r from-black via-black to-[#e9a6ad]" />
   <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_70%_40%,#f9a8d4_0,transparent_35%)]" />
 
   <div className="relative max-w-7xl mx-auto px-6 py-12">
@@ -1340,15 +1340,24 @@ const SearchResults = () => {
   <img
     src="https://anotherurl.wordpress.com/wp-content/uploads/2025/05/1000017272.png"
     alt="Top 100"
-    className="h-20 md:h-24 drop-shadow-lg"
+    className="h-28 md:h-36" drop-shadow-lg"
   />
 </div>
 
-      <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 text-pink-200 drop-shadow">
+<div
+  className="absolute right-0 top-0 w-[700px] h-[700px] opacity-10"
+  style={{
+    backgroundImage: "url('/football-watermark.png')",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "contain",
+  }}
+/>
+
+      <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 text-[#f4c8d6]">
         FULL 27 SEASONS DATA ARCHIVE
       </h1>
 
-      <p className="text-xl md:text-2xl text-pink-100/90 mb-8">
+      <p className="text-xl md:text-2xl text-[#f0b6be] mb-8"">
         Soccer Manager Worlds Elite Community • Complete Historical Database
       </p>
 
@@ -1401,7 +1410,8 @@ const SearchResults = () => {
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                   activeTab === tab.id
                     ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : "bg-[#e9a6ad]
+hover:bg-[#de8f99]"
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
