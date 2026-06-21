@@ -32,101 +32,53 @@ const lineColors = [
 
 
 
-  const icons = [];
-
-  if (payload.labels.includes("Promotion")) {
-    icons.push("⬆️");
-  }
-
-  if (payload.labels.includes("Relegation")) {
-    icons.push("⬇️");
-  }
-
-  if (payload.labels.includes("Title")) {
-    icons.push("👑");
-  }
-
-  return (
-    <text
-      x={cx}
-      y={cy + 5}
-      textAnchor="middle"
-      fontSize="18"
-    >
-      {icons.join("")}
-    </text>
-  );
-};
-
+  
 const CustomDot = ({ cx, cy, payload }) => {
-  if (!payload?.labels?.length) {
-    return <circle cx={cx} cy={cy} r={4} fill="#3B82F6" />;
+  if (cx == null || cy == null) return null;
+
+  const labels = payload?.labels || [];
+
+  if (labels.includes("Champions")) {
+    return (
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize="18">
+        👑
+      </text>
+    );
   }
 
-  if (payload.labels.includes("Promotion")) {
+  if (labels.includes("Auto-promoted") || labels.includes("Playoff winners")) {
     return (
       <g>
-        <rect
-          x={cx - 9}
-          y={cy - 9}
-          width={18}
-          height={18}
-          rx={3}
-          fill="#22C55E"
-        />
-        <text
-          x={cx}
-          y={cy + 5}
-          textAnchor="middle"
-          fill="white"
-          fontSize="12"
-          fontWeight="bold"
-        >
+        <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#16A34A" />
+        <text x={cx} y={cy + 5} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
           ↑
         </text>
       </g>
     );
   }
 
-  if (payload.labels.includes("Relegation")) {
+  if (labels.includes("Relegated")) {
     return (
       <g>
-        <rect
-          x={cx - 9}
-          y={cy - 9}
-          width={18}
-          height={18}
-          rx={3}
-          fill="#EF4444"
-        />
-        <text
-          x={cx}
-          y={cy + 5}
-          textAnchor="middle"
-          fill="white"
-          fontSize="12"
-          fontWeight="bold"
-        >
+        <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={3} fill="#DC2626" />
+        <text x={cx} y={cy + 5} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
           ↓
         </text>
       </g>
     );
   }
 
-  if (payload.labels.includes("Title")) {
+  if (labels.includes("Auto-sacked")) {
     return (
-      <text
-        x={cx}
-        y={cy + 6}
-        textAnchor="middle"
-        fontSize="18"
-      >
-        👑
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize="16">
+        ⛔
       </text>
     );
   }
 
-  return <circle cx={cx} cy={cy} r={4} fill="#3B82F6" />;
+  return (
+    <circle cx={cx} cy={cy} r={4} fill="white" stroke="#3B82F6" strokeWidth={2} />
+  );
 };
 
 const HistoryChartModal = ({
