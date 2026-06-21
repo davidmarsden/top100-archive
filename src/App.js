@@ -164,7 +164,7 @@ const Top100Archive = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [showEventIcons, setShowEventIcons] = useState(true);
+  const [showEventIcons] = useState(true);
   const [historyChart, setHistoryChart] = useState(null);
 
 const [comparisonManagers, setComparisonManagers] = useState([]);
