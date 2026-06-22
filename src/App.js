@@ -1379,10 +1379,11 @@ const SearchResults = () => {
     <h3 className="text-xl font-bold">Greatest Managers</h3>
   </div>
 
-  <p className="text-sm text-gray-500 mb-4">
-    Weighted score: titles 50 pts, D1 seasons 10 pts, promotions 8 pts,
-    Top 10 finishes 3 pts, Top 20 finishes 1 pt.
-  </p>
+<p className="text-sm text-gray-500 mb-4">
+  Weighted score: league titles are weighted by division, with D1 titles worth
+  the most. Auto-promotion, playoff promotion, SMFA qualification and cup wins
+  are also included, with major trophies weighted highest.
+</p>
 
   <div className="overflow-x-auto">
     <table className="w-full text-sm">
@@ -1391,11 +1392,17 @@ const SearchResults = () => {
           <th className="py-2 px-2">Rank</th>
           <th className="py-2 px-2">Manager</th>
           <th className="py-2 px-2">Score</th>
-          <th className="py-2 px-2">Titles</th>
-          <th className="py-2 px-2">D1 seasons</th>
-          <th className="py-2 px-2">Promotions</th>
-          <th className="py-2 px-2">Top 10s</th>
-          <th className="py-2 px-2">Top 20s</th>
+          <th className="py-2 px-2">D1</th>
+<th className="py-2 px-2">D2</th>
+<th className="py-2 px-2">D3</th>
+<th className="py-2 px-2">D4</th>
+<th className="py-2 px-2">D5</th>
+<th className="py-2 px-2">Auto ↑</th>
+<th className="py-2 px-2">PO ↑</th>
+<th className="py-2 px-2">SMFA CC</th>
+<th className="py-2 px-2">SMFA Sh</th>
+<th className="py-2 px-2">Cups</th>
+<th className="py-2 px-2">Cup pts</th>
         </tr>
       </thead>
       <tbody>
@@ -1406,11 +1413,17 @@ const SearchResults = () => {
             <td className="py-2 px-2 font-bold text-purple-700">
               {row.score}
             </td>
-            <td className="py-2 px-2">{row.titles}</td>
-            <td className="py-2 px-2">{row.d1Seasons}</td>
-            <td className="py-2 px-2">{row.promotions}</td>
-            <td className="py-2 px-2">{row.top10Finishes}</td>
-            <td className="py-2 px-2">{row.top20Finishes}</td>
+         <td className="py-2 px-2">{row.d1Titles}</td>
+<td className="py-2 px-2">{row.d2Titles}</td>
+<td className="py-2 px-2">{row.d3Titles}</td>
+<td className="py-2 px-2">{row.d4Titles}</td>
+<td className="py-2 px-2">{row.d5Titles}</td>
+<td className="py-2 px-2">{row.autoPromotions}</td>
+<td className="py-2 px-2">{row.playoffPromotions}</td>
+<td className="py-2 px-2">{row.smfaChampionsCup}</td>
+<td className="py-2 px-2">{row.smfaShield}</td>
+<td className="py-2 px-2">{row.cupWins}</td>
+<td className="py-2 px-2">{row.cupPoints}</td>
           </tr>
         ))}
       </tbody>
