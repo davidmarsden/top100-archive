@@ -47,7 +47,8 @@ const isAutoSacked = (pos) => {
 };
 
 
-  
+const canonicalManagerName = (name) =>
+  String(name || "").trim();  
 
 const parseSheetRows = (values) => {
   if (!values?.length) return [];
