@@ -1471,44 +1471,47 @@ const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
 
 
 {/* Most Clubs Managed */}
-<div className="bg-white rounded-xl shadow-lg p-6">
-  <div className="flex items-center gap-2 mb-4">
-    <Users className="w-5 h-5 text-pink-600" />
-    <h3 className="text-xl font-bold">Most Clubs Managed</h3>
-  </div>
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="w-5 h-5 text-pink-600" />
+            <h3 className="text-xl font-bold">Most Clubs Managed</h3>
+          </div>
 
-  <p className="text-sm text-gray-500 mb-4">
-    Managers ranked by the number of different clubs they have managed across
-    the Top 100 archive.
-  </p>
+          <p className="text-sm text-gray-500 mb-4">
+            Managers ranked by the number of different clubs they have managed across
+            the Top 100 archive.
+          </p>
 
-  <div className="overflow-x-auto">
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-left text-gray-600">
-          <th className="py-2 px-2">Rank</th>
-          <th className="py-2 px-2">Manager</th>
-          <th className="py-2 px-2">Clubs</th>
-          <th className="py-2 px-2">Seasons</th>
-          <th className="py-2 px-2">Club list</th>
-        </tr>
-      </thead>
-      <tbody>
-        {mostClubsManaged.map((row, index) => (
-          <tr key={row.manager} className="border-t">
-            <td className="py-2 px-2 font-bold">#{index + 1}</td>
-            <td className="py-2 px-2 font-semibold">{row.manager}</td>
-            <td className="py-2 px-2 font-bold text-pink-700">
-              {row.clubCount}
-            </td>
-            <td className="py-2 px-2">{row.seasons}</td>
-            <td className="py-2 px-2 text-gray-600">{row.clubs}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-600">
+                  <th className="py-2 px-2">Rank</th>
+                  <th className="py-2 px-2">Manager</th>
+                  <th className="py-2 px-2">Clubs</th>
+                  <th className="py-2 px-2">Seasons</th>
+                  <th className="py-2 px-2">Club list</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mostClubsManaged.map((row, index) => (
+                  <tr key={row.manager} className="border-t">
+                    <td className="py-2 px-2 font-bold">#{index + 1}</td>
+                    <td className="py-2 px-2 font-semibold">{row.manager}</td>
+                    <td className="py-2 px-2 font-bold text-pink-700">
+                      {row.clubCount}
+                    </td>
+                    <td className="py-2 px-2">{row.seasons}</td>
+                    <td className="py-2 px-2 text-gray-600">{row.clubs}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
     );
   }
 
