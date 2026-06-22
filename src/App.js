@@ -1306,8 +1306,8 @@ const SearchResults = () => {
   );
 
   const Insights = () => {
-
-      {/* Leaders */}
+  return (
+    <div className="space-y-8">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1480,7 +1480,8 @@ const SearchResults = () => {
     );
   }
 
-        
+  return (
+    <>
       <div className="min-h-screen bg-gray-50">
         {/* Hero Header */}
         <div className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
