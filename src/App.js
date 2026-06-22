@@ -49,7 +49,26 @@ const isAutoSacked = (pos) => {
 const canonicalManagerName = (name) => {
   const cleaned = String(name || "").trim();
 
-  const normaliseManagerName = (name) =>
+  const aliases = {
+    "Dan Wallace": "D. Wallace",
+    "Andrew Kelly": "Kelly",
+    "André Guerra": "Guerra",
+    "Andre Guerra": "Guerra",
+    "Scott Mckenzie": "S. Mckenzie",
+    "Scott McKenzie": "S. Mckenzie",
+    "James Mckenzie": "J. Mckenzie",
+    "James McKenzie": "J. Mckenzie",
+    "André Libras-Boas": "Libras-Boas",
+    "Andre Libras-Boas": "Libras-Boas",
+    "Heath Brown": "H. Brown",
+    "Gursimran Brar": "Brar",
+    "ruts66 ...": "Ruts",
+  };
+
+  return aliases[cleaned] || cleaned;
+};
+
+const normaliseManagerName = (name) =>
   String(name || "")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -66,7 +85,7 @@ const getKnownManagerNames = () => {
       .split("/")
       .map((name) => name.trim())
       .filter(Boolean)
-      .forEach((name) => names.add(name));
+      .forEach((name) => names.add(canonicalManagerName(name)));
   });
 
   return [...names];
