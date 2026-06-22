@@ -256,10 +256,7 @@ if (exactInitialMatch) return exactInitialMatch;
   return canonicalManagerName(cleaned);
 };
 
-console.log(
-  "Unmatched honours managers:",
-  managerName
-);
+console.log("Unmatched honours manager:", cleaned);
         
   const openClubChart = (clubName) => {
     setHistoryChart({
