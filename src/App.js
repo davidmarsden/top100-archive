@@ -568,7 +568,7 @@ const managersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURICo
 
 const managersRes = await fetch(managersUrl);
 if (managersRes.ok) {
-  const managersJson = await managersRes.json();
+  
   
 }
 
