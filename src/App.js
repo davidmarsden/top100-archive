@@ -49,23 +49,53 @@ const isAutoSacked = (pos) => {
 const canonicalManagerName = (name) => {
   const cleaned = String(name || "").trim();
 
-  const aliases = {
-    "Dan Wallace": "D. Wallace",
-    "Andrew Kelly": "Kelly",
-    "André Guerra": "Guerra",
-    "Andre Guerra": "Guerra",
-    "Scott Mckenzie": "S. Mckenzie",
-    "Scott McKenzie": "S. Mckenzie",
-    "James Mckenzie": "J. Mckenzie",
-    "James McKenzie": "J. Mckenzie",
-    "André Libras-Boas": "Libras-Boas",
-    "Andre Libras-Boas": "Libras-Boas",
-    "Heath Brown": "H. Brown",
-    "Gursimran Brar": "Brar",
-    "ruts66 ...": "Ruts",
-  };
+  const normaliseManagerName = (name) =>
+  String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 
-  return aliases[cleaned] || cleaned;
+const getKnownManagerNames = () => {
+  const names = new Set();
+
+  allPositionData.forEach((row) => {
+    String(row.manager || "")
+      .split("/")
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .forEach((name) => names.add(name));
+  });
+
+  return [...names];
+};
+
+const canonicalHonoursManagerName = (name) => {
+  const cleaned = String(name || "").trim();
+  if (!cleaned) return "";
+
+  const knownManagers = getKnownManagerNames();
+  const cleanedNorm = normaliseManagerName(cleaned);
+
+  const exactMatch = knownManagers.find(
+    (manager) => normaliseManagerName(manager) === cleanedNorm
+  );
+
+  if (exactMatch) return canonicalManagerName(exactMatch);
+
+  const surname = cleanedNorm.split(" ").slice(-1)[0];
+
+  const surnameMatch = knownManagers.find((manager) => {
+    const managerNorm = normaliseManagerName(manager);
+    const managerParts = managerNorm.split(" ");
+    return managerParts.includes(surname);
+  });
+
+  if (surnameMatch) return canonicalManagerName(surnameMatch);
+
+  return canonicalManagerName(cleaned);
 };
 
 const parseSheetRows = (values) => {
@@ -529,7 +559,7 @@ const buildGreatestManagers = () => {
 
   managerHonoursRows.forEach((row) => {
     Object.entries(cupPoints).forEach(([competition, points]) => {
-      const managerName = canonicalManagerName(row[competition]);
+      const managerName = canonicalHonoursManagerName(row[competition]);
       if (!managerName) return;
 
       const stats = ensureManager(managerName);
