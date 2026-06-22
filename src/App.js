@@ -547,7 +547,7 @@ const buildMostClubsManaged = () => {
   const managerClubs = {};
 
   allPositionData.forEach((row) => {
-    if (!row.manager || !row.team) return;
+    if (!row.manager || !row.team || !row.season) return;
 
     String(row.manager)
       .split("/")
@@ -558,12 +558,12 @@ const buildMostClubsManaged = () => {
           managerClubs[managerName] = {
             manager: managerName,
             clubs: new Set(),
-            seasons: 0,
+            seasons: new Set(),
           };
         }
 
         managerClubs[managerName].clubs.add(row.team);
-        managerClubs[managerName].seasons += 1;
+        managerClubs[managerName].seasons.add(String(row.season));
       });
   });
 
@@ -572,7 +572,7 @@ const buildMostClubsManaged = () => {
       manager: row.manager,
       clubCount: row.clubs.size,
       clubs: [...row.clubs].sort().join(", "),
-      seasons: row.seasons,
+      seasons: row.seasons.size,
     }))
     .sort((a, b) => {
       if (b.clubCount !== a.clubCount) return b.clubCount - a.clubCount;
