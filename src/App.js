@@ -47,42 +47,7 @@ const isAutoSacked = (pos) => {
 };
 
 
-  allPositionData.forEach((row) => {
-    String(row.manager || "")
-      .split("/")
-      .map((name) => name.trim())
-      .filter(Boolean)
-      .forEach((name) => names.add(canonicalManagerName(name)));
-  });
-
-  return [...names];
-};
-
-const canonicalHonoursManagerName = (name) => {
-  const cleaned = String(name || "").trim();
-  if (!cleaned) return "";
-
-  const knownManagers = getKnownManagerNames();
-  const cleanedNorm = normaliseManagerName(cleaned);
-
-  const exactMatch = knownManagers.find(
-    (manager) => normaliseManagerName(manager) === cleanedNorm
-  );
-
-  if (exactMatch) return canonicalManagerName(exactMatch);
-
-  const surname = cleanedNorm.split(" ").slice(-1)[0];
-
-  const surnameMatch = knownManagers.find((manager) => {
-    const managerNorm = normaliseManagerName(manager);
-    const managerParts = managerNorm.split(" ");
-    return managerParts.includes(surname);
-  });
-
-  if (surnameMatch) return canonicalManagerName(surnameMatch);
-
-  return canonicalManagerName(cleaned);
-};
+  
 
 const parseSheetRows = (values) => {
   if (!values?.length) return [];
