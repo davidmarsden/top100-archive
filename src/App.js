@@ -1334,11 +1334,7 @@ const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
     return (
       <div className="space-y-8">
 
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
+        
 
 
 
