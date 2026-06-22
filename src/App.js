@@ -180,7 +180,7 @@ const Top100Archive = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showEventIcons, setShowEventIcons] = useState(true);
   const [historyChart, setHistoryChart] = useState(null);
-  const [honoursRows, setHonoursRows] = useState([]);
+  
   const [managerHonoursRows, setManagerHonoursRows] = useState([]);
 
 const [comparisonManagers, setComparisonManagers] = useState([]);
@@ -674,7 +674,7 @@ if (managersRes.ok) {
     } catch {
       // fail-soft
     }
-  }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, API_KEY]);
+  }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, WINNERS_MANAGERS_RANGE, API_KEY]);
 
   // kick off loads
   useEffect(() => {
