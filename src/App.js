@@ -450,144 +450,6 @@ const makeHistoryPoint = (r, extra = {}) => ({
   ...extra,
 });
 
-const buildGreatestManagers = () => {
-  const titlePointsByDivision = {
-    1: 100,
-    2: 70,
-    3: 50,
-    4: 35,
-    5: 25,
-  };
-
-  const autoPromotionPointsByDivision = {
-    2: 35,
-    3: 25,
-    4: 18,
-    5: 12,
-  };
-
-  const playoffPromotionPointsByDivision = {
-    2: 25,
-    3: 18,
-    4: 12,
-    5: 8,
-  };
-
-  const cupPoints = {
-    "SMFA Champions Cup": 80,
-    "World Club Cup": 70,
-    "SMFA Super Cup": 50,
-    "SMFA Shield": 45,
-    "Top 100 Cup": 40,
-    "World Club Shield": 35,
-    "World Cup": 30,
-    "Top 100 Shield": 25,
-    "Charity Shield": 20,
-    "Youth Cup": 20,
-    "Youth Shield": 10,
-    "Youth Spoon": 5,
-  };
-
-  const managerStats = {};
-
-  const ensureManager = (managerName) => {
-    if (!managerStats[managerName]) {
-      managerStats[managerName] = {
-        manager: managerName,
-        score: 0,
-        leaguePoints: 0,
-        cupPoints: 0,
-        promotionPoints: 0,
-        smfaPoints: 0,
-
-        titles: 0,
-        d1Titles: 0,
-        d2Titles: 0,
-        d3Titles: 0,
-        d4Titles: 0,
-        d5Titles: 0,
-
-        autoPromotions: 0,
-        playoffPromotions: 0,
-        smfaChampionsCup: 0,
-        smfaShield: 0,
-
-        cupWins: 0,
-      };
-    }
-
-    return managerStats[managerName];
-  };
-
-  allPositionData.forEach((row) => {
-    if (!row.manager) return;
-
-    String(row.manager)
-      .split("/")
-      .map((name) => canonicalManagerName(name.trim()))
-      .filter(Boolean)
-      .forEach((managerName) => {
-        const stats = ensureManager(managerName);
-        const division = Number(row.division);
-        const position = Number(row.position);
-
-        if (isChampion(position)) {
-          const points = titlePointsByDivision[division] || 0;
-
-          stats.titles += 1;
-          stats[`d${division}Titles`] += 1;
-          stats.leaguePoints += points;
-          stats.score += points;
-        }
-
-        if (division === 1 && position >= 2 && position <= 4) {
-          stats.smfaChampionsCup += 1;
-          stats.smfaPoints += 15;
-          stats.score += 15;
-        }
-
-        if (division === 1 && position >= 5 && position <= 10) {
-          stats.smfaShield += 1;
-          stats.smfaPoints += 8;
-          stats.score += 8;
-        }
-
-        if (isAutoPromo(division, position)) {
-          const points = autoPromotionPointsByDivision[division] || 0;
-
-          stats.autoPromotions += 1;
-          stats.promotionPoints += points;
-          stats.score += points;
-        }
-
-        if (
-          isPlayoffBand(division, position) &&
-          playoffWinnersSet?.has(playoffWinnerKey(row.season, division, row.team))
-        ) {
-          const points = playoffPromotionPointsByDivision[division] || 0;
-
-          stats.playoffPromotions += 1;
-          stats.promotionPoints += points;
-          stats.score += points;
-        }
-      });
-  });
-
-  managerHonoursRows.forEach((row) => {
-    Object.entries(cupPoints).forEach(([competition, points]) => {
-      const managerName = canonicalHonoursManagerName(row[competition]);
-      if (!managerName) return;
-
-      const stats = ensureManager(managerName);
-
-      stats.cupWins += 1;
-      stats.cupPoints += points;
-      stats.score += points;
-    });
-  });
-
-  return Object.values(managerStats).sort((a, b) => b.score - a.score);
-};
 
 const buildMostClubsManaged = () => {
   const managerClubs = {};
@@ -625,6 +487,7 @@ const buildMostClubsManaged = () => {
       return b.seasons - a.seasons;
     });
 };
+
 
   // hash -> tab sync
   useEffect(() => {
@@ -1443,7 +1306,7 @@ const SearchResults = () => {
   );
 
   const Insights = () => {
-    const greatestManagers = buildGreatestManagers().slice(0, 20);
+    
 const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
     const src = leadersView === "team" ? leaders.byTeam : leaders.byManager;
     const LeaderTable = ({ title, rows }) => (
