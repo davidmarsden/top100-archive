@@ -50,8 +50,7 @@ const isAutoSacked = (pos) => {
 const canonicalManagerName = (name) =>
   String(name || "").trim();  
 
-const parseSheetRows = (values) => {
-  if (!values?.length) return [];
+
 
   const [headers, ...rows] = values;
 
@@ -192,28 +191,6 @@ const Top100Archive = () => {
     .sort((a, b) => Number(a.season) - Number(b.season))
     .map((r) => makeHistoryPoint(r));
 
-const normaliseManagerName = (name) =>
-  String(name || "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-
-const getKnownManagerNames = () => {
-  const names = new Set();
-
-  allPositionData.forEach((row) => {
-    String(row.manager || "")
-      .split("/")
-      .map((name) => name.trim())
-      .filter(Boolean)
-      .forEach((name) => names.add(canonicalManagerName(name)));
-  });
-
-  return [...names];
-};
 
 
 
@@ -601,7 +578,6 @@ const managersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURICo
 const managersRes = await fetch(managersUrl);
 if (managersRes.ok) {
   const managersJson = await managersRes.json();
-  const managerValues = managersJson?.values || [];
   
 }
 
