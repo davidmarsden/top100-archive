@@ -1479,8 +1479,6 @@ const SearchResults = () => {
       </div>
     );
   }
-return (
-      <div className="space-y-8">
 
         
       <div className="min-h-screen bg-gray-50">
