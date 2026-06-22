@@ -183,11 +183,8 @@ const Top100Archive = () => {
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showEventIcons, setShowEventIcons] = useState(true);
-  const [historyChart, setHistoryChart] = useState(null);
-  
-  const [managerHonoursRows, setManagerHonoursRows] = useState([]);
-
-const [comparisonManagers, setComparisonManagers] = useState([]);
+  const [historyChart, setHistoryChart] = useState(null);  
+  const [comparisonManagers, setComparisonManagers] = useState([]);
 
   const buildClubTrajectory = (clubName) =>
   allPositionData
@@ -218,44 +215,6 @@ const getKnownManagerNames = () => {
   return [...names];
 };
 
-const canonicalHonoursManagerName = (name) => {
-  const cleaned = String(name || "").trim();
-
-  if (!cleaned) return "";
-
-  const knownManagers = getKnownManagerNames();
-  const cleanedNorm = normaliseManagerName(cleaned);
-
-  const exactMatch = knownManagers.find(
-    (manager) => normaliseManagerName(manager) === cleanedNorm
-  );
-
-  if (exactMatch) return canonicalManagerName(exactMatch);
-
-const exactInitialMatch = knownManagers.find((manager) => {
-  const managerNorm = normaliseManagerName(manager);
-  const parts = managerNorm.split(" ");
-
-  return (
-    parts.length > 1 &&
-    parts[parts.length - 1] === cleanedNorm
-  );
-});
-
-if (exactInitialMatch) return exactInitialMatch;
-
-  const surname = cleanedNorm.split(" ").slice(-1)[0];
-
-  const surnameMatch = knownManagers.find((manager) => {
-    const managerNorm = normaliseManagerName(manager);
-    const managerParts = managerNorm.split(" ");
-    return managerParts.includes(surname);
-  });
-
-  if (surnameMatch) return canonicalManagerName(surnameMatch);
-
-  return canonicalManagerName(cleaned);
-};
 
 
         
