@@ -432,8 +432,8 @@ const buildGreatestManagers = () => {
     "World Club Cup": 70,
     "SMFA Super Cup": 50,
     "SMFA Shield": 45,
-    "World Club Shield": 35,
     "Top 100 Cup": 40,
+    "World Club Shield": 35,
     "World Cup": 30,
     "Top 100 Shield": 25,
     "Charity Shield": 20,
@@ -448,19 +448,25 @@ const buildGreatestManagers = () => {
     if (!managerStats[managerName]) {
       managerStats[managerName] = {
         manager: managerName,
+        score: 0,
+        leaguePoints: 0,
+        cupPoints: 0,
+        promotionPoints: 0,
+        smfaPoints: 0,
+
         titles: 0,
         d1Titles: 0,
         d2Titles: 0,
         d3Titles: 0,
         d4Titles: 0,
         d5Titles: 0,
+
         autoPromotions: 0,
         playoffPromotions: 0,
         smfaChampionsCup: 0,
         smfaShield: 0,
+
         cupWins: 0,
-        cupPoints: 0,
-        score: 0,
       };
     }
 
@@ -472,43 +478,51 @@ const buildGreatestManagers = () => {
 
     String(row.manager)
       .split("/")
-      .map((name) => name.trim())
+      .map((name) => canonicalManagerName(name.trim()))
       .filter(Boolean)
-      .forEach((rawManagerName) => {
-  const managerName = canonicalManagerName(rawManagerName);
+      .forEach((managerName) => {
         const stats = ensureManager(managerName);
         const division = Number(row.division);
         const position = Number(row.position);
 
         if (isChampion(position)) {
+          const points = titlePointsByDivision[division] || 0;
+
           stats.titles += 1;
           stats[`d${division}Titles`] += 1;
-          stats.score += titlePointsByDivision[division] || 0;
+          stats.leaguePoints += points;
+          stats.score += points;
         }
 
         if (division === 1 && position >= 2 && position <= 4) {
           stats.smfaChampionsCup += 1;
+          stats.smfaPoints += 15;
           stats.score += 15;
         }
 
         if (division === 1 && position >= 5 && position <= 10) {
           stats.smfaShield += 1;
+          stats.smfaPoints += 8;
           stats.score += 8;
         }
 
         if (isAutoPromo(division, position)) {
+          const points = autoPromotionPointsByDivision[division] || 0;
+
           stats.autoPromotions += 1;
-          stats.score += autoPromotionPointsByDivision[division] || 0;
+          stats.promotionPoints += points;
+          stats.score += points;
         }
 
         if (
           isPlayoffBand(division, position) &&
-          playoffWinnersSet?.has(
-            playoffWinnerKey(row.season, division, row.team)
-          )
+          playoffWinnersSet?.has(playoffWinnerKey(row.season, division, row.team))
         ) {
+          const points = playoffPromotionPointsByDivision[division] || 0;
+
           stats.playoffPromotions += 1;
-          stats.score += playoffPromotionPointsByDivision[division] || 0;
+          stats.promotionPoints += points;
+          stats.score += points;
         }
       });
   });
@@ -1380,50 +1394,34 @@ const SearchResults = () => {
   </div>
 
 <p className="text-sm text-gray-500 mb-4">
-  Weighted score: league titles are weighted by division, with D1 titles worth
-  the most. Auto-promotion, playoff promotion, SMFA qualification and cup wins
-  are also included, with major trophies weighted highest.
+  Weighted score combines league titles, cup wins, promotions and SMFA
+  qualification. The main table shows headline totals; category leaderboards
+  below break down the individual achievements.
 </p>
 
   <div className="overflow-x-auto">
     <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-gray-600">
-          <th className="py-2 px-2">Rank</th>
-          <th className="py-2 px-2">Manager</th>
-          <th className="py-2 px-2">Score</th>
-          <th className="py-2 px-2">D1</th>
-<th className="py-2 px-2">D2</th>
-<th className="py-2 px-2">D3</th>
-<th className="py-2 px-2">D4</th>
-<th className="py-2 px-2">D5</th>
-<th className="py-2 px-2">Auto ↑</th>
-<th className="py-2 px-2">PO ↑</th>
-<th className="py-2 px-2">SMFA CC</th>
-<th className="py-2 px-2">SMFA Sh</th>
-<th className="py-2 px-2">Cups</th>
+         <th className="py-2 px-2">Rank</th>
+<th className="py-2 px-2">Manager</th>
+<th className="py-2 px-2">Score</th>
+<th className="py-2 px-2">League pts</th>
 <th className="py-2 px-2">Cup pts</th>
+<th className="py-2 px-2">Promotion pts</th>
+<th className="py-2 px-2">SMFA pts</th>
         </tr>
       </thead>
       <tbody>
         {greatestManagers.map((row, index) => (
           <tr key={row.manager} className="border-t">
             <td className="py-2 px-2 font-bold">#{index + 1}</td>
-            <td className="py-2 px-2 font-semibold">{row.manager}</td>
-            <td className="py-2 px-2 font-bold text-purple-700">
-              {row.score}
-            </td>
-         <td className="py-2 px-2">{row.d1Titles}</td>
-<td className="py-2 px-2">{row.d2Titles}</td>
-<td className="py-2 px-2">{row.d3Titles}</td>
-<td className="py-2 px-2">{row.d4Titles}</td>
-<td className="py-2 px-2">{row.d5Titles}</td>
-<td className="py-2 px-2">{row.autoPromotions}</td>
-<td className="py-2 px-2">{row.playoffPromotions}</td>
-<td className="py-2 px-2">{row.smfaChampionsCup}</td>
-<td className="py-2 px-2">{row.smfaShield}</td>
-<td className="py-2 px-2">{row.cupWins}</td>
+<td className="py-2 px-2 font-semibold">{row.manager}</td>
+<td className="py-2 px-2 font-bold text-purple-700">{row.score}</td>
+<td className="py-2 px-2">{row.leaguePoints}</td>
 <td className="py-2 px-2">{row.cupPoints}</td>
+<td className="py-2 px-2">{row.promotionPoints}</td>
+<td className="py-2 px-2">{row.smfaPoints}</td>
           </tr>
         ))}
       </tbody>
