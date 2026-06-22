@@ -231,6 +231,18 @@ const canonicalHonoursManagerName = (name) => {
 
   if (exactMatch) return canonicalManagerName(exactMatch);
 
+const exactInitialMatch = knownManagers.find((manager) => {
+  const managerNorm = normaliseManagerName(manager);
+  const parts = managerNorm.split(" ");
+
+  return (
+    parts.length > 1 &&
+    parts[parts.length - 1] === cleanedNorm
+  );
+});
+
+if (exactInitialMatch) return exactInitialMatch;
+
   const surname = cleanedNorm.split(" ").slice(-1)[0];
 
   const surnameMatch = knownManagers.find((manager) => {
@@ -243,6 +255,11 @@ const canonicalHonoursManagerName = (name) => {
 
   return canonicalManagerName(cleaned);
 };
+
+console.log(
+  "Unmatched honours managers:",
+  managerName
+);
         
   const openClubChart = (clubName) => {
     setHistoryChart({
