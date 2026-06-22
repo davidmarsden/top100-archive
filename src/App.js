@@ -46,6 +46,20 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
+const parseSheetRows = (values) => {
+  if (!values?.length) return [];
+
+  const [headers, ...rows] = values;
+
+  return rows.map((row) => {
+    const item = {};
+    headers.forEach((header, index) => {
+      item[String(header || "").trim()] = row[index] || "";
+    });
+    return item;
+  });
+};
+
 // normalization for winners
 const normDiv = (d) => {
   const m = String(d || "").match(/\d+/);
@@ -166,6 +180,8 @@ const Top100Archive = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showEventIcons, setShowEventIcons] = useState(true);
   const [historyChart, setHistoryChart] = useState(null);
+  const [honoursRows, setHonoursRows] = useState([]);
+  const [managerHonoursRows, setManagerHonoursRows] = useState([]);
 
 const [comparisonManagers, setComparisonManagers] = useState([]);
 
@@ -367,7 +383,67 @@ const makeHistoryPoint = (r, extra = {}) => ({
 });
 
 const buildGreatestManagers = () => {
+  const titlePointsByDivision = {
+    1: 100,
+    2: 70,
+    3: 50,
+    4: 35,
+    5: 25,
+  };
+
+  const autoPromotionPointsByDivision = {
+    2: 35,
+    3: 25,
+    4: 18,
+    5: 12,
+  };
+
+  const playoffPromotionPointsByDivision = {
+    2: 25,
+    3: 18,
+    4: 12,
+    5: 8,
+  };
+
+  const cupPoints = {
+    "SMFA Champions Cup": 80,
+    "World Club Cup": 70,
+    "SMFA Super Cup": 50,
+    "SMFA Shield": 45,
+    "World Club Shield": 35,
+    "Top 100 Cup": 40,
+    "World Cup": 30,
+    "Top 100 Shield": 25,
+    "Charity Shield": 20,
+    "Youth Cup": 20,
+    "Youth Shield": 10,
+    "Youth Spoon": 5,
+  };
+
   const managerStats = {};
+
+  const ensureManager = (managerName) => {
+    if (!managerStats[managerName]) {
+      managerStats[managerName] = {
+        manager: managerName,
+        titles: 0,
+        d1Titles: 0,
+        d2Titles: 0,
+        d3Titles: 0,
+        d4Titles: 0,
+        d5Titles: 0,
+        autoPromotions: 0,
+        playoffPromotions: 0,
+        smfaChampionsCup: 0,
+        smfaShield: 0,
+        cupWins: 0,
+        cupPoints: 0,
+        score: 0,
+      };
+    }
+
+    return managerStats[managerName];
+  };
 
   allPositionData.forEach((row) => {
     if (!row.manager) return;
@@ -377,52 +453,57 @@ const buildGreatestManagers = () => {
       .map((name) => name.trim())
       .filter(Boolean)
       .forEach((managerName) => {
-        if (!managerStats[managerName]) {
-          managerStats[managerName] = {
-            manager: managerName,
-            titles: 0,
-            d1Seasons: 0,
-            promotions: 0,
-            top10Finishes: 0,
-            top20Finishes: 0,
-            score: 0,
-          };
-        }
-
-        const stats = managerStats[managerName];
+        const stats = ensureManager(managerName);
         const division = Number(row.division);
         const position = Number(row.position);
-        const globalRank = (division - 1) * 20 + position;
 
-        if (isChampion(position)) stats.titles += 1;
-        if (division === 1) stats.d1Seasons += 1;
-
-        if (
-          isAutoPromo(division, position) ||
-          (
-            isPlayoffBand(division, position) &&
-            playoffWinnersSet?.has(playoffWinnerKey(row.season, division, row.team))
-          )
-        ) {
-          stats.promotions += 1;
+        if (isChampion(position)) {
+          stats.titles += 1;
+          stats[`d${division}Titles`] += 1;
+          stats.score += titlePointsByDivision[division] || 0;
         }
 
-        if (globalRank <= 10) stats.top10Finishes += 1;
-        if (globalRank <= 20) stats.top20Finishes += 1;
+        if (division === 1 && position >= 2 && position <= 4) {
+          stats.smfaChampionsCup += 1;
+          stats.score += 15;
+        }
+
+        if (division === 1 && position >= 5 && position <= 10) {
+          stats.smfaShield += 1;
+          stats.score += 8;
+        }
+
+        if (isAutoPromo(division, position)) {
+          stats.autoPromotions += 1;
+          stats.score += autoPromotionPointsByDivision[division] || 0;
+        }
+
+        if (
+          isPlayoffBand(division, position) &&
+          playoffWinnersSet?.has(
+            playoffWinnerKey(row.season, division, row.team)
+          )
+        ) {
+          stats.playoffPromotions += 1;
+          stats.score += playoffPromotionPointsByDivision[division] || 0;
+        }
       });
   });
 
-  return Object.values(managerStats)
-    .map((stats) => ({
-      ...stats,
-      score:
-        stats.titles * 50 +
-        stats.d1Seasons * 10 +
-        stats.promotions * 8 +
-        stats.top10Finishes * 3 +
-        stats.top20Finishes * 1,
-    }))
-    .sort((a, b) => b.score - a.score);
+  managerHonoursRows.forEach((row) => {
+    Object.entries(cupPoints).forEach(([competition, points]) => {
+      const managerName = String(row[competition] || "").trim();
+      if (!managerName) return;
+
+      const stats = ensureManager(managerName);
+
+      stats.cupWins += 1;
+      stats.cupPoints += points;
+      stats.score += points;
+    });
+  });
+
+  return Object.values(managerStats).sort((a, b) => b.score - a.score);
 };
 
   // hash -> tab sync
@@ -442,6 +523,8 @@ const buildGreatestManagers = () => {
   const SHEET_RANGE = "Sorted by team!A:R";
   const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
   const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || "Clubs!A:Z";
+  const WINNERS_MANAGERS_RANGE =
+  process.env.REACT_APP_WINNERS_MANAGERS_RANGE || "Managers!A:Z";
 
   /* =========================
      Load main league data
@@ -545,6 +628,16 @@ setDataLoaded(true);
 
       const [headers, ...rows] = values;
       const hNorm = headers.map((h) => String(h || "").trim().toLowerCase());
+
+const parsedHonoursRows = rows.map((row) => {
+  const item = {};
+  headers.forEach((header, index) => {
+    item[String(header || "").trim()] = row[index] || "";
+  });
+  return item;
+});
+
+setHonoursRows(parsedHonoursRows);
       const ixSeason = hNorm.findIndex((h) => h === "season");
       if (ixSeason === -1) return;
 
@@ -566,6 +659,18 @@ setDataLoaded(true);
         }
       }
       setPlayoffWinnersSet(set);
+
+const managersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+  WINNERS_SHEET_ID
+)}/values/${encodeURIComponent(WINNERS_MANAGERS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
+
+const managersRes = await fetch(managersUrl);
+if (managersRes.ok) {
+  const managersJson = await managersRes.json();
+  const managerValues = managersJson?.values || [];
+  setManagerHonoursRows(parseSheetRows(managerValues));
+}
+
     } catch {
       // fail-soft
     }
