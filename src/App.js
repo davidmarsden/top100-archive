@@ -52,16 +52,7 @@ const canonicalManagerName = (name) =>
 
 
 
-  const [headers, ...rows] = values;
-
-  return rows.map((row) => {
-    const item = {};
-    headers.forEach((header, index) => {
-      item[String(header || "").trim()] = row[index] || "";
-    });
-    return item;
-  });
-};
+  
 
 // normalization for winners
 const normDiv = (d) => {
