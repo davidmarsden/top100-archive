@@ -46,39 +46,6 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
-const canonicalManagerName = (name) => {
-  const cleaned = String(name || "").trim();
-
-  const aliases = {
-    "Dan Wallace": "D. Wallace",
-    "Andrew Kelly": "Kelly",
-    "André Guerra": "Guerra",
-    "Andre Guerra": "Guerra",
-    "Scott Mckenzie": "S. Mckenzie",
-    "Scott McKenzie": "S. Mckenzie",
-    "James Mckenzie": "J. Mckenzie",
-    "James McKenzie": "J. Mckenzie",
-    "André Libras-Boas": "Libras-Boas",
-    "Andre Libras-Boas": "Libras-Boas",
-    "Heath Brown": "H. Brown",
-    "Gursimran Brar": "Brar",
-    "ruts66 ...": "Ruts",
-  };
-
-  return aliases[cleaned] || cleaned;
-};
-
-const normaliseManagerName = (name) =>
-  String(name || "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-
-const getKnownManagerNames = () => {
-  const names = new Set();
 
   allPositionData.forEach((row) => {
     String(row.manager || "")
@@ -261,6 +228,55 @@ const [comparisonManagers, setComparisonManagers] = useState([]);
     .filter((r) => r.team === clubName)
     .sort((a, b) => Number(a.season) - Number(b.season))
     .map((r) => makeHistoryPoint(r));
+
+const normaliseManagerName = (name) =>
+  String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const getKnownManagerNames = () => {
+  const names = new Set();
+
+  allPositionData.forEach((row) => {
+    String(row.manager || "")
+      .split("/")
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .forEach((name) => names.add(canonicalManagerName(name)));
+  });
+
+  return [...names];
+};
+
+const canonicalHonoursManagerName = (name) => {
+  const cleaned = String(name || "").trim();
+  if (!cleaned) return "";
+
+  const knownManagers = getKnownManagerNames();
+  const cleanedNorm = normaliseManagerName(cleaned);
+
+  const exactMatch = knownManagers.find(
+    (manager) => normaliseManagerName(manager) === cleanedNorm
+  );
+
+  if (exactMatch) return canonicalManagerName(exactMatch);
+
+  const surname = cleanedNorm.split(" ").slice(-1)[0];
+
+  const surnameMatch = knownManagers.find((manager) => {
+    const managerNorm = normaliseManagerName(manager);
+    const managerParts = managerNorm.split(" ");
+    return managerParts.includes(surname);
+  });
+
+  if (surnameMatch) return canonicalManagerName(surnameMatch);
+
+  return canonicalManagerName(cleaned);
+};
         
   const openClubChart = (clubName) => {
     setHistoryChart({
