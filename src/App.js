@@ -629,15 +629,7 @@ setDataLoaded(true);
       const [headers, ...rows] = values;
       const hNorm = headers.map((h) => String(h || "").trim().toLowerCase());
 
-const parsedHonoursRows = rows.map((row) => {
-  const item = {};
-  headers.forEach((header, index) => {
-    item[String(header || "").trim()] = row[index] || "";
-  });
-  return item;
-});
 
-setHonoursRows(parsedHonoursRows);
       const ixSeason = hNorm.findIndex((h) => h === "season");
       if (ixSeason === -1) return;
 
