@@ -220,6 +220,7 @@ const getKnownManagerNames = () => {
 
 const canonicalHonoursManagerName = (name) => {
   const cleaned = String(name || "").trim();
+
   if (!cleaned) return "";
 
   const knownManagers = getKnownManagerNames();
@@ -256,7 +257,7 @@ if (exactInitialMatch) return exactInitialMatch;
   return canonicalManagerName(cleaned);
 };
 
-console.log("Unmatched honours manager:", cleaned);
+
         
   const openClubChart = (clubName) => {
     setHistoryChart({
