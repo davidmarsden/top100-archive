@@ -46,6 +46,28 @@ const isAutoSacked = (pos) => {
   return p >= 18 && p <= 20;
 };
 
+const canonicalManagerName = (name) => {
+  const cleaned = String(name || "").trim();
+
+  const aliases = {
+    "Dan Wallace": "D. Wallace",
+    "Andrew Kelly": "Kelly",
+    "André Guerra": "Guerra",
+    "Andre Guerra": "Guerra",
+    "Scott Mckenzie": "S. Mckenzie",
+    "Scott McKenzie": "S. Mckenzie",
+    "James Mckenzie": "J. Mckenzie",
+    "James McKenzie": "J. Mckenzie",
+    "André Libras-Boas": "Libras-Boas",
+    "Andre Libras-Boas": "Libras-Boas",
+    "Heath Brown": "H. Brown",
+    "Gursimran Brar": "Brar",
+    "ruts66 ...": "Ruts",
+  };
+
+  return aliases[cleaned] || cleaned;
+};
+
 const parseSheetRows = (values) => {
   if (!values?.length) return [];
 
@@ -452,7 +474,8 @@ const buildGreatestManagers = () => {
       .split("/")
       .map((name) => name.trim())
       .filter(Boolean)
-      .forEach((managerName) => {
+      .forEach((rawManagerName) => {
+  const managerName = canonicalManagerName(rawManagerName);
         const stats = ensureManager(managerName);
         const division = Number(row.division);
         const position = Number(row.position);
@@ -492,7 +515,7 @@ const buildGreatestManagers = () => {
 
   managerHonoursRows.forEach((row) => {
     Object.entries(cupPoints).forEach(([competition, points]) => {
-      const managerName = String(row[competition] || "").trim();
+      const managerName = canonicalManagerName(row[competition]);
       if (!managerName) return;
 
       const stats = ensureManager(managerName);
