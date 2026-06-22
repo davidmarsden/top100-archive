@@ -366,6 +366,64 @@ const makeHistoryPoint = (r, extra = {}) => ({
   ...extra,
 });
 
+const buildGreatestManagers = () => {
+  const managerStats = {};
+
+  allPositionData.forEach((row) => {
+    if (!row.manager) return;
+
+    String(row.manager)
+      .split("/")
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .forEach((managerName) => {
+        if (!managerStats[managerName]) {
+          managerStats[managerName] = {
+            manager: managerName,
+            titles: 0,
+            d1Seasons: 0,
+            promotions: 0,
+            top10Finishes: 0,
+            top20Finishes: 0,
+            score: 0,
+          };
+        }
+
+        const stats = managerStats[managerName];
+        const division = Number(row.division);
+        const position = Number(row.position);
+        const globalRank = (division - 1) * 20 + position;
+
+        if (isChampion(position)) stats.titles += 1;
+        if (division === 1) stats.d1Seasons += 1;
+
+        if (
+          isAutoPromo(division, position) ||
+          (
+            isPlayoffBand(division, position) &&
+            playoffWinnersSet?.has(playoffWinnerKey(row.season, division, row.team))
+          )
+        ) {
+          stats.promotions += 1;
+        }
+
+        if (globalRank <= 10) stats.top10Finishes += 1;
+        if (globalRank <= 20) stats.top20Finishes += 1;
+      });
+  });
+
+  return Object.values(managerStats)
+    .map((stats) => ({
+      ...stats,
+      score:
+        stats.titles * 50 +
+        stats.d1Seasons * 10 +
+        stats.promotions * 8 +
+        stats.top10Finishes * 3 +
+        stats.top20Finishes * 1,
+    }))
+    .sort((a, b) => b.score - a.score);
+};
 
   // hash -> tab sync
   useEffect(() => {
@@ -1168,6 +1226,7 @@ const SearchResults = () => {
   );
 
   const Insights = () => {
+    const greatestManagers = buildGreatestManagers().slice(0, 20);
     const src = leadersView === "team" ? leaders.byTeam : leaders.byManager;
     const LeaderTable = ({ title, rows }) => (
       <div className="bg-white rounded-xl shadow p-4">
@@ -1193,6 +1252,52 @@ const SearchResults = () => {
 
     return (
       <div className="space-y-8">
+{/* Greatest Managers */}
+<div className="bg-white rounded-xl shadow-lg p-6">
+  <div className="flex items-center gap-2 mb-4">
+    <Trophy className="w-5 h-5 text-yellow-600" />
+    <h3 className="text-xl font-bold">Greatest Managers</h3>
+  </div>
+
+  <p className="text-sm text-gray-500 mb-4">
+    Weighted score: titles 50 pts, D1 seasons 10 pts, promotions 8 pts,
+    Top 10 finishes 3 pts, Top 20 finishes 1 pt.
+  </p>
+
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left text-gray-600">
+          <th className="py-2 px-2">Rank</th>
+          <th className="py-2 px-2">Manager</th>
+          <th className="py-2 px-2">Score</th>
+          <th className="py-2 px-2">Titles</th>
+          <th className="py-2 px-2">D1 seasons</th>
+          <th className="py-2 px-2">Promotions</th>
+          <th className="py-2 px-2">Top 10s</th>
+          <th className="py-2 px-2">Top 20s</th>
+        </tr>
+      </thead>
+      <tbody>
+        {greatestManagers.map((row, index) => (
+          <tr key={row.manager} className="border-t">
+            <td className="py-2 px-2 font-bold">#{index + 1}</td>
+            <td className="py-2 px-2 font-semibold">{row.manager}</td>
+            <td className="py-2 px-2 font-bold text-purple-700">
+              {row.score}
+            </td>
+            <td className="py-2 px-2">{row.titles}</td>
+            <td className="py-2 px-2">{row.d1Seasons}</td>
+            <td className="py-2 px-2">{row.promotions}</td>
+            <td className="py-2 px-2">{row.top10Finishes}</td>
+            <td className="py-2 px-2">{row.top20Finishes}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
+
         {/* Leaders */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
