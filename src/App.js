@@ -1452,7 +1452,7 @@ const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
           </div>
         </div>
 
-        {/* Thresholds */}
+    {/* Thresholds */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-green-700" />
@@ -1467,10 +1467,8 @@ const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
             <ThresholdCard title="Avoid Sacking (Pos 17 in all Divs)" rows={computeThresholds.avoidSack} />
           </div>
         </div>
-      </div>
 
-
-{/* Most Clubs Managed */}
+        {/* Most Clubs Managed */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Users className="w-5 h-5 text-pink-600" />
@@ -1510,8 +1508,6 @@ const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
           </div>
         </div>
       </div>
-    );
-  }
     );
   }
 
