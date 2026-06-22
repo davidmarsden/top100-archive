@@ -1306,39 +1306,8 @@ const SearchResults = () => {
   );
 
   const Insights = () => {
-    
-const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
-    const src = leadersView === "team" ? leaders.byTeam : leaders.byManager;
-    const LeaderTable = ({ title, rows }) => (
-      <div className="bg-white rounded-xl shadow p-4">
-        <h4 className="font-semibold mb-3">{title}</h4>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-600">
-              <th className="py-2">{leadersView === "team" ? "Team" : "Manager"}</th>
-              <th className="py-2 text-right">Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, 15).map((r, i) => (
-              <tr key={i} className="border-t">
-                <td className="py-2">{r.key || "Unknown"}</td>
-                <td className="py-2 text-right font-semibold">{r.count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
 
-    return (
-      <div className="space-y-8">
-
-        
-
-
-
-        {/* Leaders */}
+      {/* Leaders */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1510,9 +1479,10 @@ const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
       </div>
     );
   }
+return (
+      <div className="space-y-8">
 
-  return (
-    <>
+        
       <div className="min-h-screen bg-gray-50">
         {/* Hero Header */}
         <div className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
