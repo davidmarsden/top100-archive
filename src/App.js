@@ -543,6 +543,43 @@ const buildGreatestManagers = () => {
   return Object.values(managerStats).sort((a, b) => b.score - a.score);
 };
 
+const buildMostClubsManaged = () => {
+  const managerClubs = {};
+
+  allPositionData.forEach((row) => {
+    if (!row.manager || !row.team) return;
+
+    String(row.manager)
+      .split("/")
+      .map((name) => canonicalManagerName(name.trim()))
+      .filter(Boolean)
+      .forEach((managerName) => {
+        if (!managerClubs[managerName]) {
+          managerClubs[managerName] = {
+            manager: managerName,
+            clubs: new Set(),
+            seasons: 0,
+          };
+        }
+
+        managerClubs[managerName].clubs.add(row.team);
+        managerClubs[managerName].seasons += 1;
+      });
+  });
+
+  return Object.values(managerClubs)
+    .map((row) => ({
+      manager: row.manager,
+      clubCount: row.clubs.size,
+      clubs: [...row.clubs].sort().join(", "),
+      seasons: row.seasons,
+    }))
+    .sort((a, b) => {
+      if (b.clubCount !== a.clubCount) return b.clubCount - a.clubCount;
+      return b.seasons - a.seasons;
+    });
+};
+
   // hash -> tab sync
   useEffect(() => {
     const apply = () => {
@@ -1361,6 +1398,7 @@ const SearchResults = () => {
 
   const Insights = () => {
     const greatestManagers = buildGreatestManagers().slice(0, 20);
+const mostClubsManaged = buildMostClubsManaged().slice(0, 20);
     const src = leadersView === "team" ? leaders.byTeam : leaders.byManager;
     const LeaderTable = ({ title, rows }) => (
       <div className="bg-white rounded-xl shadow p-4">
@@ -1422,6 +1460,46 @@ const SearchResults = () => {
 <td className="py-2 px-2">{row.cupPoints}</td>
 <td className="py-2 px-2">{row.promotionPoints}</td>
 <td className="py-2 px-2">{row.smfaPoints}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{/* Most Clubs Managed */}
+<div className="bg-white rounded-xl shadow-lg p-6">
+  <div className="flex items-center gap-2 mb-4">
+    <Users className="w-5 h-5 text-pink-600" />
+    <h3 className="text-xl font-bold">Most Clubs Managed</h3>
+  </div>
+
+  <p className="text-sm text-gray-500 mb-4">
+    Managers ranked by the number of different clubs they have managed across
+    the Top 100 archive.
+  </p>
+
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left text-gray-600">
+          <th className="py-2 px-2">Rank</th>
+          <th className="py-2 px-2">Manager</th>
+          <th className="py-2 px-2">Clubs</th>
+          <th className="py-2 px-2">Seasons</th>
+          <th className="py-2 px-2">Club list</th>
+        </tr>
+      </thead>
+      <tbody>
+        {mostClubsManaged.map((row, index) => (
+          <tr key={row.manager} className="border-t">
+            <td className="py-2 px-2 font-bold">#{index + 1}</td>
+            <td className="py-2 px-2 font-semibold">{row.manager}</td>
+            <td className="py-2 px-2 font-bold text-pink-700">
+              {row.clubCount}
+            </td>
+            <td className="py-2 px-2">{row.seasons}</td>
+            <td className="py-2 px-2 text-gray-600">{row.clubs}</td>
           </tr>
         ))}
       </tbody>
