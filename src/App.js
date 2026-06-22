@@ -602,7 +602,7 @@ const managersRes = await fetch(managersUrl);
 if (managersRes.ok) {
   const managersJson = await managersRes.json();
   const managerValues = managersJson?.values || [];
-  setManagerHonoursRows(parseSheetRows(managerValues));
+  
 }
 
     } catch {
