@@ -153,34 +153,42 @@ const getAchievementBandScore = (row) => {
   const division = getDivisionNumber(row);
   const position = getPositionNumber(row);
 
-  if (!position) return 0;
+  if (!division || !position) return 50;
 
-  if (position === 1) return 100;
-  if (division >= 2 && division <= 5 && position >= 2 && position <= 3) return 90;
-  if (division >= 2 && division <= 5 && position >= 4 && position <= 7) return 75;
-  if (position >= 2 && position <= 4) return 80;
-  if (position >= 5 && position <= 10) return 65;
-  if (position >= 11 && position <= 13) return 50;
-  if (position >= 14 && position <= 16) return 35;
-  if (position >= 17 && position <= 20) return 10;
+  if (division === 1) {
+    if (position === 1) return 100;
+    if (position >= 2 && position <= 4) return 90;
+    if (position >= 5 && position <= 8) return 80;
+    if (position >= 9 && position <= 12) return 70;
+    if (position >= 13 && position <= 16) return 55;
+    if (position >= 17) return 15;
+  }
 
-  return 40;
+  if (division >= 2 && division <= 5) {
+    if (position === 1) return 95;
+    if (position >= 2 && position <= 3) return 85;
+    if (position >= 4 && position <= 7) return 75;
+    if (position >= 8 && position <= 12) return 55;
+    if (position >= 13 && position <= 16) return 35;
+    if (position >= 17) return 10;
+  }
+
+  return 50;
 };
 
 const getTrendScore = (rows) => {
   const recent = sortBySeason(rows).slice(-5);
-  if (recent.length < 3) return 0;
+  if (recent.length < 4) return 0;
 
   const scored = recent.map(getAchievementBandScore);
 
-  const firstHalf = average(scored.slice(0, Math.ceil(scored.length / 2)));
-  const secondHalf = average(scored.slice(Math.floor(scored.length / 2)));
+  const early = average(scored.slice(0, 2));
+  const late = average(scored.slice(-2));
 
-  if (!firstHalf || !secondHalf) return 0;
+  if (!Number.isFinite(early) || !Number.isFinite(late)) return 0;
 
-  return clamp(secondHalf - firstHalf, -30, 30);
+  return clamp(late - early, -30, 30);
 };
-
 
 
 const getManagerDNA = (managerRows) => {
