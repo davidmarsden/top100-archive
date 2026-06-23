@@ -266,16 +266,42 @@ const getManagerDNA = (managerRows) => {
   };
 };
 
-const getArchetype = (summary, dna) => {
+const getArchetype = (summary, dna, managerRows) => {
+  const recentRows = sortBySeason(managerRows).slice(-8);
+  const recentD1Rows = recentRows.filter((row) => getDivisionNumber(row) === 1);
+
+  const recentD1Top4 = recentD1Rows.filter((row) => {
+    const pos = getPositionNumber(row);
+    return pos >= 1 && pos <= 4;
+  }).length;
+
+  const recentD1Top10 = recentD1Rows.filter((row) => {
+    const pos = getPositionNumber(row);
+    return pos >= 1 && pos <= 10;
+  }).length;
+
+  const recentD1Total = recentD1Rows.length;
+
   if (summary.titles >= 4) return "Dynasty Builder";
-  if (dna.promotionAbility >= 7 && summary.promotions >= 3) return "Promotion Specialist";
-  if (summary.promotions >= 2 && summary.relegations >= 2) return "Yo-Yo Manager";
-  if (dna.survivalInstinct >= 8 && summary.relegations === 0) return "Survival Expert";
-  if (dna.loyalty >= 7) return "Loyalist";
+
+  if (recentD1Total >= 5 && recentD1Top4 / recentD1Total >= 0.55) {
+    return "Top-Four Regular";
+  }
+
+  if (recentD1Total >= 5 && recentD1Top10 / recentD1Total >= 0.7) {
+    return "Top-Ten Banker";
+  }
+
+  if (summary.promotions >= 5) return "Promotion Machine";
+
+  if (summary.promotions >= 3 && summary.relegations >= 2) return "Yo-Yo Manager";
+
   if (summary.clubsManaged >= 6) return "Journeyman";
+
   if (summary.midTableRate >= 45) return "Mid-table Banker";
+
   if (summary.relegations >= 3) return "Chaos Merchant";
-  if (dna.elitePerformance >= 8) return "Elite Operator";
+
   return "Balanced Operator";
 };
 
@@ -393,7 +419,7 @@ playoffOrTopFour:
 };
   const prediction = normalisePrediction(rawPrediction);
   const dna = getManagerDNA(managerRows);
-  const archetype = getArchetype(summary, dna);
+  const archetype = getArchetype(summary, dna, managerRows);
 
 const summarySentence = (() => {
   const {
