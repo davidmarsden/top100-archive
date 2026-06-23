@@ -179,6 +179,11 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
           <StatPill label="⬇️ Relegations" value={relegations} color="bg-red-50 text-red-800 border-red-200" />
           <StatPill label="⛔ Sackings" value={sackings} color="bg-rose-50 text-rose-900 border-rose-200" />
           <StatPill label="📅 Seasons Managed" value={seasonsManaged} color="bg-indigo-50 text-indigo-800 border-indigo-200" />
+<StatPill
+  label="📈 Trend"
+  value={managerPrediction.trendScore}
+  color="bg-cyan-50 text-cyan-800 border-cyan-200"
+/>
         </div>
 
 {managerPrediction && (
