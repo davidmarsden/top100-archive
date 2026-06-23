@@ -73,41 +73,20 @@ const getSeasonNumber = (row) => {
 };
 
 const isPromotion = (row) => {
-  const outcome = norm(
-    row.outcome ??
-      row.Outcome ??
-      row.status ??
-      row.Status ??
-      ""
-  );
+  const division = getDivisionNumber(row);
+  const position = getPositionNumber(row);
 
-  return (
-    outcome.includes("promoted") ||
-    outcome.includes("promotion") ||
-    outcome.includes("playoff winner") ||
-    row.promoted === true ||
-    row.Promoted === true
-  );
+  return division >= 2 && division <= 5 && position >= 1 && position <= 3;
 };
 
 const isRelegation = (row) => {
-  const outcome = norm(
-    row.outcome ??
-      row.Outcome ??
-      row.status ??
-      row.Status ??
-      ""
-  );
+  const division = getDivisionNumber(row);
+  const position = getPositionNumber(row);
 
-  return (
-    outcome.includes("relegated") ||
-    outcome.includes("relegation") ||
-    outcome.includes("sacked") ||
-    row.relegated === true ||
-    row.Relegated === true
-  );
+  return division >= 1 && division <= 4 && position >= 17 && position <= 20;
 };
 
+const isTitle = (row) => {
 const isTitle = (row) => {
   const position = getPositionNumber(row);
   const outcome = norm(
