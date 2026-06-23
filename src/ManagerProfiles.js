@@ -1,6 +1,7 @@
 // src/ManagerProfiles.js
 import React, { useMemo, useState } from "react";
 import { Users, Search as SearchIcon } from "lucide-react";
+import { buildManagerPrediction } from "./utils/managerPredictor";
 
 /* ------------------------------
    Status helpers (mirror App.js)
@@ -146,8 +147,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
   const ManagerCard = ({ name }) => {
     const rows = rowsByManager.get(name) || [];
-
-const managerPrediction = buildManagerPrediction(allPositionData, name);
+    const managerPrediction =       buildManagerPrediction(allPositionData, name);
 
     // counts
     const titles = rows.filter((r) => isChampion(r.position)).length;
