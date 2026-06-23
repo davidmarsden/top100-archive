@@ -202,7 +202,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 {managerPrediction && (
   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
     <div>
-      <h4 className="text-lg font-bold">What Happens Next?</h4>
+      <h4 className="text-lg font-bold">Manager Prediction</h4>
       <p className="text-sm text-gray-700 mt-1">
         {managerPrediction.summarySentence}
       </p>
