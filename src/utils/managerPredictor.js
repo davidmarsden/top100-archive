@@ -298,9 +298,22 @@ const normalisePrediction = (prediction) => {
 export const buildManagerPrediction = (allRows, managerName) => {
   const target = norm(managerName);
 
-  const managerRows = sortBySeason(
-    allRows.filter((row) => norm(getManagerName(row)) === target)
-  );
+  const splitManagers = (raw) => {
+  const s = String(raw || "").trim();
+  if (!s) return ["???"];
+  const parts = s
+    .split("/")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  return parts.length > 1 ? [...parts, s] : parts;
+};
+
+const managerRows = sortBySeason(
+  allRows.filter((row) =>
+    splitManagers(getManagerName(row)).some((manager) => norm(manager) === target)
+  )
+);
 
   if (!managerRows.length) {
     return null;
