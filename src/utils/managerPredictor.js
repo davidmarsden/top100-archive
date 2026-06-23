@@ -149,22 +149,39 @@ const getRecentFormScore = (rows) => {
   return average(scores) ?? 50;
 };
 
-const getTrendScore = (rows) => {
-  const recent = sortBySeason(rows)
-    .slice(-5)
-    .map((row) => getPositionNumber(row))
-    .filter((pos) => Number.isFinite(pos));
+const getAchievementBandScore = (row) => {
+  const division = getDivisionNumber(row);
+  const position = getPositionNumber(row);
 
+  if (!position) return 0;
+
+  if (position === 1) return 100;
+  if (division >= 2 && division <= 5 && position >= 2 && position <= 3) return 90;
+  if (division >= 2 && division <= 5 && position >= 4 && position <= 7) return 75;
+  if (position >= 2 && position <= 4) return 80;
+  if (position >= 5 && position <= 10) return 65;
+  if (position >= 11 && position <= 13) return 50;
+  if (position >= 14 && position <= 16) return 35;
+  if (position >= 17 && position <= 20) return 10;
+
+  return 40;
+};
+
+const getTrendScore = (rows) => {
+  const recent = sortBySeason(rows).slice(-5);
   if (recent.length < 3) return 0;
 
-  const firstHalf = average(recent.slice(0, Math.ceil(recent.length / 2)));
-  const secondHalf = average(recent.slice(Math.floor(recent.length / 2)));
+  const scored = recent.map(getAchievementBandScore);
+
+  const firstHalf = average(scored.slice(0, Math.ceil(scored.length / 2)));
+  const secondHalf = average(scored.slice(Math.floor(scored.length / 2)));
 
   if (!firstHalf || !secondHalf) return 0;
 
-  // Positive means improving because lower league position is better.
-  return clamp((firstHalf - secondHalf) * 10, -30, 30);
+  return clamp(secondHalf - firstHalf, -30, 30);
 };
+
+
 
 const getManagerDNA = (managerRows) => {
   const total = managerRows.length;
@@ -290,31 +307,33 @@ const buildManagerPrediction = (allRows, managerName) => {
   };
 
 const recentRates = getOutcomeRates(sortBySeason(managerRows).slice(-5));
+const upwardTrend = Math.max(trendScore, 0);
+const downwardTrend = Math.max(-trendScore, 0);
 
 const rawPrediction = {
   titleOrPromotion:
-    recentRates.promotion * 0.25 +
+    recentRates.promotion * 0.2 +
     baselineRates.promotion * 0.25 +
     managerRates.promotion * 0.15 +
-    Math.max(trendScore, 0) * 0.35,
+    upwardTrend * 0.4,
 
   playoffOrTopFour:
     recentRates.topHalf * 0.35 +
     baselineRates.topHalf * 0.25 +
     managerRates.topHalf * 0.15 +
-    Math.max(trendScore, 0) * 0.25,
+    upwardTrend * 0.25,
 
   midTable:
     recentRates.midTable * 0.45 +
     baselineRates.midTable * 0.25 +
     managerRates.midTable * 0.2 +
-    Math.max(-trendScore, 0) * 0.1,
+    downwardTrend * 0.1,
 
   relegationDanger:
     recentRates.relegation * 0.45 +
     baselineRates.relegation * 0.25 +
     managerRates.relegation * 0.2 +
-    Math.max(-trendScore, 0) * 0.1,
+    downwardTrend * 0.1,
 };
   const prediction = normalisePrediction(rawPrediction);
   const dna = getManagerDNA(managerRows);
