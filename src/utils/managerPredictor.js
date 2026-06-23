@@ -79,6 +79,33 @@ const isMidTable = (row) => {
   return position !== null && position >= 6 && position <= 15;
 };
 
+const isTitleContender = (row) => {
+  const division = getDivisionNumber(row);
+  const position = getPositionNumber(row);
+
+  if (!position) return false;
+
+  if (division === 1) return position >= 1 && position <= 3;
+  return division >= 2 && division <= 5 && position >= 1 && position <= 3;
+};
+
+const isTopFourChallenger = (row) => {
+  const division = getDivisionNumber(row);
+  const position = getPositionNumber(row);
+
+  if (!position) return false;
+
+  if (division === 1) return position >= 1 && position <= 4;
+  return division >= 2 && division <= 5 && position >= 4 && position <= 7;
+};
+
+const isComfortableTopTen = (row) => {
+  const division = getDivisionNumber(row);
+  const position = getPositionNumber(row);
+
+  return division === 1 && position >= 5 && position <= 10;
+};
+
 const rate = (count, total) => (total ? (count / total) * 100 : 0);
 
 const average = (values) => {
@@ -126,14 +153,17 @@ const getOutcomeRates = (rows) => {
   const total = rows.length;
 
   return {
-    total,
-    promotion: rate(rows.filter(isPromotion).length, total),
-    relegation: rate(rows.filter(isRelegation).length, total),
-    title: rate(rows.filter(isTitle).length, total),
-    topHalf: rate(rows.filter(isTopHalf).length, total),
-    bottomHalf: rate(rows.filter(isBottomHalf).length, total),
-    midTable: rate(rows.filter(isMidTable).length, total),
-  };
+  total,
+  promotion: rate(rows.filter(isPromotion).length, total),
+  relegation: rate(rows.filter(isRelegation).length, total),
+  title: rate(rows.filter(isTitle).length, total),
+  titleContender: rate(rows.filter(isTitleContender).length, total),
+  topFourChallenger: rate(rows.filter(isTopFourChallenger).length, total),
+  comfortableTopTen: rate(rows.filter(isComfortableTopTen).length, total),
+  topHalf: rate(rows.filter(isTopHalf).length, total),
+  bottomHalf: rate(rows.filter(isBottomHalf).length, total),
+  midTable: rate(rows.filter(isMidTable).length, total),
+};
 };
 
 const getRecentFormScore = (rows) => {
@@ -320,16 +350,17 @@ const downwardTrend = Math.max(-trendScore, 0);
 
 const rawPrediction = {
   titleOrPromotion:
-    recentRates.promotion * 0.2 +
-    baselineRates.promotion * 0.25 +
-    managerRates.promotion * 0.15 +
-    upwardTrend * 0.4,
+  recentRates.titleContender * 0.55 +
+  baselineRates.titleContender * 0.2 +
+  managerRates.titleContender * 0.15 +
+  upwardTrend * 0.1,
 
-  playoffOrTopFour:
-    recentRates.topHalf * 0.35 +
-    baselineRates.topHalf * 0.25 +
-    managerRates.topHalf * 0.15 +
-    upwardTrend * 0.25,
+playoffOrTopFour:
+  recentRates.topFourChallenger * 0.45 +
+  recentRates.comfortableTopTen * 0.15 +
+  baselineRates.topFourChallenger * 0.2 +
+  managerRates.topFourChallenger * 0.1 +
+  upwardTrend * 0.1,
 
   midTable:
     recentRates.midTable * 0.45 +
