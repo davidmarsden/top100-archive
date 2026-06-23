@@ -60,6 +60,22 @@ const StatPill = ({ label, value, color }) => (
   </span>
 );
 
+const formLabel = (score) => {
+  if (score >= 85) return "Excellent";
+  if (score >= 70) return "Strong";
+  if (score >= 55) return "Solid";
+  if (score >= 40) return "Patchy";
+  return "Poor";
+};
+
+const trendLabel = (score) => {
+  if (score >= 20) return "Surging";
+  if (score >= 10) return "Improving";
+  if (score > -10) return "Stable";
+  if (score > -20) return "Sliding";
+  return "Declining";
+};
+
 const SectionTitle = ({ children }) => (
   <h3 className="text-lg font-bold flex items-center gap-2 mb-3">
     <Users className="w-4 h-4 text-slate-600" />
@@ -184,6 +200,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
   value={managerPrediction.trendScore}
   color="bg-cyan-50 text-cyan-800 border-cyan-200"
 />
+
         </div>
 
 {managerPrediction && (
