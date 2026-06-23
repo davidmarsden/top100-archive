@@ -356,9 +356,9 @@ const legacyScore = clamp(
 const managerStatus = (() => {
   if (legacyScore >= 80) return "Legend";
   if (legacyScore >= 60) return "Elite";
-  if (legacyScore >= 40) return "Established";
-  if (legacyScore >= 20) return "Experienced";
-  return "Developing";
+  if (legacyScore >= 40) return "Top Level";
+  if (legacyScore >= 20) return "Veteran";
+  return "Progressive";
 })();
 
 const recentRates = getOutcomeRates(sortBySeason(managerRows).slice(-5));
@@ -408,10 +408,10 @@ const summarySentence = (() => {
   }
 
   if (managerStatus === "Elite" && recentForm < 70) {
-    return `${managerName}'s recent results are uneven, but his wider record is too strong to dismiss. The model still sees a proven manager with upside.`;
+    return `${managerName}'s recent results are uneven, but his wider record is too strong to dismiss. still sees a proven manager with upside.`;
   }
 
-  if (titleOrPromotion >= 30 && managerStatus !== "Developing") {
+  if (titleOrPromotion >= 30 && managerStatus !== "Progressive") {
     return `${managerName} profiles as a genuine title or promotion contender based on recent performance and proven career pedigree.`;
   }
 
