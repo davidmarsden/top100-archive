@@ -7,27 +7,32 @@ import { buildManagerPrediction } from "./utils/managerPredictor";
    Status helpers (mirror App.js)
 ------------------------------ */
 const isChampion = (pos) => parseInt(pos || 0, 10) === 1;
+
 const isAutoPromoPos = (div, pos) => {
   const d = parseInt(div || 0, 10);
   const p = parseInt(pos || 0, 10);
   // positions 2–3 in D2–D5
   return d >= 2 && d <= 5 && (p === 2 || p === 3);
 };
+
 const isTitlePromo = (div, pos) => {
   // champions in D2–D5 are promoted as champions
   const d = parseInt(div || 0, 10);
   return d >= 2 && d <= 5 && isChampion(pos);
 };
+
 const isPlayoffBand = (div, pos) => {
   const d = parseInt(div || 0, 10);
   const p = parseInt(pos || 0, 10);
   return d >= 2 && d <= 5 && p >= 4 && p <= 7;
 };
+
 const isRelegated = (div, pos) => {
   const d = parseInt(div || 0, 10);
   const p = parseInt(pos || 0, 10);
   return d >= 1 && d <= 4 && p >= 17 && p <= 20;
 };
+
 const isAutoSacked = (pos) => {
   const p = parseInt(pos || 0, 10);
   return p >= 18 && p <= 20;
@@ -38,6 +43,7 @@ const normDiv = (d) => {
   const m = String(d || "").match(/\d+/);
   return m ? m[0] : String(d || "").trim();
 };
+
 const normalizeName = (s) =>
   String(s || "")
     .replace(/\([^)]*\)/g, " ")
@@ -55,8 +61,13 @@ const playoffWinnerKey = (season, division, team) =>
    Small UI bits
 ------------------------------ */
 const StatPill = ({ label, value, color }) => (
-  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold border ${color}`}>
-    {label} <span className="inline-block px-1.5 py-0.5 bg-white/70 rounded">{value}</span>
+  <span
+    className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold border ${color}`}
+  >
+    {label}
+    <span className="inline-block px-1.5 py-0.5 bg-white/70 rounded">
+      {value}
+    </span>
   </span>
 );
 
@@ -85,10 +96,22 @@ const SectionTitle = ({ children }) => (
 
 /* Badge next to position */
 const posBadge = ({ division, position, isPlayoffWinner }) => {
-  if (isAutoSacked(position)) return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
-  if (isRelegated(division, position)) return { bg: "bg-red-600", text: "text-white", content: "⬇️" };
-  if (isChampion(position)) return { bg: "bg-yellow-500", text: "text-white", content: "👑" };
-  if (isAutoPromoPos(division, position) || isPlayoffWinner) return { bg: "bg-green-600", text: "text-white", content: "⬆️" };
+  if (isAutoSacked(position)) {
+    return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
+  }
+
+  if (isRelegated(division, position)) {
+    return { bg: "bg-red-600", text: "text-white", content: "⬇️" };
+  }
+
+  if (isChampion(position)) {
+    return { bg: "bg-yellow-500", text: "text-white", content: "👑" };
+  }
+
+  if (isAutoPromoPos(division, position) || isPlayoffWinner) {
+    return { bg: "bg-green-600", text: "text-white", content: "⬆️" };
+  }
+
   return { bg: "bg-gray-200", text: "text-gray-800", content: "" };
 };
 
@@ -96,10 +119,12 @@ const posBadge = ({ division, position, isPlayoffWinner }) => {
 const splitManagers = (raw) => {
   const s = String(raw || "").trim();
   if (!s) return ["???"];
+
   const parts = s
     .split("/")
     .map((x) => x.trim())
     .filter(Boolean);
+
   // If it was a multi-name, return individuals + the combined label.
   return parts.length > 1 ? [...parts, s] : parts;
 };
@@ -108,75 +133,182 @@ const splitManagers = (raw) => {
    Main component
 ------------------------------ */
 const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
-  // winnersSet -> safe Set
   const winners = useMemo(
     () => (winnersSet instanceof Set ? winnersSet : new Set()),
     [winnersSet]
   );
 
+  const latestSeason = useMemo(() => {
+    const seasons = allPositionData
+      .map((r) => parseInt(r.season || 0, 10))
+      .filter((s) => Number.isFinite(s) && s > 0);
+
+    return seasons.length ? Math.max(...seasons) : 0;
+  }, [allPositionData]);
+
   // unique manager names: include each individual from "A / B" plus the combined label
   const managerNames = useMemo(() => {
     const names = new Set();
+
     for (const r of allPositionData) {
       for (const n of splitManagers(r.manager)) {
         names.add(n || "???");
       }
     }
+
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [allPositionData]);
 
   const [search, setSearch] = useState("");
   const [selectedManager, setSelectedManager] = useState("");
+  const [managerFilter, setManagerFilter] = useState("current");
 
   const filteredManagers = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return managerNames.filter((n) => (needle ? n.toLowerCase().includes(needle) : true));
+
+    return managerNames.filter((n) =>
+      needle ? n.toLowerCase().includes(needle) : true
+    );
   }, [managerNames, search]);
 
-  // group rows by EACH manager token (so “A / B” contributes to A and to B, and to “A / B”)
+  // group rows by EACH manager token
+  // so “A / B” contributes to A, to B, and to “A / B”
   const rowsByManager = useMemo(() => {
     const map = new Map();
+
     for (const r of allPositionData) {
       const tokens = splitManagers(r.manager);
+
       for (const t of tokens) {
         const key = t || "???";
+
         if (!map.has(key)) map.set(key, []);
         map.get(key).push(r);
       }
     }
-    // sort each group
+
+    // sort each group newest first
     for (const [, rows] of map.entries()) {
       rows.sort((a, b) => {
         const s = parseInt(b.season || 0, 10) - parseInt(a.season || 0, 10);
         if (s) return s;
+
         const d = parseInt(a.division || 0, 10) - parseInt(b.division || 0, 10);
         if (d) return d;
+
         return parseInt(a.position || 0, 10) - parseInt(b.position || 0, 10);
       });
     }
+
     return map;
   }, [allPositionData]);
 
-  const visibleManagers = (selectedManager ? [selectedManager] : filteredManagers).filter((n) =>
-    rowsByManager.has(n)
-  );
+  const managerLastSeason = useMemo(() => {
+    const map = new Map();
+
+    for (const [manager, rows] of rowsByManager.entries()) {
+      const seasons = rows
+        .map((r) => parseInt(r.season || 0, 10))
+        .filter((s) => Number.isFinite(s) && s > 0);
+
+      map.set(manager, seasons.length ? Math.max(...seasons) : 0);
+    }
+
+    return map;
+  }, [rowsByManager]);
+
+  const passesManagerFilter = (name) => {
+    // If a user explicitly selects someone, always show them.
+    if (selectedManager) return true;
+
+    // Hide unknown managers from the useful views.
+    if (name === "???" && managerFilter !== "all") return false;
+
+    const lastSeason = managerLastSeason.get(name) || 0;
+
+    if (managerFilter === "current") {
+      return lastSeason === latestSeason;
+    }
+
+    if (managerFilter === "recent") {
+      return lastSeason >= latestSeason - 4;
+    }
+
+    return true;
+  };
+
+  const visibleManagers = useMemo(() => {
+    const base = selectedManager ? [selectedManager] : filteredManagers;
+
+    const filtered = base
+      .filter((n) => rowsByManager.has(n))
+      .filter((n) => passesManagerFilter(n));
+
+    // For the current view, make browsing more useful:
+    // D1 first, then league position, then manager name.
+    if (!selectedManager && managerFilter === "current") {
+      return [...filtered].sort((a, b) => {
+        const rowA = rowsByManager
+          .get(a)
+          ?.find((r) => parseInt(r.season || 0, 10) === latestSeason);
+
+        const rowB = rowsByManager
+          .get(b)
+          ?.find((r) => parseInt(r.season || 0, 10) === latestSeason);
+
+        const divA = parseInt(rowA?.division || 99, 10);
+        const divB = parseInt(rowB?.division || 99, 10);
+        if (divA !== divB) return divA - divB;
+
+        const posA = parseInt(rowA?.position || 99, 10);
+        const posB = parseInt(rowB?.position || 99, 10);
+        if (posA !== posB) return posA - posB;
+
+        return a.localeCompare(b);
+      });
+    }
+
+    return filtered;
+  }, [
+    selectedManager,
+    filteredManagers,
+    rowsByManager,
+    managerFilter,
+    latestSeason,
+    managerLastSeason,
+  ]);
 
   const ManagerCard = ({ name }) => {
     const rows = rowsByManager.get(name) || [];
-    const managerPrediction =       buildManagerPrediction(allPositionData, name);
+    const managerPrediction = buildManagerPrediction(allPositionData, name);
 
     // counts
     const titles = rows.filter((r) => isChampion(r.position)).length;
-    const autoPromosBase = rows.filter((r) => isAutoPromoPos(r.division, r.position)).length;
-    const titlePromos = rows.filter((r) => isTitlePromo(r.division, r.position)).length;
+
+    const autoPromosBase = rows.filter((r) =>
+      isAutoPromoPos(r.division, r.position)
+    ).length;
+
+    const titlePromos = rows.filter((r) =>
+      isTitlePromo(r.division, r.position)
+    ).length;
+
     const playoffWins = rows.filter(
-      (r) => isPlayoffBand(r.division, r.position) && winners.has(playoffWinnerKey(r.season, r.division, r.team))
+      (r) =>
+        isPlayoffBand(r.division, r.position) &&
+        winners.has(playoffWinnerKey(r.season, r.division, r.team))
     ).length;
 
     const totalPromos = titlePromos + autoPromosBase + playoffWins;
-    const relegations = rows.filter((r) => isRelegated(r.division, r.position)).length;
+
+    const relegations = rows.filter((r) =>
+      isRelegated(r.division, r.position)
+    ).length;
+
     const sackings = rows.filter((r) => isAutoSacked(r.position)).length;
-    const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
+
+    const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim()))
+      .size;
 
     return (
       <div className="bg-white rounded-xl shadow p-4 space-y-4">
@@ -186,76 +318,99 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
         {/* Stats row */}
         <div className="flex flex-wrap gap-2">
-          <StatPill label="⬆️ Total Promotions" value={totalPromos} color="bg-emerald-50 text-emerald-800 border-emerald-200" />
-          <StatPill label="🏆 Titles" value={titles} color="bg-yellow-50 text-yellow-800 border-yellow-200" />
-          {/* Keep “Auto Promotions” as “non-playoff promotions” (2–3 + champions). 
-              If you want strictly positions 2–3, change to value={autoPromosBase}. */}
-          <StatPill label="⬆️ Auto Promotions" value={autoPromosBase + titlePromos} color="bg-green-50 text-green-800 border-green-200" />
-          <StatPill label="🎟️ Playoff Wins" value={playoffWins} color="bg-emerald-50 text-emerald-800 border-emerald-200" />
-          <StatPill label="⬇️ Relegations" value={relegations} color="bg-red-50 text-red-800 border-red-200" />
-          <StatPill label="⛔ Sackings" value={sackings} color="bg-rose-50 text-rose-900 border-rose-200" />
-          <StatPill label="📅 Seasons Managed" value={seasonsManaged} color="bg-indigo-50 text-indigo-800 border-indigo-200" />
-
-
+          <StatPill
+            label="⬆️ Total Promotions"
+            value={totalPromos}
+            color="bg-emerald-50 text-emerald-800 border-emerald-200"
+          />
+          <StatPill
+            label="🏆 Titles"
+            value={titles}
+            color="bg-yellow-50 text-yellow-800 border-yellow-200"
+          />
+          <StatPill
+            label="⬆️ Auto Promotions"
+            value={autoPromosBase + titlePromos}
+            color="bg-green-50 text-green-800 border-green-200"
+          />
+          <StatPill
+            label="🎟️ Playoff Wins"
+            value={playoffWins}
+            color="bg-emerald-50 text-emerald-800 border-emerald-200"
+          />
+          <StatPill
+            label="⬇️ Relegations"
+            value={relegations}
+            color="bg-red-50 text-red-800 border-red-200"
+          />
+          <StatPill
+            label="⛔ Sackings"
+            value={sackings}
+            color="bg-rose-50 text-rose-900 border-rose-200"
+          />
+          <StatPill
+            label="📅 Seasons Managed"
+            value={seasonsManaged}
+            color="bg-indigo-50 text-indigo-800 border-indigo-200"
+          />
         </div>
 
-{managerPrediction && (
-  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-    <div>
-      <h4 className="text-lg font-bold">Manager Prediction</h4>
-      <p className="text-sm text-gray-700 mt-1">
-        {managerPrediction.summarySentence}
-      </p>
-    </div>
+        {managerPrediction && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+            <div>
+              <h4 className="text-lg font-bold">Manager Prediction</h4>
+              <p className="text-sm text-gray-700 mt-1">
+                {managerPrediction.summarySentence}
+              </p>
+            </div>
 
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <StatPill
-        label="⬆️ Title / Promotion"
-        value={`${managerPrediction.prediction.titleOrPromotion}%`}
-        color="bg-emerald-50 text-emerald-800 border-emerald-200"
-      />
-      <StatPill
-        label="🎟️ Playoff / Top Four"
-        value={`${managerPrediction.prediction.playoffOrTopFour}%`}
-        color="bg-blue-50 text-blue-800 border-blue-200"
-      />
-      <StatPill
-        label="😐 Mid-table"
-        value={`${managerPrediction.prediction.midTable}%`}
-        color="bg-gray-50 text-gray-800 border-gray-200"
-      />
-      <StatPill
-        label="⬇️ Relegation Danger"
-        value={`${managerPrediction.prediction.relegationDanger}%`}
-        color="bg-red-50 text-red-800 border-red-200"
-      />
-    </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatPill
+                label="⬆️ Title / Promotion"
+                value={`${managerPrediction.prediction.titleOrPromotion}%`}
+                color="bg-emerald-50 text-emerald-800 border-emerald-200"
+              />
+              <StatPill
+                label="🎟️ Playoff / Top Four"
+                value={`${managerPrediction.prediction.playoffOrTopFour}%`}
+                color="bg-blue-50 text-blue-800 border-blue-200"
+              />
+              <StatPill
+                label="😐 Mid-table"
+                value={`${managerPrediction.prediction.midTable}%`}
+                color="bg-gray-50 text-gray-800 border-gray-200"
+              />
+              <StatPill
+                label="⬇️ Relegation Danger"
+                value={`${managerPrediction.prediction.relegationDanger}%`}
+                color="bg-red-50 text-red-800 border-red-200"
+              />
+            </div>
 
-    <div className="flex flex-wrap gap-2">
-      <StatPill
-        label="Manager Type"
-        value={managerPrediction.archetype}
-        color="bg-purple-50 text-purple-800 border-purple-200"
-      />
-      <StatPill
-  label="Recent Form"
-  value={formLabel(managerPrediction.recentForm)}
-  color="bg-indigo-50 text-indigo-800 border-indigo-200"
-/>
-<StatPill
-  label="Trend"
-  value={trendLabel(managerPrediction.trendScore)}
-  color="bg-cyan-50 text-cyan-800 border-cyan-200"
-/>
-
-<StatPill
-  label="Status"
-  value={managerPrediction.managerStatus}
-  color="bg-amber-50 text-amber-800 border-amber-200"
-/>
-    </div>
-  </div>
-)}
+            <div className="flex flex-wrap gap-2">
+              <StatPill
+                label="Manager Type"
+                value={managerPrediction.archetype}
+                color="bg-purple-50 text-purple-800 border-purple-200"
+              />
+              <StatPill
+                label="Status"
+                value={managerPrediction.managerStatus || "—"}
+                color="bg-amber-50 text-amber-800 border-amber-200"
+              />
+              <StatPill
+                label="Recent Form"
+                value={formLabel(managerPrediction.recentForm)}
+                color="bg-indigo-50 text-indigo-800 border-indigo-200"
+              />
+              <StatPill
+                label="Trend"
+                value={trendLabel(managerPrediction.trendScore)}
+                color="bg-cyan-50 text-cyan-800 border-cyan-200"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Career history */}
         <div className="overflow-x-auto">
@@ -272,17 +427,35 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
             </thead>
             <tbody>
               {rows.map((r, i) => {
-                const winner = winners.has(playoffWinnerKey(r.season, r.division, r.team));
+                const winner = winners.has(
+                  playoffWinnerKey(r.season, r.division, r.team)
+                );
 
                 const notes = [];
+
                 if (isChampion(r.position)) {
-                  if (isTitlePromo(r.division, r.position)) notes.push("Promoted as Champions");
-                  else notes.push("Champions");
+                  if (isTitlePromo(r.division, r.position)) {
+                    notes.push("Promoted as Champions");
+                  } else {
+                    notes.push("Champions");
+                  }
                 }
-                if (isAutoPromoPos(r.division, r.position)) notes.push("Auto-Promoted");
-                if (isPlayoffBand(r.division, r.position) && winner) notes.push("Playoff Winner (Promoted)");
-                if (isRelegated(r.division, r.position)) notes.push("Relegated");
-                if (isAutoSacked(r.position)) notes.push("Auto-Sacked");
+
+                if (isAutoPromoPos(r.division, r.position)) {
+                  notes.push("Auto-Promoted");
+                }
+
+                if (isPlayoffBand(r.division, r.position) && winner) {
+                  notes.push("Playoff Winner (Promoted)");
+                }
+
+                if (isRelegated(r.division, r.position)) {
+                  notes.push("Relegated");
+                }
+
+                if (isAutoSacked(r.position)) {
+                  notes.push("Auto-Sacked");
+                }
 
                 const badge = posBadge({
                   division: r.division,
@@ -309,6 +482,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
                   </tr>
                 );
               })}
+
               {!rows.length && (
                 <tr>
                   <td className="py-4 px-2 text-gray-500" colSpan={6}>
@@ -349,6 +523,16 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
             </option>
           ))}
         </select>
+
+        <select
+          value={managerFilter}
+          onChange={(e) => setManagerFilter(e.target.value)}
+          className="px-3 py-2 border rounded-lg"
+        >
+          <option value="current">Current Managers</option>
+          <option value="recent">Last 5 Seasons</option>
+          <option value="all">All-Time Archive</option>
+        </select>
       </div>
 
       {/* Cards */}
@@ -356,8 +540,11 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
         {visibleManagers.map((n) => (
           <ManagerCard key={n || "unknown"} name={n} />
         ))}
+
         {!visibleManagers.length && (
-          <div className="text-center text-gray-500 py-12">No managers match your search.</div>
+          <div className="text-center text-gray-500 py-12">
+            No managers match your search.
+          </div>
         )}
       </div>
     </div>
