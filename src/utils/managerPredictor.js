@@ -347,25 +347,32 @@ const rawPrediction = {
   const dna = getManagerDNA(managerRows);
   const archetype = getArchetype(summary, dna);
 
-  const summarySentence = (() => {
-    const promotion = prediction.titleOrPromotion;
-    const relegation = prediction.relegationDanger;
-    const midTable = prediction.midTable;
+const summarySentence = (() => {
+  const {
+    titleOrPromotion,
+    playoffOrTopFour,
+    midTable,
+    relegationDanger,
+  } = prediction;
 
-    if (midTable > promotion && midTable > relegation) {
-      return `Historical record suggests ${managerName} is more likely to record another mid-table season than win promotion or fall into serious relegation trouble.`;
-    }
+  if (titleOrPromotion >= 40) {
+    return `${managerName} looks like a genuine title or promotion contender based on recent performance and historical results.`;
+  }
 
-    if (relegation > promotion) {
-      return `Historical record suggests ${managerName} carries more relegation risk than promotion momentum from this position.`;
-    }
+  if (playoffOrTopFour >= 50) {
+    return `${managerName} projects as a strong top-four challenger, with a realistic chance of competing for honours if current form continues.`;
+  }
 
-    if (promotion >= 35) {
-      return `Historical record gives ${managerName} a credible promotion or title chance, although the model still expects a competitive season rather than a stroll.`;
-    }
+  if (midTable >= 50) {
+    return `${managerName} most closely profiles as a solid mid-table performer, unlikely to challenge for titles but also unlikely to struggle.`;
+  }
 
-    return `Historical record suggests ${managerName} is difficult to call, with no single outcome dominating the profile.`;
-  })();
+  if (relegationDanger >= 35) {
+    return `${managerName} carries a significant relegation risk based on historical performance patterns.`;
+  }
+
+  return `${managerName} is difficult to predict, with several outcomes appearing plausible.`;
+})();
 
   const receipts = managerRows.map((row) => ({
     season: getSeasonNumber(row),
