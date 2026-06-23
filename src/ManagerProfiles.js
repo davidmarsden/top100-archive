@@ -246,6 +246,8 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
   label="Trend"
   value={trendLabel(managerPrediction.trendScore)}
   color="bg-cyan-50 text-cyan-800 border-cyan-200"
+/>
+
 <StatPill
   label="Status"
   value={managerPrediction.managerStatus}
