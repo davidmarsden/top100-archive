@@ -271,28 +271,29 @@ const buildManagerPrediction = (allRows, managerName) => {
     midTableRate: round(managerRates.midTable),
   };
 
-  const rawPrediction = {
-    titleOrPromotion:
-      managerRates.promotion * 0.4 +
-      baselineRates.promotion * 0.4 +
-      recentForm * 0.2,
+const recentRates = getOutcomeRates(sortBySeason(managerRows).slice(-5));
 
-    playoffOrTopFour:
-      managerRates.topHalf * 0.35 +
-      baselineRates.topHalf * 0.45 +
-      recentForm * 0.2,
+const rawPrediction = {
+  titleOrPromotion:
+    recentRates.promotion * 0.5 +
+    baselineRates.promotion * 0.3 +
+    managerRates.promotion * 0.2,
 
-    midTable:
-      managerRates.midTable * 0.45 +
-      baselineRates.midTable * 0.45 +
-      50 * 0.1,
+  playoffOrTopFour:
+    recentRates.topHalf * 0.5 +
+    baselineRates.topHalf * 0.3 +
+    managerRates.topHalf * 0.2,
 
-    relegationDanger:
-      managerRates.relegation * 0.45 +
-      baselineRates.relegation * 0.45 +
-      (100 - recentForm) * 0.1,
-  };
+  midTable:
+    recentRates.midTable * 0.5 +
+    baselineRates.midTable * 0.3 +
+    managerRates.midTable * 0.2,
 
+  relegationDanger:
+    recentRates.relegation * 0.55 +
+    baselineRates.relegation * 0.25 +
+    managerRates.relegation * 0.2,
+};
   const prediction = normalisePrediction(rawPrediction);
   const dna = getManagerDNA(managerRows);
   const archetype = getArchetype(summary, dna);
