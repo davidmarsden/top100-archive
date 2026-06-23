@@ -147,6 +147,8 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
   const ManagerCard = ({ name }) => {
     const rows = rowsByManager.get(name) || [];
 
+const managerPrediction = buildManagerPrediction(allPositionData, name);
+
     // counts
     const titles = rows.filter((r) => isChampion(r.position)).length;
     const autoPromosBase = rows.filter((r) => isAutoPromoPos(r.division, r.position)).length;
@@ -178,6 +180,53 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
           <StatPill label="⛔ Sackings" value={sackings} color="bg-rose-50 text-rose-900 border-rose-200" />
           <StatPill label="📅 Seasons Managed" value={seasonsManaged} color="bg-indigo-50 text-indigo-800 border-indigo-200" />
         </div>
+
+{managerPrediction && (
+  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+    <div>
+      <h4 className="text-lg font-bold">What Happens Next?</h4>
+      <p className="text-sm text-gray-700 mt-1">
+        {managerPrediction.summarySentence}
+      </p>
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <StatPill
+        label="⬆️ Title / Promotion"
+        value={`${managerPrediction.prediction.titleOrPromotion}%`}
+        color="bg-emerald-50 text-emerald-800 border-emerald-200"
+      />
+      <StatPill
+        label="🎟️ Playoff / Top Four"
+        value={`${managerPrediction.prediction.playoffOrTopFour}%`}
+        color="bg-blue-50 text-blue-800 border-blue-200"
+      />
+      <StatPill
+        label="😐 Mid-table"
+        value={`${managerPrediction.prediction.midTable}%`}
+        color="bg-gray-50 text-gray-800 border-gray-200"
+      />
+      <StatPill
+        label="⬇️ Relegation Danger"
+        value={`${managerPrediction.prediction.relegationDanger}%`}
+        color="bg-red-50 text-red-800 border-red-200"
+      />
+    </div>
+
+    <div className="flex flex-wrap gap-2">
+      <StatPill
+        label="Manager Type"
+        value={managerPrediction.archetype}
+        color="bg-purple-50 text-purple-800 border-purple-200"
+      />
+      <StatPill
+        label="Recent Form"
+        value={`${managerPrediction.recentForm}/100`}
+        color="bg-indigo-50 text-indigo-800 border-indigo-200"
+      />
+    </div>
+  </div>
+)}
 
         {/* Career history */}
         <div className="overflow-x-auto">
