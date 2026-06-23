@@ -242,10 +242,15 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
         color="bg-purple-50 text-purple-800 border-purple-200"
       />
       <StatPill
-        label="Recent Form"
-        value={`${managerPrediction.recentForm}/100`}
-        color="bg-indigo-50 text-indigo-800 border-indigo-200"
-      />
+  label="Recent Form"
+  value={formLabel(managerPrediction.recentForm)}
+  color="bg-indigo-50 text-indigo-800 border-indigo-200"
+/>
+<StatPill
+  label="Trend"
+  value={trendLabel(managerPrediction.trendScore)}
+  color="bg-cyan-50 text-cyan-800 border-cyan-200"
+/>
     </div>
   </div>
 )}
