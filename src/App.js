@@ -15,7 +15,6 @@ import Charts from "./Charts";
 import ManagerProfiles from "./ManagerProfiles";
 import Winners from "./Winners";
 import HistoryChartModal from "./components/HistoryChartModal";
-import { buildManagerPrediction } from "./utils/managerPredictor";
 
 /* =========================
    Helpers & Status Logic
