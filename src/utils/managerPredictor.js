@@ -344,6 +344,23 @@ const buildManagerPrediction = (allRows, managerName) => {
     midTableRate: round(managerRates.midTable),
   };
 
+const legacyScore = clamp(
+  summary.titles * 10 +
+    summary.promotions * 4 +
+    summary.seasons * 0.5 -
+    summary.relegations * 3,
+  0,
+  100
+);
+
+const managerStatus = (() => {
+  if (legacyScore >= 80) return "Legend";
+  if (legacyScore >= 60) return "Elite";
+  if (legacyScore >= 40) return "Established";
+  if (legacyScore >= 20) return "Experienced";
+  return "Developing";
+})();
+
 const recentRates = getOutcomeRates(sortBySeason(managerRows).slice(-5));
 const upwardTrend = Math.max(trendScore, 0);
 const downwardTrend = Math.max(-trendScore, 0);
@@ -386,20 +403,28 @@ const summarySentence = (() => {
     relegationDanger,
   } = prediction;
 
-  if (titleOrPromotion >= 40) {
-    return `${managerName} looks like a genuine title or promotion contender based on recent performance and historical results.`;
+  if (managerStatus === "Legend" && recentForm < 70) {
+    return `${managerName}'s recent form is mixed, but his long-term record marks him out as one of the great managers in Top 100 history. He remains dangerous despite the wobble.`;
   }
 
-  if (playoffOrTopFour >= 50) {
-    return `${managerName} projects as a strong top-four challenger, with a realistic chance of competing for honours if current form continues.`;
+  if (managerStatus === "Elite" && recentForm < 70) {
+    return `${managerName}'s recent results are uneven, but his wider record is too strong to dismiss. The model still sees a proven manager with upside.`;
+  }
+
+  if (titleOrPromotion >= 30 && managerStatus !== "Developing") {
+    return `${managerName} profiles as a genuine title or promotion contender based on recent performance and proven career pedigree.`;
+  }
+
+  if (playoffOrTopFour >= 45) {
+    return `${managerName} projects as a strong top-four or playoff challenger, with a realistic chance of competing for honours if current form holds.`;
   }
 
   if (midTable >= 50) {
-    return `${managerName} most closely profiles as a solid mid-table performer, unlikely to challenge for titles but also unlikely to struggle.`;
+    return `${managerName} currently profiles as a solid mid-table performer, though his wider record may suggest a higher ceiling.`;
   }
 
   if (relegationDanger >= 35) {
-    return `${managerName} carries a significant relegation risk based on historical performance patterns.`;
+    return `${managerName} carries a significant relegation risk based on recent and historical performance patterns.`;
   }
 
   return `${managerName} is difficult to predict, with several outcomes appearing plausible.`;
@@ -426,6 +451,8 @@ const summarySentence = (() => {
     baselineRates,
     recentForm: round(recentForm),
     trendScore: round(trendScore),
+legacyScore: round(legacyScore),
+managerStatus,
     prediction,
     dna,
     archetype,
