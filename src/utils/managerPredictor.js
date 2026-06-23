@@ -408,19 +408,23 @@ const summarySentence = (() => {
   }
 
   if (managerStatus === "Elite" && recentForm < 70) {
-    return `${managerName}'s recent results are uneven, but his wider record is too strong to dismiss. still sees a proven manager with upside.`;
+    return `${managerName}'s recent results are uneven, but his wider record is too strong to dismiss. The model still sees a proven manager with upside.`;
   }
 
-  if (titleOrPromotion >= 30 && managerStatus !== "Progressive") {
-    return `${managerName} profiles as a genuine title or promotion contender based on recent performance and proven career pedigree.`;
+  if (titleOrPromotion >= 25) {
+    return `${managerName} profiles as a genuine title contender, with recent results suggesting a serious challenge at the top end of the table.`;
   }
 
-  if (playoffOrTopFour >= 45) {
-    return `${managerName} projects as a strong top-four or playoff challenger, with a realistic chance of competing for honours if current form holds.`;
+  if (playoffOrTopFour >= 25) {
+    return `${managerName} profiles as a strong top-ten manager with realistic top-four upside.`;
+  }
+
+  if (playoffOrTopFour >= 18 && midTable >= 45) {
+    return `${managerName} looks more like a comfortable top-ten candidate than a relegation risk, with an outside chance of pushing towards the top four.`;
   }
 
   if (midTable >= 50) {
-    return `${managerName} currently profiles as a solid mid-table performer, though his wider record may suggest a higher ceiling.`;
+    return `${managerName} currently profiles as a steady mid-table performer, unlikely to struggle but needing a jump to threaten the top four.`;
   }
 
   if (relegationDanger >= 35) {
