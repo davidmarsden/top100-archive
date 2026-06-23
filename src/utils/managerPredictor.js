@@ -23,86 +23,46 @@ const round = (value, places = 1) => {
 };
 
 const getDivisionNumber = (row) => {
-  const raw =
-    row.division ??
-    row.Division ??
-    row.div ??
-    row.Div ??
-    "";
-
+  const raw = row.division ?? row.Division ?? row.div ?? row.Div ?? "";
   const match = raw.toString().match(/\d+/);
   return match ? Number(match[0]) : null;
 };
 
-const getPositionNumber = (row) => {
-  return num(
-    row.position ??
-      row.Position ??
-      row.pos ??
-      row.Pos ??
-      row.rank ??
-      row.Rank,
-    null
-  );
-};
+const getPositionNumber = (row) =>
+  num(row.position ?? row.Position ?? row.pos ?? row.Pos ?? row.rank ?? row.Rank, null);
 
 const getManagerName = (row) =>
-  row.manager ??
-  row.Manager ??
-  row.managerName ??
-  row.ManagerName ??
-  "";
+  row.manager ?? row.Manager ?? row.managerName ?? row.ManagerName ?? "";
 
 const getClubName = (row) =>
-  row.club ??
-  row.Club ??
-  row.team ??
-  row.Team ??
-  "";
+  row.club ?? row.Club ?? row.team ?? row.Team ?? "";
 
 const getSeasonNumber = (row) => {
-  const raw =
-    row.season ??
-    row.Season ??
-    row.seasonNumber ??
-    row.SeasonNumber ??
-    "";
-
+  const raw = row.season ?? row.Season ?? row.seasonNumber ?? row.SeasonNumber ?? "";
   const match = raw.toString().match(/\d+/);
   return match ? Number(match[0]) : null;
+};
+
+const splitManagers = (raw) => {
+  const s = String(raw || "").trim();
+  if (!s) return ["???"];
+  const parts = s.split("/").map((x) => x.trim()).filter(Boolean);
+  return parts.length > 1 ? [...parts, s] : parts;
 };
 
 const isPromotion = (row) => {
   const division = getDivisionNumber(row);
   const position = getPositionNumber(row);
-
   return division >= 2 && division <= 5 && position >= 1 && position <= 3;
 };
 
 const isRelegation = (row) => {
   const division = getDivisionNumber(row);
   const position = getPositionNumber(row);
-
   return division >= 1 && division <= 4 && position >= 17 && position <= 20;
 };
 
-const isTitle = (row) => {
-const isTitle = (row) => {
-  const position = getPositionNumber(row);
-  const outcome = norm(
-    row.outcome ??
-      row.Outcome ??
-      row.status ??
-      row.Status ??
-      ""
-  );
-
-  return (
-    position === 1 ||
-    outcome.includes("champion") ||
-    outcome.includes("title")
-  );
-};
+const isTitle = (row) => getPositionNumber(row) === 1;
 
 const isTopHalf = (row) => {
   const position = getPositionNumber(row);
@@ -119,10 +79,7 @@ const isMidTable = (row) => {
   return position !== null && position >= 6 && position <= 15;
 };
 
-const rate = (count, total) => {
-  if (!total) return 0;
-  return (count / total) * 100;
-};
+const rate = (count, total) => (total ? (count / total) * 100 : 0);
 
 const average = (values) => {
   const valid = values.filter((v) => Number.isFinite(v));
@@ -274,36 +231,22 @@ const normalisePrediction = (prediction) => {
   };
 };
 
-export const buildManagerPrediction = (allRows, managerName) => {
+const buildManagerPrediction = (allRows, managerName) => {
   const target = norm(managerName);
 
-  const splitManagers = (raw) => {
-  const s = String(raw || "").trim();
-  if (!s) return ["???"];
-  const parts = s
-    .split("/")
-    .map((x) => x.trim())
-    .filter(Boolean);
+  const managerRows = sortBySeason(
+    allRows.filter((row) =>
+      splitManagers(getManagerName(row)).some((manager) => norm(manager) === target)
+    )
+  );
 
-  return parts.length > 1 ? [...parts, s] : parts;
-};
-
-const managerRows = sortBySeason(
-  allRows.filter((row) =>
-    splitManagers(getManagerName(row)).some((manager) => norm(manager) === target)
-  )
-);
-
-  if (!managerRows.length) {
-    return null;
-  }
+  if (!managerRows.length) return null;
 
   const latestRow = managerRows[managerRows.length - 1];
   const baselineRows = getBaselineRows(allRows, latestRow);
 
   const managerRates = getOutcomeRates(managerRows);
   const baselineRates = getOutcomeRates(baselineRows);
-
   const recentForm = getRecentFormScore(managerRows);
 
   const clubs = new Set(managerRows.map(getClubName).filter(Boolean));
@@ -401,3 +344,5 @@ const managerRows = sortBySeason(
     receipts,
   };
 };
+
+export { buildManagerPrediction };
