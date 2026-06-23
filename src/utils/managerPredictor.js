@@ -149,6 +149,23 @@ const getRecentFormScore = (rows) => {
   return average(scores) ?? 50;
 };
 
+const getTrendScore = (rows) => {
+  const recent = sortBySeason(rows)
+    .slice(-5)
+    .map((row) => getPositionNumber(row))
+    .filter((pos) => Number.isFinite(pos));
+
+  if (recent.length < 3) return 0;
+
+  const firstHalf = average(recent.slice(0, Math.ceil(recent.length / 2)));
+  const secondHalf = average(recent.slice(Math.floor(recent.length / 2)));
+
+  if (!firstHalf || !secondHalf) return 0;
+
+  // Positive means improving because lower league position is better.
+  return clamp((firstHalf - secondHalf) * 10, -30, 30);
+};
+
 const getManagerDNA = (managerRows) => {
   const total = managerRows.length;
   const clubs = new Set(managerRows.map(getClubName).filter(Boolean));
@@ -248,6 +265,7 @@ const buildManagerPrediction = (allRows, managerName) => {
   const managerRates = getOutcomeRates(managerRows);
   const baselineRates = getOutcomeRates(baselineRows);
   const recentForm = getRecentFormScore(managerRows);
+  const trendScore = getTrendScore(managerRows);
 
   const clubs = new Set(managerRows.map(getClubName).filter(Boolean));
   const divisions = managerRows.map(getDivisionNumber).filter(Boolean);
@@ -275,24 +293,28 @@ const recentRates = getOutcomeRates(sortBySeason(managerRows).slice(-5));
 
 const rawPrediction = {
   titleOrPromotion:
-    recentRates.promotion * 0.5 +
-    baselineRates.promotion * 0.3 +
-    managerRates.promotion * 0.2,
+    recentRates.promotion * 0.25 +
+    baselineRates.promotion * 0.25 +
+    managerRates.promotion * 0.15 +
+    Math.max(trendScore, 0) * 0.35,
 
   playoffOrTopFour:
-    recentRates.topHalf * 0.5 +
-    baselineRates.topHalf * 0.3 +
-    managerRates.topHalf * 0.2,
+    recentRates.topHalf * 0.35 +
+    baselineRates.topHalf * 0.25 +
+    managerRates.topHalf * 0.15 +
+    Math.max(trendScore, 0) * 0.25,
 
   midTable:
-    recentRates.midTable * 0.5 +
-    baselineRates.midTable * 0.3 +
-    managerRates.midTable * 0.2,
+    recentRates.midTable * 0.45 +
+    baselineRates.midTable * 0.25 +
+    managerRates.midTable * 0.2 +
+    Math.max(-trendScore, 0) * 0.1,
 
   relegationDanger:
-    recentRates.relegation * 0.55 +
+    recentRates.relegation * 0.45 +
     baselineRates.relegation * 0.25 +
-    managerRates.relegation * 0.2,
+    managerRates.relegation * 0.2 +
+    Math.max(-trendScore, 0) * 0.1,
 };
   const prediction = normalisePrediction(rawPrediction);
   const dna = getManagerDNA(managerRows);
@@ -338,6 +360,7 @@ const rawPrediction = {
     managerRates,
     baselineRates,
     recentForm: round(recentForm),
+    trendScore: round(trendScore),
     prediction,
     dna,
     archetype,
