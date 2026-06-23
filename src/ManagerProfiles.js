@@ -251,7 +251,6 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
   value={managerPrediction.managerStatus}
   color="bg-amber-50 text-amber-800 border-amber-200"
 />
-/>
     </div>
   </div>
 )}
