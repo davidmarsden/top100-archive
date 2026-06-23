@@ -217,32 +217,27 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
     return map;
   }, [rowsByManager]);
 
-  const passesManagerFilter = (name) => {
-    // If a user explicitly selects someone, always show them.
-    if (selectedManager) return true;
-
-    // Hide unknown managers from the useful views.
-    if (name === "???" && managerFilter !== "all") return false;
-
-    const lastSeason = managerLastSeason.get(name) || 0;
-
-    if (managerFilter === "current") {
-      return lastSeason === latestSeason;
-    }
-
-    if (managerFilter === "recent") {
-      return lastSeason >= latestSeason - 4;
-    }
-
-    return true;
-  };
-
   const visibleManagers = useMemo(() => {
-    const base = selectedManager ? [selectedManager] : filteredManagers;
+  const base = selectedManager ? [selectedManager] : filteredManagers;
 
-    const filtered = base
-      .filter((n) => rowsByManager.has(n))
-      .filter((n) => passesManagerFilter(n));
+  const filtered = base
+    .filter((n) => rowsByManager.has(n))
+    .filter((n) => {
+      if (selectedManager) return true;
+      if (n === "???" && managerFilter !== "all") return false;
+
+      const lastSeason = managerLastSeason.get(n) || 0;
+
+      if (managerFilter === "current") {
+        return lastSeason === latestSeason;
+      }
+
+      if (managerFilter === "recent") {
+        return lastSeason >= latestSeason - 4;
+      }
+
+      return true;
+    });
 
     // For the current view, make browsing more useful:
     // D1 first, then league position, then manager name.
