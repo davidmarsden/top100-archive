@@ -144,8 +144,7 @@ const getOutcomeManager = (raw) => {
   return parts.length ? parts[parts.length - 1] : "???";
 };
 
-const isOutcomeManager = (row, name) =>
-  normalizeName(getOutcomeManager(row.manager)) === normalizeName(name);
+
 
 /* ------------------------------
    Main component
