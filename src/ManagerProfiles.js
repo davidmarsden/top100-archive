@@ -294,36 +294,35 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 const ManagerCard = ({ name }) => {
   const rows = rowsByManager.get(name) || [];
 
-  const isOutcomeManager = (row, name) =>
-  normalizeName(getOutcomeManager(row.manager)) === normalizeName(name);
+  
 
   const managerPrediction = buildManagerPrediction(allPositionData, name);
 
-  const titles = outcomeRows.filter((r) => isChampion(r.position)).length;
+  const titles = rows.filter((r) => isChampion(r.position)).length;
 
-  const autoPromosBase = outcomeRows.filter((r) =>
-    isAutoPromoPos(r.division, r.position)
-  ).length;
+const autoPromosBase = rows.filter((r) =>
+  isAutoPromoPos(r.division, r.position)
+).length;
 
-  const titlePromos = outcomeRows.filter((r) =>
-    isTitlePromo(r.division, r.position)
-  ).length;
+const titlePromos = rows.filter((r) =>
+  isTitlePromo(r.division, r.position)
+).length;
 
-  const playoffWins = outcomeRows.filter(
-    (r) =>
-      isPlayoffBand(r.division, r.position) &&
-      winners.has(playoffWinnerKey(r.season, r.division, r.team))
-  ).length;
+const playoffWins = rows.filter(
+  (r) =>
+    isPlayoffBand(r.division, r.position) &&
+    winners.has(playoffWinnerKey(r.season, r.division, r.team))
+).length;
 
-  const totalPromos = titlePromos + autoPromosBase + playoffWins;
+const totalPromos = titlePromos + autoPromosBase + playoffWins;
 
-  const relegations = outcomeRows.filter((r) =>
-    isRelegated(r.division, r.position)
-  ).length;
+const relegations = rows.filter((r) =>
+  isRelegated(r.division, r.position)
+).length;
 
-  const sackings = outcomeRows.filter((r) =>
-    isAutoSacked(r.season, r.position)
-  ).length;
+const sackings = rows.filter((r) =>
+  isAutoSacked(r.season, r.position)
+).length;
 
     return (
       <div className="bg-white rounded-xl shadow p-4 space-y-4">
