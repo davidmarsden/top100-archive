@@ -136,13 +136,7 @@ const splitManagers = (raw) => {
   return parts.length > 1 ? [...parts, s] : parts;
 };
 
-const getOutcomeManager = (raw) => {
-  const parts = splitManagers(raw).filter(
-    (p) => p !== String(raw || "").trim()
-  );
 
-  return parts.length ? parts[parts.length - 1] : "???";
-};
 
 
 
