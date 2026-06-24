@@ -136,6 +136,16 @@ const splitManagers = (raw) => {
   return parts.length > 1 ? [...parts, s] : parts;
 };
 
+const getOutcomeManager = (raw) => {
+  const parts = splitManagers(raw).filter(
+    (p) => p !== String(raw || "").trim()
+  );
+
+  return parts.length ? parts[parts.length - 1] : "???";
+};
+
+const isOutcomeManager = (row, name) => getOutcomeManager(row.manager) === name;
+
 /* ------------------------------
    Main component
 ------------------------------ */
@@ -282,33 +292,37 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
   const ManagerCard = ({ name }) => {
     const rows = rowsByManager.get(name) || [];
+const outcomeRows = rows.filter((r) =>
+  isOutcomeManager(r, name)
+);
     const managerPrediction = buildManagerPrediction(allPositionData, name);
 
     // counts
-    const titles = rows.filter((r) => isChampion(r.position)).length;
+    const titles = outcomeRows.filter((r) => isChampion(r.position)).length;
 
-    const autoPromosBase = rows.filter((r) =>
-      isAutoPromoPos(r.division, r.position)
-    ).length;
+const autoPromosBase = outcomeRows.filter((r) =>
+  isAutoPromoPos(r.division, r.position)
+).length;
 
-    const titlePromos = rows.filter((r) =>
-      isTitlePromo(r.division, r.position)
-    ).length;
+const titlePromos = outcomeRows.filter((r) =>
+  isTitlePromo(r.division, r.position)
+).length;
 
-    const playoffWins = rows.filter(
-      (r) =>
-        isPlayoffBand(r.division, r.position) &&
-        winners.has(playoffWinnerKey(r.season, r.division, r.team))
-    ).length;
+const relegations = outcomeRows.filter((r) =>
+  isRelegated(r.division, r.position)
+).length;
 
-    const totalPromos = titlePromos + autoPromosBase + playoffWins;
+const sackings = outcomeRows.filter((r) =>
+  isAutoSacked(r.season, r.position)
+).length;
 
-    const relegations = rows.filter((r) =>
-      isRelegated(r.division, r.position)
-    ).length;
-
-    const sackings = rows.filter((r) => isAutoSacked(r.season, r.position)).length;
-
+const playoffWins = outcomeRows.filter(
+  (r) =>
+    isPlayoffBand(r.division, r.position) &&
+    winners.has(
+      playoffWinnerKey(r.season, r.division, r.team)
+    )
+).length;
     const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim()))
       .size;
 
