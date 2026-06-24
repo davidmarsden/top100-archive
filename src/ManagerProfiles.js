@@ -103,22 +103,22 @@ const SectionTitle = ({ children }) => (
 );
 
 /* Badge next to position */
-const posBadge = ({ season, division, position, isPlayoffWinner }) => {
-  if (isAutoSacked(season, position)) {
-    return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
-  }
+const posBadge = ({ season, division, position, isPlayoffWinner, isFinalManager }) => {
+  if (isFinalManager && isAutoSacked(season, position)) {
+  return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
+}
 
-  if (isRelegated(division, position)) {
-    return { bg: "bg-red-600", text: "text-white", content: "⬇️" };
-  }
+if (isFinalManager && isRelegated(division, position)) {
+  return { bg: "bg-red-600", text: "text-white", content: "⬇️" };
+}
 
-  if (isChampion(position)) {
-    return { bg: "bg-yellow-500", text: "text-white", content: "👑" };
-  }
+if (isFinalManager && isChampion(position)) {
+  return { bg: "bg-yellow-500", text: "text-white", content: "👑" };
+}
 
-  if (isAutoPromoPos(division, position) || isPlayoffWinner) {
-    return { bg: "bg-green-600", text: "text-white", content: "⬆️" };
-  }
+if (isFinalManager && (isAutoPromoPos(division, position) || isPlayoffWinner)) {
+  return { bg: "bg-green-600", text: "text-white", content: "⬆️" };
+}
 
   return { bg: "bg-gray-200", text: "text-gray-800", content: "" };
 };
@@ -137,7 +137,20 @@ const splitManagers = (raw) => {
 };
 
 
+const getOutcomeManager = (raw) => {
+  const s = String(raw || "").trim();
+  if (!s) return "???";
 
+  const parts = s
+    .split("/")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  return parts.length ? parts[parts.length - 1] : "???";
+};
+
+const isOutcomeManager = (row, name) =>
+  normalizeName(getOutcomeManager(row.manager)) === normalizeName(name);
 
 
 /* ------------------------------
@@ -286,22 +299,20 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
 const ManagerCard = ({ name }) => {
   const rows = rowsByManager.get(name) || [];
+const outcomeRows = rows.filter((r) => isOutcomeManager(r, name));
+const managerPrediction = buildManagerPrediction(allPositionData, name);
 
-  
+  const titles = outcomeRows.filter((r) => isChampion(r.position)).length;
 
-  const managerPrediction = buildManagerPrediction(allPositionData, name);
-
-  const titles = rows.filter((r) => isChampion(r.position)).length;
-
-const autoPromosBase = rows.filter((r) =>
+const autoPromosBase = outcomeRows.filter((r) =>
   isAutoPromoPos(r.division, r.position)
 ).length;
 
-const titlePromos = rows.filter((r) =>
+const titlePromos = outcomeRows.filter((r) =>
   isTitlePromo(r.division, r.position)
 ).length;
 
-const playoffWins = rows.filter(
+const playoffWins = outcomeRows.filter(
   (r) =>
     isPlayoffBand(r.division, r.position) &&
     winners.has(playoffWinnerKey(r.season, r.division, r.team))
@@ -309,11 +320,11 @@ const playoffWins = rows.filter(
 
 const totalPromos = titlePromos + autoPromosBase + playoffWins;
 
-const relegations = rows.filter((r) =>
+const relegations = outcomeRows.filter((r) =>
   isRelegated(r.division, r.position)
 ).length;
 
-const sackings = rows.filter((r) =>
+const sackings = outcomeRows.filter((r) =>
   isAutoSacked(r.season, r.position)
 ).length;
 
@@ -436,41 +447,46 @@ const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
             </thead>
             <tbody>
               {rows.map((r, i) => {
-                const winner = winners.has(
-                  playoffWinnerKey(r.season, r.division, r.team)
-                );
+  const winner = winners.has(
+    playoffWinnerKey(r.season, r.division, r.team)
+  );
 
-                const notes = [];
+  const isFinalManager = isOutcomeManager(r, name);
+  const notes = [];
 
-                if (isChampion(r.position)) {
-                  if (isTitlePromo(r.division, r.position)) {
-                    notes.push("Promoted as Champions");
-                  } else {
-                    notes.push("Champions");
-                  }
-                }
+                if (isFinalManager && isChampion(r.position)) {
+  if (isTitlePromo(r.division, r.position)) {
+    notes.push("Promoted as Champions");
+  } else {
+    notes.push("Champions");
+  }
+}
 
-                if (isAutoPromoPos(r.division, r.position)) {
-                  notes.push("Auto-Promoted");
-                }
+if (isFinalManager && isAutoPromoPos(r.division, r.position)) {
+  notes.push("Auto-Promoted");
+}
 
-                if (isPlayoffBand(r.division, r.position) && winner) {
-                  notes.push("Playoff Winner (Promoted)");
-                }
+if (isFinalManager && isPlayoffBand(r.division, r.position) && winner) {
+  notes.push("Playoff Winner (Promoted)");
+}
 
-                if (isRelegated(r.division, r.position)) {
-                  notes.push("Relegated");
-                }
+if (isFinalManager && isRelegated(r.division, r.position)) {
+  notes.push("Relegated");
+}
 
-                if (isAutoSacked(r.season, r.position)) {
-                  notes.push("Auto-Sacked");
-                }
+if (isFinalManager && isAutoSacked(r.season, r.position)) {
+  notes.push("Auto-Sacked");
+}
 
                 const badge = posBadge({
   season: r.season,
   division: r.division,
   position: r.position,
-  isPlayoffWinner: isPlayoffBand(r.division, r.position) && winner,
+  isFinalManager,
+  isPlayoffWinner:
+    isFinalManager &&
+    isPlayoffBand(r.division, r.position) &&
+    winner,
 });
 
                 return (
