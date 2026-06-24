@@ -323,6 +323,7 @@ const playoffWins = outcomeRows.filter(
       playoffWinnerKey(r.season, r.division, r.team)
     )
 ).length;
+const totalPromos = titlePromos + autoPromosBase + playoffWins;
     const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim()))
       .size;
 
