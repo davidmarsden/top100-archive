@@ -103,7 +103,7 @@ const SectionTitle = ({ children }) => (
 );
 
 /* Badge next to position */
-const posBadge = ({ division, position, isPlayoffWinner }) => {
+const posBadge = ({ season, division, position, isPlayoffWinner }) => {
   if (isAutoSacked(season, position)) {
     return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
   }
@@ -122,7 +122,6 @@ const posBadge = ({ division, position, isPlayoffWinner }) => {
 
   return { bg: "bg-gray-200", text: "text-gray-800", content: "" };
 };
-
 /* Utility: split multi-manager names like "Kennedy / Marsden" */
 const splitManagers = (raw) => {
   const s = String(raw || "").trim();
