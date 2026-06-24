@@ -33,8 +33,16 @@ const isRelegated = (div, pos) => {
   return d >= 1 && d <= 4 && p >= 17 && p <= 20;
 };
 
-const isAutoSacked = (pos) => {
+const isAutoSacked = (season, pos) => {
+  const s = parseInt(season || 0, 10);
   const p = parseInt(pos || 0, 10);
+
+  if (!s || !p) return false;
+
+  // S1–S9: bottom 2 sacked = 19th–20th
+  if (s >= 1 && s <= 9) return p >= 19 && p <= 20;
+
+  // S10 onwards: bottom 3 sacked = 18th–20th
   return p >= 18 && p <= 20;
 };
 
@@ -96,7 +104,7 @@ const SectionTitle = ({ children }) => (
 
 /* Badge next to position */
 const posBadge = ({ division, position, isPlayoffWinner }) => {
-  if (isAutoSacked(position)) {
+  if (isAutoSacked(season, position)) {
     return { bg: "bg-rose-600", text: "text-white", content: "⛔" };
   }
 
@@ -300,7 +308,7 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
       isRelegated(r.division, r.position)
     ).length;
 
-    const sackings = rows.filter((r) => isAutoSacked(r.position)).length;
+    const sackings = rows.filter((r) => isAutoSacked(r.season, r.position)).length;
 
     const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim()))
       .size;
@@ -448,15 +456,16 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
                   notes.push("Relegated");
                 }
 
-                if (isAutoSacked(r.position)) {
+                if (isAutoSacked(r.season, r.position)) {
                   notes.push("Auto-Sacked");
                 }
 
                 const badge = posBadge({
-                  division: r.division,
-                  position: r.position,
-                  isPlayoffWinner: isPlayoffBand(r.division, r.position) && winner,
-                });
+  season: r.season,
+  division: r.division,
+  position: r.position,
+  isPlayoffWinner: isPlayoffBand(r.division, r.position) && winner,
+});
 
                 return (
                   <tr key={i} className="border-t">
