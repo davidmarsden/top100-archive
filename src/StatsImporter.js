@@ -5,7 +5,7 @@ import {
   downloadTextFile,
   emptyStatsImport,
   parseStatsFileText,
-} from "./statsImportUtils";
+} from "./statsImportUtils.v2";
 
 const readFileAsText = (file) =>
   new Promise((resolve, reject) => {
