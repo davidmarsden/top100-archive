@@ -15,6 +15,7 @@ import Charts from "./Charts";
 import ManagerProfiles from "./ManagerProfiles";
 import Winners from "./Winners";
 import HistoryChartModal from "./components/HistoryChartModal";
+import StatsImporter from "./StatsImporter";
 
 /* =========================
    Helpers & Status Logic
@@ -1506,6 +1507,7 @@ const LeaderTable = ({ title, rows }) => (
               { id: "charts", label: "Charts", icon: BarChart3, color: "indigo" },
               { id: "managers", label: "Manager Profiles", icon: Users, color: "teal" },
               { id: "honours", label: "Honours", icon: Trophy, color: "amber" },
+              { id: "import", label: "Import Stats", icon: Database, color: "pink" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1596,6 +1598,7 @@ const LeaderTable = ({ title, rows }) => (
             <DataPlaceholder />
           ))}
       {activeTab === "honours" && <Winners />}
+      {activeTab === "import" && <StatsImporter />}
       </div>
 
       {/* Footer */}
