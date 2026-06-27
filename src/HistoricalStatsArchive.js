@@ -52,6 +52,7 @@ const signed = (value, digits = 0) => {
 
 const stripClubCodes = (club) =>
   String(club || "")
+    .replace(/[®™]/g, " ")
     .replace(/\(([PR!\s]+)\)/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
