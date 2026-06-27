@@ -4,6 +4,34 @@ const STORAGE_KEY = "top100StatsImporterWorkspace";
 const EXPECTED_DIVISIONS = [1, 2, 3, 4, 5];
 const EXPECTED_ROWS_PER_DIVISION = 20;
 
+const CLUB_ALIASES = new Map([
+  ["hamburg", "Hamburger SV"],
+  ["hamburger", "Hamburger SV"],
+  ["hamburger sv", "Hamburger SV"],
+  ["hamburger s v", "Hamburger SV"],
+  ["hamburg pp", "Hamburger SV"],
+  ["man utd", "Manchester United"],
+  ["manchester utd", "Manchester United"],
+  ["man city", "Manchester City"],
+  ["bayern", "Bayern Munich"],
+  ["bayern munchen", "Bayern Munich"],
+  ["bayern munich", "Bayern Munich"],
+  ["barca", "Barcelona"],
+  ["internazionale", "Internazionale"],
+  ["inter", "Internazionale"],
+  ["inter milan", "Internazionale"],
+  ["paris saint germain", "Paris Saint-Germain"],
+  ["paris saint germain fc", "Paris Saint-Germain"],
+  ["psg", "Paris Saint-Germain"],
+  ["h berlin", "Hertha Berlin"],
+  ["hertha", "Hertha Berlin"],
+  ["hertha berlin", "Hertha Berlin"],
+  ["cska moskva", "CSKA Moskva"],
+  ["cska moscow", "CSKA Moskva"],
+  ["sao paulo fc", "São Paulo FC"],
+  ["sao paulo", "São Paulo FC"],
+]);
+
 const numberOrNull = (value) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -22,13 +50,34 @@ const signed = (value, digits = 0) => {
   return n > 0 ? `+${rounded}` : rounded;
 };
 
-const normaliseClub = (club) =>
+const stripClubCodes = (club) =>
   String(club || "")
+    .replace(/\(([PR!\s]+)\)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normaliseClub = (club) =>
+  stripClubCodes(club)
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
+    .replace(/\b(fc|cf|afc|sc|sk|jk|kv|ud|ec|bc|cfc|hsc|sv)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+
+const canonicalClubName = (club) => {
+  const stripped = stripClubCodes(club);
+  const key = normaliseClub(stripped);
+  return CLUB_ALIASES.get(key) || stripped;
+};
+
+const isValidClubName = (club) => {
+  const cleaned = canonicalClubName(club);
+  if (!cleaned) return false;
+  if (/^\d+$/.test(cleaned)) return false;
+  if (cleaned.length < 2) return false;
+  return /[A-Za-zÀ-ÿ]/.test(cleaned);
+};
 
 const readSavedArchive = () => {
   try {
@@ -79,6 +128,7 @@ const HistoricalStatsArchive = () => {
   const [clubQuery, setClubQuery] = useState("");
   const [selectedClub, setSelectedClub] = useState("");
   const [sortKey, setSortKey] = useState("predictedPosition");
+  const [showCompleteness, setShowCompleteness] = useState(false);
   const [error, setError] = useState("");
 
   const rows = useMemo(() => (Array.isArray(archive.rows) ? archive.rows : []), [archive.rows]);
@@ -99,7 +149,10 @@ const HistoricalStatsArchive = () => {
   );
 
   const allClubs = useMemo(
-    () => [...new Set(rows.map((row) => row.club).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    () =>
+      [...new Set(rows.filter((row) => isValidClubName(row.club)).map((row) => canonicalClubName(row.club)))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
     [rows]
   );
 
@@ -110,12 +163,14 @@ const HistoricalStatsArchive = () => {
   }, [allClubs, clubQuery]);
 
   const tableRows = useMemo(() => {
-    const filtered = rows.filter((row) => Number(row.season) === Number(selectedSeason) && Number(row.division) === Number(selectedDivision));
+    const filtered = rows.filter(
+      (row) => Number(row.season) === Number(selectedSeason) && Number(row.division) === Number(selectedDivision) && isValidClubName(row.club)
+    );
     return [...filtered].sort((a, b) => {
-      if (sortKey === "club") return String(a.club || "").localeCompare(String(b.club || ""));
+      if (sortKey === "club") return canonicalClubName(a.club).localeCompare(canonicalClubName(b.club));
       const av = numberOrNull(a[sortKey]);
       const bv = numberOrNull(b[sortKey]);
-      if (av == null && bv == null) return String(a.club || "").localeCompare(String(b.club || ""));
+      if (av == null && bv == null) return canonicalClubName(a.club).localeCompare(canonicalClubName(b.club));
       if (av == null) return 1;
       if (bv == null) return -1;
       return av - bv;
@@ -126,7 +181,7 @@ const HistoricalStatsArchive = () => {
     if (!selectedClub) return [];
     const key = normaliseClub(selectedClub);
     return rows
-      .filter((row) => normaliseClub(row.club) === key)
+      .filter((row) => isValidClubName(row.club) && normaliseClub(canonicalClubName(row.club)) === key)
       .sort((a, b) => {
         const seasonDiff = Number(a.season || 0) - Number(b.season || 0);
         if (seasonDiff !== 0) return seasonDiff;
@@ -144,7 +199,7 @@ const HistoricalStatsArchive = () => {
       season,
       divisions: EXPECTED_DIVISIONS.map((division) => {
         const summary = summaryMap.get(`${season}|${division}`);
-        const count = rows.filter((row) => Number(row.season) === season && Number(row.division) === division).length;
+        const count = rows.filter((row) => Number(row.season) === season && Number(row.division) === division && isValidClubName(row.club)).length;
         if (!summary && count === 0) return { division, status: "missing", count: 0 };
         if (count === EXPECTED_ROWS_PER_DIVISION) return { division, status: "complete", count };
         if (count === 0) return { division, status: "empty", count };
@@ -170,7 +225,7 @@ const HistoricalStatsArchive = () => {
   const topOverachievers = useMemo(
     () =>
       [...rows]
-        .filter((row) => numberOrNull(row.valueAdded) != null)
+        .filter((row) => isValidClubName(row.club) && numberOrNull(row.valueAdded) != null)
         .sort((a, b) => Number(b.valueAdded) - Number(a.valueAdded))
         .slice(0, 10),
     [rows]
@@ -179,7 +234,7 @@ const HistoricalStatsArchive = () => {
   const biggestFalls = useMemo(
     () =>
       [...rows]
-        .filter((row) => numberOrNull(row.valueAdded) != null)
+        .filter((row) => isValidClubName(row.club) && numberOrNull(row.valueAdded) != null)
         .sort((a, b) => Number(a.valueAdded) - Number(b.valueAdded))
         .slice(0, 10),
     [rows]
@@ -248,40 +303,53 @@ const HistoricalStatsArchive = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-5">
-        <h3 className="font-black text-gray-900 mb-3">Archive completeness</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="text-left py-2 px-3">Season</th>
-                {EXPECTED_DIVISIONS.map((division) => (
-                  <th key={division} className="text-center py-2 px-3">D{division}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {health.grid.map((seasonRow) => (
-                <tr key={seasonRow.season} className="border-t">
-                  <td className="py-2 px-3 font-bold">S{seasonRow.season}</td>
-                  {seasonRow.divisions.map((divisionRow) => {
-                    const tone = divisionRow.status === "complete" ? "green" : divisionRow.status === "partial" ? "amber" : "red";
-                    const label = divisionRow.status === "complete" ? "20/20" : divisionRow.status === "partial" ? `${divisionRow.count}/20` : "Missing";
-                    return (
-                      <td key={divisionRow.division} className="py-2 px-3 text-center">
-                        <MiniBadge tone={tone}>{label}</MiniBadge>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {(health.missing.length > 0 || health.partial.length > 0) && (
-          <div className="mt-4 text-sm text-gray-600">
-            {health.missing.length > 0 && <p><strong>Missing:</strong> {health.missing.join(", ")}</p>}
-            {health.partial.length > 0 && <p><strong>Partial:</strong> {health.partial.join(", ")}</p>}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="font-black text-gray-900">Archive completeness</h3>
+            <p className="text-sm text-gray-500">
+              {health.missing.length ? `Missing: ${health.missing.join(", ")}` : "All expected divisions are present."}
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowCompleteness((current) => !current)}
+            className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold text-gray-800"
+          >
+            {showCompleteness ? "Hide completeness grid" : "Show completeness grid"}
+          </button>
+        </div>
+        {showCompleteness && (
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="text-left py-2 px-3">Season</th>
+                  {EXPECTED_DIVISIONS.map((division) => (
+                    <th key={division} className="text-center py-2 px-3">D{division}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {health.grid.map((seasonRow) => (
+                  <tr key={seasonRow.season} className="border-t">
+                    <td className="py-2 px-3 font-bold">S{seasonRow.season}</td>
+                    {seasonRow.divisions.map((divisionRow) => {
+                      const tone = divisionRow.status === "complete" ? "green" : divisionRow.status === "partial" ? "amber" : "red";
+                      const label = divisionRow.status === "complete" ? "20/20" : divisionRow.status === "partial" ? `${divisionRow.count}/20` : "Missing";
+                      return (
+                        <td key={divisionRow.division} className="py-2 px-3 text-center">
+                          <MiniBadge tone={tone}>{label}</MiniBadge>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {showCompleteness && health.partial.length > 0 && (
+          <p className="mt-4 text-sm text-gray-600"><strong>Partial:</strong> {health.partial.join(", ")}</p>
         )}
       </div>
 
@@ -331,8 +399,8 @@ const HistoricalStatsArchive = () => {
               {tableRows.map((row) => (
                 <tr key={`${row.sourceFile}-${row.sourceRow}-${row.club}`} className="border-t hover:bg-blue-50">
                   <td className="py-2 px-3 font-bold">
-                    <button className="text-blue-700 hover:underline" onClick={() => { setSelectedClub(row.club); setClubQuery(row.club); }}>
-                      {row.club}
+                    <button className="text-blue-700 hover:underline" onClick={() => { setSelectedClub(canonicalClubName(row.club)); setClubQuery(canonicalClubName(row.club)); }}>
+                      {canonicalClubName(row.club)}
                     </button>
                   </td>
                   <td className="py-2 px-3 text-right">{fmt(row.gk, 1)}</td>
@@ -418,7 +486,7 @@ const HistoricalStatsArchive = () => {
               <ol className="space-y-1 text-sm">
                 {topOverachievers.map((row, index) => (
                   <li key={`${row.sourceFile}-${row.sourceRow}`} className="flex justify-between gap-3 border-b py-1">
-                    <span>{index + 1}. S{row.season}D{row.division} {row.club}</span>
+                    <span>{index + 1}. S{row.season}D{row.division} {canonicalClubName(row.club)}</span>
                     <strong className="text-green-700">{signed(row.valueAdded)}</strong>
                   </li>
                 ))}
@@ -429,7 +497,7 @@ const HistoricalStatsArchive = () => {
               <ol className="space-y-1 text-sm">
                 {biggestFalls.map((row, index) => (
                   <li key={`${row.sourceFile}-${row.sourceRow}`} className="flex justify-between gap-3 border-b py-1">
-                    <span>{index + 1}. S{row.season}D{row.division} {row.club}</span>
+                    <span>{index + 1}. S{row.season}D{row.division} {canonicalClubName(row.club)}</span>
                     <strong className="text-red-700">{signed(row.valueAdded)}</strong>
                   </li>
                 ))}
