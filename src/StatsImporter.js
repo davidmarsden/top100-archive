@@ -112,6 +112,8 @@ const StatsImporter = () => {
     [importState.rows]
   );
 
+  const previewRows = useMemo(() => sortedRows.slice(-100), [sortedRows]);
+
   const seasons = useMemo(
     () => [...new Set(importState.rows.map((row) => row.season).filter(Boolean))].sort((a, b) => a - b),
     [importState.rows]
@@ -328,11 +330,11 @@ const StatsImporter = () => {
         </div>
       )}
 
-      {sortedRows.length > 0 && (
+      {previewRows.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
-            <h3 className="font-black text-gray-900">Preview</h3>
-            <p className="text-sm text-gray-500">Showing the first 100 imported rows.</p>
+            <h3 className="font-black text-gray-900">Recent workspace preview</h3>
+            <p className="text-sm text-gray-500">Showing the latest {previewRows.length} rows in the workspace.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -355,7 +357,7 @@ const StatsImporter = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.slice(0, 100).map((row) => (
+                {previewRows.map((row) => (
                   <tr key={`${row.sourceFile}-${row.sourceRow}`} className="border-t">
                     <td className="py-2 px-3">S{row.season}</td>
                     <td className="py-2 px-3">D{row.division}</td>
