@@ -62,6 +62,19 @@ const numberOrNull = (value) => {
   return Number.isFinite(n) ? n : null;
 };
 
+const roundMetric = (value, places = 3) => {
+  if (!Number.isFinite(value)) return null;
+  return Number(value.toFixed(places));
+};
+
+const calculateValueAdded = (predictedPosition, finalPosition) =>
+  predictedPosition != null && finalPosition != null ? predictedPosition - finalPosition : null;
+
+const calculatePva = (valueAdded, finalPosition) =>
+  valueAdded != null && finalPosition != null && finalPosition > 0
+    ? roundMetric((valueAdded + 1) / finalPosition)
+    : null;
+
 const extractSeasonDivision = (filename) => {
   const normal = clean(filename).replace(/\s+/g, "");
   const seasonMatch = normal.match(/S(\d{1,2})/i) || normal.match(/Top100(?:S)?(\d{1,2})D/i);
@@ -189,14 +202,18 @@ const buildCanonicalRow = ({ values, headerMap, filename, rowNumber, season, div
   };
 
   const predictedPosition = getNumber("predictedPosition");
-  const valueAdded = getNumber("valueAdded");
+  const sourceValueAdded = getNumber("valueAdded");
+  const sourcePva = getNumber("pva");
   const explicitFinalPosition = getNumber("finalPosition");
   const finalPosition =
     explicitFinalPosition != null
       ? explicitFinalPosition
-      : predictedPosition != null && valueAdded != null
-      ? predictedPosition - valueAdded
+      : predictedPosition != null && sourceValueAdded != null
+      ? predictedPosition - sourceValueAdded
       : null;
+
+  const calculatedValueAdded = calculateValueAdded(predictedPosition, finalPosition);
+  const calculatedPva = calculatePva(calculatedValueAdded, finalPosition);
 
   return {
     season,
@@ -216,10 +233,12 @@ const buildCanonicalRow = ({ values, headerMap, filename, rowNumber, season, div
     fullSeason: getNumber("fullSeason"),
     predictedPosition,
     finalPosition,
-    valueAdded,
-    pva: getNumber("pva"),
-    computedValueAdded:
-      predictedPosition != null && finalPosition != null ? predictedPosition - finalPosition : null,
+    valueAdded: calculatedValueAdded ?? sourceValueAdded,
+    pva: calculatedPva ?? sourcePva,
+    sourceValueAdded,
+    sourcePva,
+    computedValueAdded: calculatedValueAdded,
+    computedPva: calculatedPva,
     sourceFile: filename,
     sourceRow: rowNumber,
   };
@@ -259,12 +278,22 @@ const parseRows = ({ rows, filename, fileType }) => {
     if (!hasUsefulData(row)) return;
 
     if (
-      row.valueAdded != null &&
+      row.sourceValueAdded != null &&
       row.computedValueAdded != null &&
-      Math.round(row.valueAdded) !== Math.round(row.computedValueAdded)
+      Math.round(row.sourceValueAdded) !== Math.round(row.computedValueAdded)
     ) {
       warnings.push(
-        `${filename} row ${rowNumber}: VA ${row.valueAdded} does not match Pre-Fin ${row.computedValueAdded} for ${row.club}.`
+        `${filename} row ${rowNumber}: source VA ${row.sourceValueAdded} does not match Pre-Fin ${row.computedValueAdded} for ${row.club}; using recalculated VA.`
+      );
+    }
+
+    if (
+      row.sourcePva != null &&
+      row.computedPva != null &&
+      Math.abs(row.sourcePva - row.computedPva) > 0.01
+    ) {
+      warnings.push(
+        `${filename} row ${rowNumber}: source PVA ${row.sourcePva} does not match (VA+1)/Fin ${row.computedPva} for ${row.club}; using recalculated PVA.`
       );
     }
 
@@ -367,6 +396,11 @@ export const buildImportReport = (combined) => {
   const lines = ["# Top 100 Stats Import Report", ""];
   lines.push(`Imported rows: ${combined.rows.length}`);
   lines.push(`Files scanned: ${combined.summaries.length}`);
+  lines.push("");
+  lines.push("## Formula standardisation");
+  lines.push("- VA is recalculated as Pre - Final.");
+  lines.push("- PVA is recalculated as (VA + 1) / Final.");
+  lines.push("- Original spreadsheet VA/PVA values are retained as sourceValueAdded/sourcePva when present.");
   lines.push("");
   lines.push("## Files");
 
