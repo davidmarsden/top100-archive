@@ -157,7 +157,7 @@ const isFullStatsHeader = (row) => {
 
 const isLegacyPredictionHeader = (row) => {
   const keys = row.map(keyify);
-  const hasPrediction = keys.includes("pre") || keys.includes("pred") || keys.includes("predicted");
+  const hasPrediction = keys.includes("pre") || keys.includes("pred") || keys.includes("predicted") || keys.includes("full");
   const hasActual = keys.includes("acc") || keys.includes("actual") || keys.includes("fin") || keys.includes("pos");
   const hasValueAdded = keys.includes("va") || keys.includes("value added");
   return hasPrediction && (hasActual || hasValueAdded);
@@ -201,7 +201,9 @@ const buildCanonicalRow = ({ values, headerMap, filename, rowNumber, season, div
     return index == null ? null : numberOrNull(values[index]);
   };
 
-  const predictedPosition = getNumber("predictedPosition");
+  const explicitPredictedPosition = getNumber("predictedPosition");
+  const fullSeason = getNumber("fullSeason");
+  const predictedPosition = explicitPredictedPosition ?? fullSeason;
   const sourceValueAdded = getNumber("valueAdded");
   const sourcePva = getNumber("pva");
   const explicitFinalPosition = getNumber("finalPosition");
@@ -230,7 +232,7 @@ const buildCanonicalRow = ({ values, headerMap, filename, rowNumber, season, div
     etot: getNumber("etot"),
     earlyDoors: getNumber("earlyDoors"),
     midSeason: getNumber("midSeason"),
-    fullSeason: getNumber("fullSeason"),
+    fullSeason,
     predictedPosition,
     finalPosition,
     valueAdded: calculatedValueAdded ?? sourceValueAdded,
@@ -400,6 +402,7 @@ export const buildImportReport = (combined) => {
   lines.push("## Formula standardisation");
   lines.push("- VA is recalculated as Pre - Final.");
   lines.push("- PVA is recalculated as (VA + 1) / Final.");
+  lines.push("- If Pre/Predicted is missing, Full is treated as the final pre-season prediction.");
   lines.push("- Original spreadsheet VA/PVA values are retained as sourceValueAdded/sourcePva when present.");
   lines.push("");
   lines.push("## Files");
