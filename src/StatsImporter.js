@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   buildImportReport,
   combineImportResults,
@@ -6,6 +6,8 @@ import {
   emptyStatsImport,
   parseStatsFileText,
 } from "./statsImportUtils.v2";
+
+const STORAGE_KEY = "top100StatsImporterWorkspace";
 
 const readFileAsText = (file) =>
   new Promise((resolve, reject) => {
@@ -15,6 +17,61 @@ const readFileAsText = (file) =>
     reader.readAsText(file);
   });
 
+const normaliseImportState = (value) => ({
+  rows: Array.isArray(value?.rows) ? value.rows : [],
+  summaries: Array.isArray(value?.summaries) ? value.summaries : [],
+  warnings: Array.isArray(value?.warnings) ? value.warnings : [],
+});
+
+const mergeImportStates = (...states) => {
+  const rows = [];
+  const rowKeys = new Set();
+
+  states.forEach((state) => {
+    normaliseImportState(state).rows.forEach((row, index) => {
+      const key = row.sourceFile && row.sourceRow ? `${row.sourceFile}::${row.sourceRow}` : `${row.season}-${row.division}-${row.club}-${index}`;
+      if (rowKeys.has(key)) return;
+      rowKeys.add(key);
+      rows.push(row);
+    });
+  });
+
+  const summariesByFile = new Map();
+  states.forEach((state) => {
+    normaliseImportState(state).summaries.forEach((summary) => {
+      if (!summary?.filename) return;
+      summariesByFile.set(summary.filename, summary);
+    });
+  });
+
+  const warningKeys = new Set();
+  const warnings = [];
+  states.forEach((state) => {
+    normaliseImportState(state).warnings.forEach((warning) => {
+      if (warningKeys.has(warning)) return;
+      warningKeys.add(warning);
+      warnings.push(warning);
+    });
+  });
+
+  return {
+    rows,
+    summaries: [...summariesByFile.values()],
+    warnings,
+  };
+};
+
+const loadArchiveJson = (parsed) => {
+  const rows = Array.isArray(parsed?.rows) ? parsed.rows : [];
+  if (!rows.length) throw new Error("This JSON file does not contain a rows array.");
+
+  return {
+    rows,
+    summaries: Array.isArray(parsed?.summaries) ? parsed.summaries : [],
+    warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
+  };
+};
+
 const StatCard = ({ label, value }) => (
   <div className="bg-white rounded-xl shadow p-4 border border-gray-100">
     <div className="text-sm text-gray-500">{label}</div>
@@ -23,9 +80,25 @@ const StatCard = ({ label, value }) => (
 );
 
 const StatsImporter = () => {
-  const [importState, setImportState] = useState(emptyStatsImport);
+  const [importState, setImportState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? normaliseImportState(JSON.parse(saved)) : emptyStatsImport;
+    } catch {
+      return emptyStatsImport;
+    }
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(importState));
+    } catch {
+      // Local storage is a convenience only; downloads remain the backup.
+    }
+  }, [importState]);
 
   const sortedRows = useMemo(
     () =>
@@ -49,12 +122,13 @@ const StatsImporter = () => {
     [importState.rows]
   );
 
-  const handleFiles = async (event) => {
+  const handleStatsFiles = async (event) => {
     const files = [...(event.target.files || [])];
     if (!files.length) return;
 
     setBusy(true);
     setError("");
+    setNotice("");
 
     try {
       const parsed = [];
@@ -64,9 +138,32 @@ const StatsImporter = () => {
         parsed.push(parseStatsFileText({ text, filename: file.name }));
       }
 
-      setImportState(combineImportResults(parsed));
+      const combined = combineImportResults(parsed);
+      setImportState((current) => mergeImportStates(current, combined));
+      setNotice(`Imported ${combined.rows.length} rows from ${files.length} file${files.length === 1 ? "" : "s"}.`);
     } catch (err) {
       setError(err.message || "Import failed");
+    } finally {
+      setBusy(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleArchiveJson = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const text = await readFileAsText(file);
+      const loaded = loadArchiveJson(JSON.parse(text));
+      setImportState((current) => mergeImportStates(current, loaded));
+      setNotice(`Loaded ${loaded.rows.length} rows from ${file.name}.`);
+    } catch (err) {
+      setError(err.message || "Could not load statsArchive.json");
     } finally {
       setBusy(false);
       event.target.value = "";
@@ -80,6 +177,8 @@ const StatsImporter = () => {
         {
           generatedAt: new Date().toISOString(),
           rowCount: importState.rows.length,
+          summaries: importState.summaries,
+          warnings: importState.warnings,
           rows: sortedRows,
         },
         null,
@@ -92,34 +191,60 @@ const StatsImporter = () => {
     downloadTextFile("statsImportReport.md", buildImportReport(importState), "text/markdown");
   };
 
+  const clearArchive = () => {
+    if (!window.confirm("Clear the current importer workspace? Download your archive first if you need a backup.")) return;
+    setImportState(emptyStatsImport);
+    localStorage.removeItem(STORAGE_KEY);
+    setError("");
+    setNotice("Workspace cleared.");
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6 border border-pink-100">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-gray-900">Stats Importer Prototype</h2>
+            <h2 className="text-2xl font-black text-gray-900">Stats Importer Workspace</h2>
             <p className="text-gray-600 mt-1">
-              Upload Malcolm&apos;s converted CSV and TXT files. The importer reads headers, normalises the fields,
-              checks the row count, and lets you download a clean JSON archive.
+              Append Malcolm&apos;s converted CSV/TXT files, reload a saved statsArchive.json, and keep building the archive safely. Your workspace auto-saves in this browser.
             </p>
           </div>
 
-          <label className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-pink-600 text-white font-bold shadow hover:bg-pink-700 cursor-pointer">
-            {busy ? "Importing…" : "Upload CSV/TXT files"}
-            <input
-              type="file"
-              multiple
-              accept=".csv,.txt,text/csv,text/plain"
-              onChange={handleFiles}
-              className="hidden"
-              disabled={busy}
-            />
-          </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-pink-600 text-white font-bold shadow hover:bg-pink-700 cursor-pointer">
+              {busy ? "Working…" : "Import CSV/TXT files"}
+              <input
+                type="file"
+                multiple
+                accept=".csv,.txt,text/csv,text/plain"
+                onChange={handleStatsFiles}
+                className="hidden"
+                disabled={busy}
+              />
+            </label>
+
+            <label className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-purple-600 text-white font-bold shadow hover:bg-purple-700 cursor-pointer">
+              Load statsArchive.json
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={handleArchiveJson}
+                className="hidden"
+                disabled={busy}
+              />
+            </label>
+          </div>
         </div>
 
         {error && (
           <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 font-semibold">
             {error}
+          </div>
+        )}
+
+        {notice && !error && (
+          <div className="mt-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 font-semibold">
+            {notice}
           </div>
         )}
       </div>
@@ -131,19 +256,32 @@ const StatsImporter = () => {
         <StatCard label="Warnings" value={importState.warnings.length} />
       </div>
 
-      {importState.rows.length > 0 && (
-        <div className="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
-          <button onClick={downloadJson} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700">
-            Download statsArchive.json
-          </button>
-          <button onClick={downloadReport} className="px-4 py-2 rounded-lg bg-gray-800 text-white font-bold hover:bg-gray-900">
-            Download QA report
-          </button>
-          <div className="text-sm text-gray-500 self-center">
-            Seasons: {seasons.map((season) => `S${season}`).join(", ") || "none"} · Divisions: {divisions.map((division) => `D${division}`).join(", ") || "none"}
-          </div>
+      <div className="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3">
+        <button
+          onClick={downloadJson}
+          disabled={!importState.rows.length}
+          className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Save archive
+        </button>
+        <button
+          onClick={downloadReport}
+          disabled={!importState.rows.length && !importState.warnings.length}
+          className="px-4 py-2 rounded-lg bg-gray-800 text-white font-bold hover:bg-gray-900 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Download QA report
+        </button>
+        <button
+          onClick={clearArchive}
+          disabled={!importState.rows.length && !importState.summaries.length && !importState.warnings.length}
+          className="px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Clear archive
+        </button>
+        <div className="text-sm text-gray-500 self-center">
+          Seasons: {seasons.map((season) => `S${season}`).join(", ") || "none"} · Divisions: {divisions.map((division) => `D${division}`).join(", ") || "none"}
         </div>
-      )}
+      </div>
 
       {importState.warnings.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
