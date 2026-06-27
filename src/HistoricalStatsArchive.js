@@ -81,9 +81,9 @@ const HistoricalStatsArchive = () => {
   const [sortKey, setSortKey] = useState("predictedPosition");
   const [error, setError] = useState("");
 
-  const rows = archive.rows || [];
-  const summaries = archive.summaries || [];
-  const warnings = archive.warnings || [];
+  const rows = useMemo(() => (Array.isArray(archive.rows) ? archive.rows : []), [archive.rows]);
+  const summaries = useMemo(() => (Array.isArray(archive.summaries) ? archive.summaries : []), [archive.summaries]);
+  const warnings = useMemo(() => (Array.isArray(archive.warnings) ? archive.warnings : []), [archive.warnings]);
 
   const seasons = useMemo(
     () => [...new Set(rows.map((row) => Number(row.season)).filter(Number.isFinite))].sort((a, b) => a - b),
