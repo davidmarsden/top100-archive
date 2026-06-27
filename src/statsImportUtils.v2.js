@@ -340,12 +340,22 @@ const splitTxtTable = (text) => {
 
   const headers = ["Club"];
   let cursor = gkIndex;
+  const requiredHeaders = ["gk", "def", "mid", "att", "top18", "ave", "etot"];
 
-  while (cursor < lines.length && headers.length < 12) {
+  requiredHeaders.forEach((expected) => {
+    if (keyify(lines[cursor]) === expected) {
+      headers.push(lines[cursor]);
+      cursor += 1;
+    }
+  });
+
+  // Most S17 TXT files include a Pre column after ETOT, but S17D3 does not.
+  // Only consume the optional prediction header if it is actually present;
+  // otherwise the next non-numeric line is the first club name.
+  const nextKey = keyify(lines[cursor]);
+  if (["pre", "pr", "epr", "pred", "predicted"].includes(nextKey)) {
     headers.push(lines[cursor]);
-    const key = keyify(lines[cursor]);
     cursor += 1;
-    if (["pre", "pr", "epr", "predicted", "pos", "fin", "acc", "pva"].includes(key)) break;
   }
 
   const rows = [headers];
@@ -411,6 +421,7 @@ export const buildImportReport = (combined) => {
   lines.push("- PVA is recalculated as (VA + 1) / Final.");
   lines.push("- If Pre/Predicted is missing, Full is treated as the final pre-season prediction.");
   lines.push("- If Pre is missing but Final and VA are present, Pre is inferred as Final + VA.");
+  lines.push("- S17-style TXT tables may omit Pre; the importer stops TXT headers at ETOT unless an explicit Pre/Pr/Epr header follows.");
   lines.push("- Original spreadsheet VA/PVA values are retained as sourceValueAdded/sourcePva when present.");
   lines.push("");
   lines.push("## Files");
