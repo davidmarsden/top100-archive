@@ -10,9 +10,9 @@ const FIELD_ALIASES = {
   average: ["average", "ave", "avg"],
   etot: ["etot", "estimated total", "estimated total strength"],
   earlyDoors: ["early doors", "early", "ed"],
-  midSeason: ["mid", "mid season", "mid-season"],
+  midSeason: ["mid season", "mid-season"],
   fullSeason: ["full", "full season", "final prediction"],
-  predictedPosition: ["pre", "pred", "predicted", "predicted position", "prediction"],
+  predictedPosition: ["pre", "pr", "epr", "pred", "predicted", "predicted position", "prediction"],
   finalPosition: ["acc", "actual", "fin", "final", "pos", "position", "finish", "finished"],
   valueAdded: ["value added", "va"],
   pva: ["pva"],
@@ -87,7 +87,8 @@ const extractSeasonDivision = (filename) => {
 
 const aliasMap = Object.entries(FIELD_ALIASES).reduce((map, [field, aliases]) => {
   aliases.forEach((alias) => {
-    map.set(keyify(alias), field);
+    const key = keyify(alias);
+    if (!map.has(key)) map.set(key, field);
   });
   return map;
 }, new Map());
@@ -157,7 +158,8 @@ const isFullStatsHeader = (row) => {
 
 const isLegacyPredictionHeader = (row) => {
   const keys = row.map(keyify);
-  const hasPrediction = keys.includes("pre") || keys.includes("pred") || keys.includes("predicted") || keys.includes("full");
+  const hasPrediction =
+    keys.includes("pre") || keys.includes("pr") || keys.includes("epr") || keys.includes("pred") || keys.includes("predicted") || keys.includes("full");
   const hasActual = keys.includes("acc") || keys.includes("actual") || keys.includes("fin") || keys.includes("pos");
   const hasValueAdded = keys.includes("va") || keys.includes("value added");
   return hasPrediction && (hasActual || hasValueAdded);
@@ -203,16 +205,21 @@ const buildCanonicalRow = ({ values, headerMap, filename, rowNumber, season, div
 
   const explicitPredictedPosition = getNumber("predictedPosition");
   const fullSeason = getNumber("fullSeason");
-  const predictedPosition = explicitPredictedPosition ?? fullSeason;
   const sourceValueAdded = getNumber("valueAdded");
   const sourcePva = getNumber("pva");
   const explicitFinalPosition = getNumber("finalPosition");
+
+  let predictedPosition = explicitPredictedPosition ?? fullSeason;
   const finalPosition =
     explicitFinalPosition != null
       ? explicitFinalPosition
       : predictedPosition != null && sourceValueAdded != null
       ? predictedPosition - sourceValueAdded
       : null;
+
+  if (predictedPosition == null && finalPosition != null && sourceValueAdded != null) {
+    predictedPosition = finalPosition + sourceValueAdded;
+  }
 
   const calculatedValueAdded = calculateValueAdded(predictedPosition, finalPosition);
   const calculatedPva = calculatePva(calculatedValueAdded, finalPosition);
@@ -338,7 +345,7 @@ const splitTxtTable = (text) => {
     headers.push(lines[cursor]);
     const key = keyify(lines[cursor]);
     cursor += 1;
-    if (["pre", "predicted", "pos", "fin", "acc", "pva"].includes(key)) break;
+    if (["pre", "pr", "epr", "predicted", "pos", "fin", "acc", "pva"].includes(key)) break;
   }
 
   const rows = [headers];
@@ -403,6 +410,7 @@ export const buildImportReport = (combined) => {
   lines.push("- VA is recalculated as Pre - Final.");
   lines.push("- PVA is recalculated as (VA + 1) / Final.");
   lines.push("- If Pre/Predicted is missing, Full is treated as the final pre-season prediction.");
+  lines.push("- If Pre is missing but Final and VA are present, Pre is inferred as Final + VA.");
   lines.push("- Original spreadsheet VA/PVA values are retained as sourceValueAdded/sourcePva when present.");
   lines.push("");
   lines.push("## Files");
