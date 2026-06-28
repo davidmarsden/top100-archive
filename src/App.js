@@ -2,10 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
-  BarChart3,
-  Target,
   Trophy,
-  Users,
   Loader,
   AlertCircle,
   Database,
