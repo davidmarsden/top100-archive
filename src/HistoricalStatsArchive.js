@@ -1,36 +1,13 @@
 import React, { useMemo, useState } from "react";
+import {
+  canonicalClubName,
+  isValidClubName,
+  normaliseClub,
+} from "./data/clubNameUtils";
 
 const STORAGE_KEY = "top100StatsImporterWorkspace";
 const EXPECTED_DIVISIONS = [1, 2, 3, 4, 5];
 const EXPECTED_ROWS_PER_DIVISION = 20;
-
-const CLUB_ALIASES = new Map([
-  ["hamburg", "Hamburger SV"],
-  ["hamburger", "Hamburger SV"],
-  ["hamburger sv", "Hamburger SV"],
-  ["hamburger s v", "Hamburger SV"],
-  ["hamburg pp", "Hamburger SV"],
-  ["man utd", "Manchester United"],
-  ["manchester utd", "Manchester United"],
-  ["man city", "Manchester City"],
-  ["bayern", "Bayern Munich"],
-  ["bayern munchen", "Bayern Munich"],
-  ["bayern munich", "Bayern Munich"],
-  ["barca", "Barcelona"],
-  ["internazionale", "Internazionale"],
-  ["inter", "Internazionale"],
-  ["inter milan", "Internazionale"],
-  ["paris saint germain", "Paris Saint-Germain"],
-  ["paris saint germain fc", "Paris Saint-Germain"],
-  ["psg", "Paris Saint-Germain"],
-  ["h berlin", "Hertha Berlin"],
-  ["hertha", "Hertha Berlin"],
-  ["hertha berlin", "Hertha Berlin"],
-  ["cska moskva", "CSKA Moskva"],
-  ["cska moscow", "CSKA Moskva"],
-  ["sao paulo fc", "São Paulo FC"],
-  ["sao paulo", "São Paulo FC"],
-]);
 
 const numberOrNull = (value) => {
   const n = Number(value);
@@ -48,36 +25,6 @@ const signed = (value, digits = 0) => {
   if (n == null) return "—";
   const rounded = digits ? n.toFixed(digits) : String(Math.round(n));
   return n > 0 ? `+${rounded}` : rounded;
-};
-
-const stripClubCodes = (club) =>
-  String(club || "")
-    .replace(/[®™]/g, " ")
-    .replace(/\(([PR!\s]+)\)/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const normaliseClub = (club) =>
-  stripClubCodes(club)
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/\b(fc|cf|afc|sc|sk|jk|kv|ud|ec|bc|cfc|hsc|sv)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-
-const canonicalClubName = (club) => {
-  const stripped = stripClubCodes(club);
-  const key = normaliseClub(stripped);
-  return CLUB_ALIASES.get(key) || stripped;
-};
-
-const isValidClubName = (club) => {
-  const cleaned = canonicalClubName(club);
-  if (!cleaned) return false;
-  if (/^\d+$/.test(cleaned)) return false;
-  if (cleaned.length < 2) return false;
-  return /[A-Za-zÀ-ÿ]/.test(cleaned);
 };
 
 const readSavedArchive = () => {
