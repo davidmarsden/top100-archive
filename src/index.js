@@ -28,9 +28,6 @@ const RootRouter = () => {
               <a href="#search" className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold text-gray-800">
                 Main Archive
               </a>
-              <a href="#import" className="px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 font-semibold text-white">
-                Import Stats
-              </a>
             </div>
           </div>
         </div>
