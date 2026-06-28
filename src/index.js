@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import PublicHistoricalStatsArchive from './PublicHistoricalStatsArchive';
-import PublicNavTweaks from './PublicNavTweaks';
 import ArchiveNavigation from './components/ArchiveNavigation';
 
 const getHashRoute = () => window.location.hash.replace('#', '');
@@ -34,12 +33,7 @@ const RootRouter = () => {
     );
   }
 
-  return (
-    <React.Fragment>
-      <PublicNavTweaks />
-      <App />
-    </React.Fragment>
-  );
+  return <App />;
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
