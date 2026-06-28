@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import PublicHistoricalStatsArchive from './PublicHistoricalStatsArchive';
 import ArchiveNavigation from './components/ArchiveNavigation';
+import LegacyAppPublicNavBridge from './LegacyAppPublicNavBridge';
 
 const getHashRoute = () => window.location.hash.replace('#', '');
 
@@ -33,7 +34,12 @@ const RootRouter = () => {
     );
   }
 
-  return <App />;
+  return (
+    <React.Fragment>
+      <LegacyAppPublicNavBridge />
+      <App />
+    </React.Fragment>
+  );
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
