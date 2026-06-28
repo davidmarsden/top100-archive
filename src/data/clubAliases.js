@@ -1,5 +1,8 @@
 export const CLUB_ALIASES = new Map([
   // Germany
+  ["augsburg", "FC Augsburg"],
+  ["fc augsburg", "FC Augsburg"],
+
   ["hamburg", "Hamburger SV"],
   ["hamburger", "Hamburger SV"],
   ["hamburger sv", "Hamburger SV"],
@@ -51,6 +54,9 @@ export const CLUB_ALIASES = new Map([
   ["udinese calcio", "Udinese Calcio"],
 
   // England
+  ["aston villa", "Aston Villa"],
+  ["aston villla", "Aston Villa"],
+
   ["man utd", "Manchester United"],
   ["manchester utd", "Manchester United"],
   ["manchester united", "Manchester United"],
@@ -62,6 +68,9 @@ export const CLUB_ALIASES = new Map([
   ["west bromwich albion", "West Bromwich Albion"],
 
   // Spain
+  ["athletic bilbao", "Athletic Club"],
+  ["athletic club", "Athletic Club"],
+
   ["barca", "Barcelona"],
   ["barcelona", "Barcelona"],
 
@@ -83,22 +92,43 @@ export const CLUB_ALIASES = new Map([
   ["paris saint germain", "Paris Saint-Germain"],
   ["paris saint germain fc", "Paris Saint-Germain"],
 
-  // Netherlands / Belgium / Turkey / Russia / South America / misc
+  // Netherlands / Belgium
+  ["az", "AZ Alkmaar"],
+  ["az alkmaar", "AZ Alkmaar"],
+
   ["feyenoord", "Feyenoord"],
+
+  // Turkey
+  ["besiktas", "Beşiktaş JK"],
+  ["besiktas jk", "Beşiktaş JK"],
+  ["beşiktaş", "Beşiktaş JK"],
+  ["beşiktaş jk", "Beşiktaş JK"],
+
   ["galatasaray", "Galatasaray SK"],
   ["galatasaray sk", "Galatasaray SK"],
+
   ["fenerbahce", "Fenerbahçe SK"],
   ["fenerbahçe", "Fenerbahçe SK"],
   ["fenerbahce sk", "Fenerbahçe SK"],
   ["fenerbahçe sk", "Fenerbahçe SK"],
 
+  // Russia / Ukraine
+  ["cska", "CSKA Moskva"],
   ["cska moskva", "CSKA Moskva"],
   ["cska moscow", "CSKA Moskva"],
+
+  ["dnipro", "Dnipro Dnipropetrovsk"],
+  ["dnipro dnipropetrovsk", "Dnipro Dnipropetrovsk"],
 
   ["zenit", "Zenit Saint Petersburg"],
   ["zenit saint petersburg", "Zenit Saint Petersburg"],
   ["zenit st petersburg", "Zenit Saint Petersburg"],
 
+  // South America / misc
+  ["cr flamengo", "Flamengo"],
+  ["flamengo", "Flamengo"],
+
   ["sao paulo", "São Paulo FC"],
+  ["sao paulo f", "São Paulo FC"],
   ["sao paulo fc", "São Paulo FC"],
 ]);
