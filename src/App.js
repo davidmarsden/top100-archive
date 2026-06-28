@@ -15,6 +15,7 @@ import Charts from "./Charts";
 import ManagerProfiles from "./ManagerProfiles";
 import Winners from "./Winners";
 import HistoryChartModal from "./components/HistoryChartModal";
+import ArchiveNavigation from "./components/ArchiveNavigation";
 import StatsImporter from "./StatsImporter";
 
 /* =========================
@@ -1497,37 +1498,7 @@ const LeaderTable = ({ title, rows }) => (
 </div>
 
       {/* Navigation */}
-      <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-wrap gap-2 py-4">
-            {[
-              { id: "search", label: "Search", icon: Search, color: "blue" },
-              { id: "tables", label: "League Tables", icon: BarChart3, color: "purple" },
-              { id: "insights", label: "Insights", icon: BarChart3, color: "green" },
-              { id: "charts", label: "Charts", icon: BarChart3, color: "indigo" },
-              { id: "managers", label: "Manager Profiles", icon: Users, color: "teal" },
-              { id: "honours", label: "Honours", icon: Trophy, color: "amber" },
-              { id: "import", label: "Import Stats", icon: Database, color: "pink" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  window.location.hash = tab.id;
-                }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 ${
-                  activeTab === tab.id
-                    ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
-                    : "bg-[#e9a6ad] hover:bg-[#de8f99] text-gray-900"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+<ArchiveNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
 {/* Main Content */}
 <div className="max-w-7xl mx-auto px-6 py-8">
