@@ -8,7 +8,6 @@ import {
   Users,
   Loader,
   AlertCircle,
-  SortAsc,
   Database,
 } from "lucide-react";
 import Charts from "./Charts";
@@ -77,12 +76,7 @@ const playoffWinnerKey = (season, division, team) =>
 
 
 // small UI helpers
-const LegendSwatch = ({ color, label }) => (
-  <span className={`inline-flex items-center gap-2 px-2 py-1 rounded border ${color}`}>
-    <span className="inline-block w-3 h-3 rounded-full bg-white/60 border" />
-    <span className="text-sm">{label}</span>
-  </span>
-);
+
 
 const DataPlaceholder = () => (
   <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
