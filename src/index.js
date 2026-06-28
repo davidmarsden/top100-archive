@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import HistoricalStatsArchive from './HistoricalStatsArchive';
+import PublicHistoricalStatsArchive from './PublicHistoricalStatsArchive';
 
 const getHashRoute = () => window.location.hash.replace('#', '');
 
@@ -32,7 +32,7 @@ const RootRouter = () => {
           </div>
         </div>
         <main className="max-w-7xl mx-auto px-6 py-8">
-          <HistoricalStatsArchive />
+          <PublicHistoricalStatsArchive />
         </main>
       </div>
     );
