@@ -18,11 +18,34 @@ export const normaliseClub = (name = "") =>
     .replace(/\s+/g, " ")
     .trim();
 
-export const canonicalClubName = (name = "") => {
+export const buildCanonicalClubMap = (canonicalNames = []) => {
+  const map = new Map();
+
+  canonicalNames.filter(Boolean).forEach((name) => {
+    const stripped = stripClubCodes(name);
+    const key = normaliseClub(stripped);
+    if (key && !map.has(key)) map.set(key, stripped);
+  });
+
+  return map;
+};
+
+export const resolveClubName = (name = "", canonicalNameMap = null) => {
   const stripped = stripClubCodes(name);
   const key = normaliseClub(stripped);
-  return CLUB_ALIASES.get(key) || stripped;
+  if (!key) return stripped;
+
+  const aliasTarget = CLUB_ALIASES.get(key);
+  const aliasKey = aliasTarget ? normaliseClub(aliasTarget) : "";
+
+  if (canonicalNameMap?.has(key)) return canonicalNameMap.get(key);
+  if (aliasKey && canonicalNameMap?.has(aliasKey)) return canonicalNameMap.get(aliasKey);
+
+  return aliasTarget || stripped;
 };
+
+export const canonicalClubName = (name = "", canonicalNameMap = null) =>
+  resolveClubName(name, canonicalNameMap);
 
 export const isValidClubName = (name = "") => {
   const club = canonicalClubName(name);
