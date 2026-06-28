@@ -3,6 +3,19 @@ export const CLUB_ALIASES = new Map([
   ["augsburg", "FC Augsburg"],
   ["fc augsburg", "FC Augsburg"],
 
+  ["bayer leverkusen", "Bayer Leverkusen"],
+  ["leverkusen", "Bayer Leverkusen"],
+
+  ["bremen", "Werder Bremen"],
+  ["werder bremen", "Werder Bremen"],
+
+  ["borussia dortmund", "Borussia Dortmund"],
+  ["dortmund", "Borussia Dortmund"],
+
+  ["fc schalke 04", "FC Schalke 04"],
+  ["schalke", "FC Schalke 04"],
+  ["schalke 04", "FC Schalke 04"],
+
   ["hamburg", "Hamburger SV"],
   ["hamburger", "Hamburger SV"],
   ["hamburger sv", "Hamburger SV"],
@@ -13,6 +26,7 @@ export const CLUB_ALIASES = new Map([
   ["bayern munich", "Bayern Munich"],
 
   ["hertha", "Hertha Berlin"],
+  ["hertha bsc", "Hertha Berlin"],
   ["h berlin", "Hertha Berlin"],
   ["hertha berlin", "Hertha Berlin"],
 
@@ -20,6 +34,19 @@ export const CLUB_ALIASES = new Map([
   ["borussia moenchengladbach", "Borussia Mönchengladbach"],
   ["monchengladbach", "Borussia Mönchengladbach"],
   ["moenchengladbach", "Borussia Mönchengladbach"],
+
+  ["cologne", "1. FC Köln"],
+  ["fc cologne", "1. FC Köln"],
+  ["koln", "1. FC Köln"],
+  ["köln", "1. FC Köln"],
+  ["1 fc koln", "1. FC Köln"],
+  ["1 fc köln", "1. FC Köln"],
+
+  ["hoffenheim", "TSG 1899 Hoffenheim"],
+  ["tsg 1899 hoffenheim", "TSG 1899 Hoffenheim"],
+
+  ["stuttgart", "VfB Stuttgart"],
+  ["vfb stuttgart", "VfB Stuttgart"],
 
   ["wolfsburg", "VfL Wolfsburg"],
   ["vfl wolfsburg", "VfL Wolfsburg"],
@@ -31,12 +58,21 @@ export const CLUB_ALIASES = new Map([
   ["acf fiorentina", "Fiorentina"],
   ["fiorentina", "Fiorentina"],
 
+  ["atalanta", "Atalanta BC"],
+  ["atalanta bc", "Atalanta BC"],
+
+  ["genoa", "Genoa CFC"],
+  ["genoa cfc", "Genoa CFC"],
+
   ["inter", "Internazionale"],
   ["inter milan", "Internazionale"],
   ["internazionale", "Internazionale"],
 
   ["juventus", "Juventus"],
   ["juventus fc", "Juventus"],
+
+  ["lazio", "SS Lazio"],
+  ["ss lazio", "SS Lazio"],
 
   ["roma", "Roma"],
   ["as roma", "Roma"],
@@ -47,8 +83,9 @@ export const CLUB_ALIASES = new Map([
   ["sampdoria", "Sampdoria"],
   ["uc sampdoria", "Sampdoria"],
 
-  ["sassuolo", "Sassuolo"],
-  ["sassulo", "Sassuolo"],
+  ["sassuolo", "US Sassuolo"],
+  ["sassulo", "US Sassuolo"],
+  ["us sassuolo", "US Sassuolo"],
 
   ["udinese", "Udinese Calcio"],
   ["udinese calcio", "Udinese Calcio"],
@@ -57,12 +94,19 @@ export const CLUB_ALIASES = new Map([
   ["aston villa", "Aston Villa"],
   ["aston villla", "Aston Villa"],
 
+  ["crystal palace", "Crystal Palace"],
+
+  ["leicester city", "Leicester City"],
+
   ["man utd", "Manchester United"],
   ["manchester utd", "Manchester United"],
   ["manchester united", "Manchester United"],
 
   ["man city", "Manchester City"],
   ["manchester city", "Manchester City"],
+
+  ["stoke", "Stoke City"],
+  ["stoke city", "Stoke City"],
 
   ["west brom", "West Bromwich Albion"],
   ["west bromwich albion", "West Bromwich Albion"],
@@ -74,6 +118,25 @@ export const CLUB_ALIASES = new Map([
   ["barca", "Barcelona"],
   ["barcelona", "Barcelona"],
 
+  ["celta vigo", "Celta Vigo"],
+
+  ["espanyol", "RCD Espanyol"],
+  ["rcd espanyol", "RCD Espanyol"],
+
+  ["levante", "Levante UD"],
+  ["levante ud", "Levante UD"],
+
+  ["malaga", "Málaga CF"],
+  ["málaga", "Málaga CF"],
+  ["malaga cf", "Málaga CF"],
+  ["málaga cf", "Málaga CF"],
+
+  ["sevilla", "Sevilla FC"],
+  ["sevilla fc", "Sevilla FC"],
+
+  ["valencia", "Valencia CF"],
+  ["valencia cf", "Valencia CF"],
+
   ["atletico", "Atlético Madrid"],
   ["atletico madrid", "Atlético Madrid"],
   ["atlético madrid", "Atlético Madrid"],
@@ -83,14 +146,38 @@ export const CLUB_ALIASES = new Map([
   ["deportivo la Coruña", "Deportivo La Coruña"],
 
   // Portugal
+  ["benfica", "SL Benfica"],
+  ["sl benfica", "SL Benfica"],
+
+  ["porto", "FC Porto"],
+  ["fc porto", "FC Porto"],
+
   ["sporting", "Sporting CP"],
   ["sporting cp", "Sporting CP"],
   ["sporting lisbon", "Sporting CP"],
 
-  // France
+  // France / Switzerland
+  ["bordeaux", "Girondins Bordeaux"],
+  ["girondins bordeaux", "Girondins Bordeaux"],
+
+  ["lille", "Lille OSC"],
+  ["lille osc", "Lille OSC"],
+
+  ["marseille", "Olympique Marseille"],
+  ["olympique marseille", "Olympique Marseille"],
+
+  ["montpellier", "Montpellier HSC"],
+  ["montpellier hsc", "Montpellier HSC"],
+
+  ["monaco", "AS Monaco"],
+  ["as monaco", "AS Monaco"],
+
   ["psg", "Paris Saint-Germain"],
   ["paris saint germain", "Paris Saint-Germain"],
   ["paris saint germain fc", "Paris Saint-Germain"],
+
+  ["basel", "FC Basel"],
+  ["fc basel", "FC Basel"],
 
   // Netherlands / Belgium
   ["az", "AZ Alkmaar"],
@@ -127,6 +214,12 @@ export const CLUB_ALIASES = new Map([
   // South America / misc
   ["cr flamengo", "Flamengo"],
   ["flamengo", "Flamengo"],
+
+  ["cruzeiro", "Cruzeiro EC"],
+  ["cruzeiro ec", "Cruzeiro EC"],
+
+  ["sc internacional", "SC Internacional"],
+  ["internacional", "SC Internacional"],
 
   ["sao paulo", "São Paulo FC"],
   ["sao paulo f", "São Paulo FC"],
