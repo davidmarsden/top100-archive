@@ -2,7 +2,7 @@ import { CLUB_ALIASES } from "./clubAliases";
 
 export const stripClubCodes = (name = "") =>
   String(name || "")
-    .replace(/[®™]/g, " ")
+    .replace(/[®™©]/g, " ")
     .replace(/\(([A-Z!\s]+)\)/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -13,6 +13,7 @@ export const normaliseClub = (name = "") =>
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .replace(/\b(fc|cf|afc|sc|sk|jk|kv|ud|ec|bc|cfc|hsc|sv|club)\b/g, " ")
+    .replace(/\b([a-z])\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
