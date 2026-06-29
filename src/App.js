@@ -1,7 +1,6 @@
 // src/App.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import {
-} from "lucide-react";
+
 import Charts from "./Charts";
 import ManagerProfilesTab from "./components/ManagerProfilesTab";
 import Winners from "./Winners";
