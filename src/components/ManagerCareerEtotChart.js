@@ -3,6 +3,8 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -26,8 +28,10 @@ const isKnownStrength = (value) => {
   return n !== null && n > 0;
 };
 
+const getPosition = (row) => toNumber(row.position ?? row.finalPositionFromStats ?? row.finalPosition);
+
 const outcomeBadge = (row) => {
-  const position = toNumber(row.position ?? row.finalPositionFromStats ?? row.finalPosition);
+  const position = getPosition(row);
   const division = toNumber(row.division);
 
   if (position === 1) return "🏆";
@@ -37,10 +41,20 @@ const outcomeBadge = (row) => {
   return "";
 };
 
+const outcomeLabel = (row) => {
+  const badge = outcomeBadge(row);
+  if (badge === "🏆") return "Champion";
+  if (badge === "↑") return "Promoted";
+  if (badge === "↓") return "Relegated";
+  if (badge === "⛔") return "Auto-sacked";
+  return "";
+};
+
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
 
-  const row = payload[0].payload;
+  const row = payload.find((entry) => entry?.payload?.etot !== undefined)?.payload || payload[0].payload;
+  const outcome = outcomeLabel(row);
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-sm max-w-xs">
@@ -51,10 +65,12 @@ const CustomTooltip = ({ active, payload }) => {
         <div>ETOT: <strong>{fmt(row.etot, 2)}</strong></div>
         <div>Inherited: <strong>{fmt(row.inheritedStrength, 2)}</strong></div>
         <div>Net from inherited: <strong>{fmt(row.netFromInherited, 2, "signed")}</strong></div>
+        <div>Highest in spell: <strong>{fmt(row.highestStrength, 2)}</strong></div>
         <div>Predicted: <strong>{row.predictedPosition ?? "—"}</strong></div>
         <div>Finished: <strong>{row.position ?? row.finalPositionFromStats ?? "—"}</strong></div>
         <div>VA: <strong>{fmt(row.valueAdded, 0, "signed")}</strong></div>
         <div>PVA: <strong>{fmt(row.pva, 3, "signed")}</strong></div>
+        {outcome && <div>Outcome: <strong>{outcome}</strong></div>}
       </div>
     </div>
   );
@@ -85,31 +101,83 @@ const CustomDot = ({ cx, cy, payload }) => {
   );
 };
 
+const SegmentLegend = () => (
+  <div className="flex flex-wrap gap-3 text-xs text-gray-600 px-4 pb-3">
+    <span><span className="font-bold text-green-700">●</span> ETOT increased</span>
+    <span><span className="font-bold text-red-700">●</span> ETOT decreased</span>
+    <span><span className="font-bold text-gray-500">●</span> First known season</span>
+    <span><span className="font-bold text-purple-700">│</span> Club spell start</span>
+    <span>🏆 Champion</span>
+    <span>↑ Promoted</span>
+    <span>↓ Relegated</span>
+    <span>⛔ Auto-sacked</span>
+  </div>
+);
+
 const ManagerCareerEtotChart = ({ summary }) => {
-  const chartData = useMemo(() => {
-    if (!summary?.clubSpells?.length) return [];
+  const { chartData, spellBands, segments } = useMemo(() => {
+    if (!summary?.clubSpells?.length) return { chartData: [], spellBands: [], segments: [] };
 
-    return summary.clubSpells.flatMap((spell) => {
+    let pointIndex = 0;
+
+    const rows = summary.clubSpells.flatMap((spell) => {
       const rowsWithStrength = spell.rows.filter((row) => isKnownStrength(row.etot));
-      const inheritedStrength = rowsWithStrength[0]?.etot ?? null;
+      const inheritedStrength = toNumber(rowsWithStrength[0]?.etot);
+      const highestStrength = rowsWithStrength.reduce((best, row) => {
+        const etot = toNumber(row.etot);
+        return etot !== null && etot > best ? etot : best;
+      }, Number.NEGATIVE_INFINITY);
 
-      return spell.rows
-        .filter((row) => isKnownStrength(row.etot))
-        .map((row, index) => {
-          const etot = toNumber(row.etot);
-          const inherited = toNumber(inheritedStrength);
-          return {
-            ...row,
-            club: spell.club,
-            seasonLabel: `S${row.season}`,
-            seasonSort: Number(row.season) || 0,
-            etot,
-            inheritedStrength: inherited,
-            netFromInherited: inherited !== null && etot !== null ? etot - inherited : null,
-            isSpellStart: index === 0,
-          };
-        });
+      return rowsWithStrength.map((row, index) => {
+        const etot = toNumber(row.etot);
+        const point = {
+          ...row,
+          club: spell.club,
+          x: pointIndex,
+          seasonLabel: `S${row.season}`,
+          etot,
+          inheritedStrength,
+          highestStrength: Number.isFinite(highestStrength) ? highestStrength : null,
+          netFromInherited: inheritedStrength !== null && etot !== null ? etot - inheritedStrength : null,
+          isSpellStart: index === 0,
+        };
+        pointIndex += 1;
+        return point;
+      });
     });
+
+    const bands = [];
+    summary.clubSpells.forEach((spell) => {
+      const spellRows = rows.filter((row) => row.club === spell.club && spell.rows.some((sourceRow) => sourceRow.season === row.season));
+      if (!spellRows.length) return;
+
+      const first = spellRows[0];
+      const last = spellRows[spellRows.length - 1];
+      if (!isKnownStrength(first.inheritedStrength) || !isKnownStrength(first.highestStrength)) return;
+
+      bands.push({
+        club: spell.club,
+        x1: first.x,
+        x2: last.x,
+        y1: first.inheritedStrength,
+        y2: first.highestStrength,
+      });
+    });
+
+    const lineSegments = [];
+    rows.forEach((row, index) => {
+      if (index === 0) return;
+      const previous = rows[index - 1];
+      const delta = row.etot - previous.etot;
+
+      lineSegments.push({
+        key: `${previous.x}-${row.x}`,
+        data: [previous, row],
+        stroke: delta > 0 ? "#15803d" : delta < 0 ? "#b91c1c" : "#6b7280",
+      });
+    });
+
+    return { chartData: rows, spellBands: bands, segments: lineSegments };
   }, [summary]);
 
   const chartStats = useMemo(() => {
@@ -140,27 +208,51 @@ const ManagerCareerEtotChart = ({ summary }) => {
       <div className="p-4 border-b">
         <h3 className="text-lg font-bold">Career ETOT graph</h3>
         <p className="text-sm text-gray-500">
-          Squad strength over time. Purple dots mark club spell starts; icons mark major outcomes.
+          Squad strength over time. Segment colour shows season-to-season movement; dashed lines mark inherited strength and club spell starts.
         </p>
       </div>
 
-      <div className="p-4 h-80">
+      <div className="p-4 h-96">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 24, right: 24, left: 0, bottom: 12 }}>
+          <LineChart data={chartData} margin={{ top: 28, right: 28, left: 0, bottom: 12 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="seasonLabel" />
+            <XAxis
+              dataKey="x"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              ticks={chartData.map((row) => row.x)}
+              tickFormatter={(value) => chartData.find((row) => row.x === value)?.seasonLabel || ""}
+            />
             <YAxis domain={["dataMin - 2", "dataMax + 2"]} tickFormatter={(value) => Number(value).toFixed(0)} />
             <Tooltip content={<CustomTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="etot"
-              name="ETOT"
-              stroke="#2563eb"
-              strokeWidth={3}
-              dot={<CustomDot />}
-              activeDot={{ r: 6 }}
-              connectNulls
-            />
+
+            {spellBands.map((band) => (
+              <ReferenceArea
+                key={`${band.club}-${band.x1}-${band.x2}`}
+                x1={band.x1}
+                x2={band.x2}
+                y1={band.y1}
+                y2={band.y2}
+                ifOverflow="extendDomain"
+                fill="#bbf7d0"
+                fillOpacity={0.18}
+                strokeOpacity={0}
+              />
+            ))}
+
+            {chartData
+              .filter((row) => row.isSpellStart)
+              .map((row) => (
+                <ReferenceLine
+                  key={`spell-${row.x}-${row.club}`}
+                  x={row.x}
+                  stroke="#7c3aed"
+                  strokeDasharray="5 5"
+                  strokeOpacity={0.6}
+                  label={{ value: row.club, position: "top", fontSize: 11, fill: "#6d28d9" }}
+                />
+              ))}
+
             <Line
               type="stepAfter"
               dataKey="inheritedStrength"
@@ -171,9 +263,36 @@ const ManagerCareerEtotChart = ({ summary }) => {
               dot={false}
               connectNulls
             />
+
+            {segments.map((segment) => (
+              <Line
+                key={segment.key}
+                data={segment.data}
+                type="linear"
+                dataKey="etot"
+                stroke={segment.stroke}
+                strokeWidth={4}
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+              />
+            ))}
+
+            <Line
+              type="linear"
+              dataKey="etot"
+              name="ETOT"
+              stroke="transparent"
+              strokeWidth={1}
+              dot={<CustomDot />}
+              activeDot={{ r: 6 }}
+              connectNulls
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      <SegmentLegend />
 
       {chartStats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-gray-50 border-t text-sm">
