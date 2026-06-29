@@ -13,6 +13,7 @@ import InsightsTab from "./components/InsightsTab";
 import ArchiveFooter from "./components/ArchiveFooter";
 import ArchiveHeroHeader from "./components/ArchiveHeroHeader";
 import ArchiveControls from "./components/ArchiveControls";
+import ManagerAnalyticsRoute from "./components/ManagerAnalyticsRoute";
 
 /* =========================
    Helpers & Status Logic
@@ -943,6 +944,12 @@ if (managersRes.ok) {
           ))}
       {activeTab === "honours" && <Winners />}
       {activeTab === "import" && <StatsImporter />}
+{activeTab === "manager-analytics" &&
+  (dataLoaded ? (
+    <ManagerAnalyticsRoute archiveRows={allPositionData} />
+  ) : (
+    <DataPlaceholder />
+  ))}
       </div>
 
       {/* Footer */}
