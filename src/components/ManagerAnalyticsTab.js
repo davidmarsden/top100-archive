@@ -6,6 +6,7 @@ import {
   getManagerValueAddedTable,
 } from "../analytics/managerAnalytics";
 import ManagerCareerEtotChart from "./ManagerCareerEtotChart";
+import ManagerCareerSummaryCard from "./ManagerCareerSummaryCard";
 import ManagerCareerVaPvaChart from "./ManagerCareerVaPvaChart";
 import ManagerComparisonPanel from "./ManagerComparisonPanel";
 import ManagerSpellSummaryCards from "./ManagerSpellSummaryCards";
@@ -181,6 +182,8 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         </div>
       ) : (
         <>
+          <ManagerCareerSummaryCard summary={summary} />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Seasons" value={summary.seasons} />
             <StatCard label="Clubs" value={summary.clubsManaged} hint={summary.clubs.join(", ")} />
