@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, Search, TrendingDown, TrendingUp, Trophy, Users } from "lucide-react";
 import {
+  getAllManagerCareerSummaries,
   getManagerCareerSummary,
   getManagerOptions,
   getManagerValueAddedTable,
@@ -93,8 +94,8 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
 
   const allManagerSummaries = useMemo(
-    () => managerOptions.map((option) => getManagerCareerSummary(option.manager, archiveRows, statsRows)),
-    [managerOptions, archiveRows, statsRows]
+    () => getAllManagerCareerSummaries(archiveRows, statsRows),
+    [archiveRows, statsRows]
   );
 
   const valueAddedTable = useMemo(
@@ -126,8 +127,10 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const selectedManager = managerQuery.trim();
 
   const summary = useMemo(
-    () => getManagerCareerSummary(selectedManager, archiveRows, statsRows),
-    [selectedManager, archiveRows, statsRows]
+    () =>
+      allManagerSummaries.find((item) => item.manager === selectedManager) ||
+      getManagerCareerSummary(selectedManager, archiveRows, statsRows),
+    [selectedManager, allManagerSummaries, archiveRows, statsRows]
   );
 
   const careerRowsForDisplay = useMemo(
