@@ -34,6 +34,9 @@ const LeaderboardTable = ({
   metricLabel,
   metricKey,
   metricDigits = 2,
+  contextLabel = "Avg PVA",
+  contextKey = "averagePVA",
+  contextDigits = 3,
   limit = 20,
 }) => (
   <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -51,7 +54,7 @@ const LeaderboardTable = ({
             <th className="text-right py-3 px-3">Clubs</th>
             <th className="text-right py-3 px-3">{metricLabel}</th>
             <th className="text-right py-3 px-3">Avg VA</th>
-            <th className="text-right py-3 px-3">Avg PVA</th>
+            <th className="text-right py-3 px-3">{contextLabel}</th>
           </tr>
         </thead>
         <tbody>
@@ -65,7 +68,7 @@ const LeaderboardTable = ({
                 {fmt(row[metricKey], metricDigits, "signed")}
               </td>
               <td className="py-3 px-3 text-right">{fmt(row.averageVA, 2, "signed")}</td>
-              <td className="py-3 px-3 text-right">{fmt(row.averagePVA, 3, "signed")}</td>
+              <td className="py-3 px-3 text-right">{fmt(row[contextKey], contextDigits, "signed")}</td>
             </tr>
           ))}
         </tbody>
@@ -361,6 +364,9 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Avg PVA"
           metricKey="averagePVA"
           metricDigits={3}
+          contextLabel="Net strength"
+          contextKey="netStrengthGain"
+          contextDigits={2}
           limit={leaderboardLimit}
         />
         <LeaderboardTable
