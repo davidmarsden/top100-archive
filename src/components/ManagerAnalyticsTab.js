@@ -76,6 +76,7 @@ const LeaderboardTable = ({
 
 const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [managerQuery, setManagerQuery] = useState("");
+  const [leaderboardLimit, setLeaderboardLimit] = useState(20);
 
   const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
 
@@ -314,6 +315,27 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         </>
       )}
 
+      <div className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-bold">Manager leaderboards</h3>
+          <p className="text-sm text-gray-500">Adjust the shortlist size for manager recruitment comparisons.</p>
+        </div>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          Show
+          <select
+            value={leaderboardLimit}
+            onChange={(e) => setLeaderboardLimit(Number(e.target.value))}
+            className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
+          >
+            {[10, 20, 30, 50].map((limit) => (
+              <option key={limit} value={limit}>
+                Top {limit}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-4">
         <LeaderboardTable
           title="Average PVA leaderboard"
@@ -322,7 +344,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Avg PVA"
           metricKey="averagePVA"
           metricDigits={3}
-          limit={20}
+          limit={leaderboardLimit}
         />
         <LeaderboardTable
           title="Net strength gain"
@@ -331,7 +353,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Net strength"
           metricKey="netStrengthGain"
           metricDigits={2}
-          limit={20}
+          limit={leaderboardLimit}
         />
         <LeaderboardTable
           title="Net strength loss"
@@ -340,7 +362,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Net strength"
           metricKey="netStrengthGain"
           metricDigits={2}
-          limit={20}
+          limit={leaderboardLimit}
         />
       </div>
     </div>
