@@ -84,7 +84,7 @@ const ManagerSpellSummaryCards = ({ summary }) => {
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <SpellCard title="Best spell" spell={bestSpell} positive />
-      <SpellCard title="Toughest spell" spell={worstSpell} />
+      <SpellCard title="Most challenging spell" spell={worstSpell} />
     </div>
   );
 };
