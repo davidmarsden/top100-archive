@@ -77,12 +77,13 @@ const LeaderboardTable = ({
 const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [managerQuery, setManagerQuery] = useState("");
   const [leaderboardLimit, setLeaderboardLimit] = useState(20);
+  const [minMatchedSeasons, setMinMatchedSeasons] = useState(5);
 
   const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
 
   const valueAddedTable = useMemo(
-    () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons: 5 }),
-    [archiveRows, statsRows]
+    () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons }),
+    [archiveRows, statsRows, minMatchedSeasons]
   );
 
   const pvaLeaders = useMemo(
@@ -318,28 +319,44 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
       <div className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold">Manager leaderboards</h3>
-          <p className="text-sm text-gray-500">Adjust the shortlist size for manager recruitment comparisons.</p>
+          <p className="text-sm text-gray-500">Adjust the shortlist size and minimum evidence threshold for manager recruitment comparisons.</p>
         </div>
-        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-          Show
-          <select
-            value={leaderboardLimit}
-            onChange={(e) => setLeaderboardLimit(Number(e.target.value))}
-            className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
-          >
-            {[10, 20, 30, 50].map((limit) => (
-              <option key={limit} value={limit}>
-                Top {limit}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            Minimum
+            <select
+              value={minMatchedSeasons}
+              onChange={(e) => setMinMatchedSeasons(Number(e.target.value))}
+              className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
+            >
+              {[1, 3, 5, 10, 15, 20].map((limit) => (
+                <option key={limit} value={limit}>
+                  {limit}+ matched seasons
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            Show
+            <select
+              value={leaderboardLimit}
+              onChange={(e) => setLeaderboardLimit(Number(e.target.value))}
+              className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
+            >
+              {[10, 20, 30, 50].map((limit) => (
+                <option key={limit} value={limit}>
+                  Top {limit}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <LeaderboardTable
           title="Average PVA leaderboard"
-          description="Managers with at least five matched Malcolm stats rows, ranked by average PVA."
+          description={`Managers with at least ${minMatchedSeasons} matched Malcolm stats season${minMatchedSeasons === 1 ? "" : "s"}, ranked by average PVA.`}
           rows={pvaLeaders}
           metricLabel="Avg PVA"
           metricKey="averagePVA"
@@ -348,7 +365,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         />
         <LeaderboardTable
           title="Net strength gain"
-          description="Largest total ETOT gains across club spells."
+          description={`Largest total ETOT gains across club spells, minimum ${minMatchedSeasons} matched season${minMatchedSeasons === 1 ? "" : "s"}.`}
           rows={netStrengthGainLeaders}
           metricLabel="Net strength"
           metricKey="netStrengthGain"
@@ -357,7 +374,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         />
         <LeaderboardTable
           title="Net strength loss"
-          description="Largest total ETOT losses across club spells."
+          description={`Largest total ETOT losses across club spells, minimum ${minMatchedSeasons} matched season${minMatchedSeasons === 1 ? "" : "s"}.`}
           rows={netStrengthLossLeaders}
           metricLabel="Net strength"
           metricKey="netStrengthGain"
