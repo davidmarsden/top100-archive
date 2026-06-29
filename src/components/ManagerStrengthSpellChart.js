@@ -36,7 +36,7 @@ const LegacyCard = ({ spell }) => {
 
       <div className="grid grid-cols-3 gap-2 text-sm">
         <div>
-          <div className="text-gray-500">Inherited</div>
+          <div className="text-gray-500">First known</div>
           <div className="font-bold">{fmt(spell.inheritedStrength, 2)}</div>
         </div>
         <div>
@@ -44,7 +44,7 @@ const LegacyCard = ({ spell }) => {
           <div className="font-bold">{fmt(spell.highestStrength, 2)}</div>
         </div>
         <div>
-          <div className="text-gray-500">Last</div>
+          <div className="text-gray-500">Last known</div>
           <div className="font-bold">{fmt(spell.lastStrength, 2)}</div>
         </div>
       </div>
@@ -62,7 +62,7 @@ const ManagerStrengthSpellChart = ({ summary }) => {
   if (!spells.length) {
     return (
       <div className="bg-white rounded-xl shadow p-6 text-gray-500">
-        No inherited/last strength data available for this manager yet.
+        No first-known/last-known strength data available for this manager yet.
       </div>
     );
   }
@@ -72,7 +72,7 @@ const ManagerStrengthSpellChart = ({ summary }) => {
       <div className="p-4 border-b">
         <h3 className="text-lg font-bold">Club legacy cards</h3>
         <p className="text-sm text-gray-500">
-          Inherited, peak and last known ETOT for each club spell. This answers whether the manager left clubs stronger or weaker.
+          First known, peak and last known ETOT for each club spell. This answers whether the manager left clubs stronger or weaker in the recorded ETOT era.
         </p>
       </div>
 
