@@ -104,6 +104,14 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
     [selectedManager, archiveRows, statsRows]
   );
 
+  const careerRowsForDisplay = useMemo(
+    () =>
+      summary.clubSpells.flatMap((spell) =>
+        spell.rows.map((row) => ({ ...row, displayClub: spell.club }))
+      ),
+    [summary.clubSpells]
+  );
+
   return (
     <div className="space-y-8">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -260,6 +268,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="p-4 border-b">
               <h3 className="text-lg font-bold">Season-by-season career</h3>
+              <p className="text-sm text-gray-500">Grouped by club spell so mid-season moves do not split tenures.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -276,11 +285,11 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {summary.careerRows.map((row, index) => (
-                    <tr key={`${row.season}-${row.division}-${row.team}-${index}`} className="border-t">
+                  {careerRowsForDisplay.map((row, index) => (
+                    <tr key={`${row.displayClub}-${row.season}-${row.division}-${index}`} className="border-t">
                       <td className="py-3 px-3 font-semibold">S{row.season}</td>
                       <td className="py-3 px-3">D{row.division}</td>
-                      <td className="py-3 px-3 font-semibold">{row.canonicalClub || row.team}</td>
+                      <td className="py-3 px-3 font-semibold">{row.displayClub || row.canonicalClub || row.team}</td>
                       <td className="py-3 px-3 text-right">{row.predictedPosition ?? "—"}</td>
                       <td className="py-3 px-3 text-right">{row.position ?? row.finalPositionFromStats ?? "—"}</td>
                       <td className={`py-3 px-3 text-right font-bold ${Number(row.valueAdded) > 0 ? "text-green-700" : Number(row.valueAdded) < 0 ? "text-red-700" : ""}`}>
