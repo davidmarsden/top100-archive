@@ -41,6 +41,10 @@ const getPosition = (row) => toNumberOrNull(row.position ?? row.finalPositionFro
 const getDivision = (row) => toNumberOrNull(row.division);
 const getSeason = (row) => normaliseSeason(row.season);
 const getClub = (row) => row.canonicalClub || row.team || row.club || "Unknown";
+const getKnownStrength = (row) => {
+  const etot = toNumberOrNull(row.etot);
+  return etot !== null && etot > 0 ? etot : null;
+};
 
 const isChampion = (row) => getPosition(row) === 1;
 const isAutoPromoted = (row) => {
@@ -94,24 +98,26 @@ const buildClubSpells = (careerRows = []) => {
   });
 
   return spells.map((spell) => {
-    const matchedRows = spell.rows.filter((row) => toNumberOrNull(row.etot) !== null);
+    const matchedRows = spell.rows.filter((row) => getKnownStrength(row) !== null);
     const first = matchedRows[0] || null;
     const last = matchedRows[matchedRows.length - 1] || null;
-    const inheritedStrength = first ? toNumberOrNull(first.etot) : null;
-    const leftStrength = last ? toNumberOrNull(last.etot) : null;
+    const inheritedStrength = first ? getKnownStrength(first) : null;
+    const leftStrength = last ? getKnownStrength(last) : null;
 
     return {
       club: spell.club,
       seasons: spell.rows.length,
       firstSeason: spell.rows[0]?.season || null,
       lastSeason: spell.rows[spell.rows.length - 1]?.season || null,
+      firstKnownStrengthSeason: first?.season || null,
+      lastKnownStrengthSeason: last?.season || null,
       rows: spell.rows,
       inheritedStrength,
       leftStrength,
       netStrengthGain:
         inheritedStrength !== null && leftStrength !== null ? round(leftStrength - inheritedStrength, 2) : null,
       highestStrength: round(
-        matchedRows.reduce((max, row) => Math.max(max, toNumberOrNull(row.etot)), Number.NEGATIVE_INFINITY),
+        matchedRows.reduce((max, row) => Math.max(max, getKnownStrength(row)), Number.NEGATIVE_INFINITY),
         2
       ),
     };
@@ -143,7 +149,7 @@ export const getManagerCareerSummary = (managerName, archiveRows = [], statsRows
     averageDivision: round(average(careerRows.map(getDivision)), 2),
     averageVA: round(average(careerRows.map((row) => row.valueAdded)), 2),
     averagePVA: round(average(careerRows.map((row) => row.pva)), 3),
-    averageETOT: round(average(careerRows.map((row) => row.etot)), 2),
+    averageETOT: round(average(careerRows.map(getKnownStrength)), 2),
     averageTop18: round(average(careerRows.map((row) => row.top18)), 2),
     netStrengthGain: strengthGains.length
       ? round(strengthGains.reduce((sum, value) => sum + value, 0), 2)
@@ -199,7 +205,7 @@ export const getManagerValueAddedTable = (archiveRows = [], statsRows = [], opti
         ),
         averageVA: round(average(matchedRows.map((row) => row.valueAdded)), 2),
         averagePVA: round(average(matchedRows.map((row) => row.pva)), 3),
-        averageETOT: round(average(matchedRows.map((row) => row.etot)), 2),
+        averageETOT: round(average(matchedRows.map(getKnownStrength)), 2),
         netStrengthGain: strengthGains.length
           ? round(strengthGains.reduce((sum, value) => sum + value, 0), 2)
           : null,
