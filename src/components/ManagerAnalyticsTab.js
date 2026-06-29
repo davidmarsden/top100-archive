@@ -21,16 +21,11 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [managerQuery, setManagerQuery] = useState("");
 
   const valueAddedTable = useMemo(
-    () => getManagerValueAddedTable(archiveRows, statsRows),
+    () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons: 5 }),
     [archiveRows, statsRows]
   );
 
-  const managerSuggestions = useMemo(
-    () => valueAddedTable.slice(0, 12).map((row) => row.manager),
-    [valueAddedTable]
-  );
-
-  const selectedManager = managerQuery.trim() || managerSuggestions[0] || "";
+  const selectedManager = managerQuery.trim();
 
   const summary = useMemo(
     () => getManagerCareerSummary(selectedManager, archiveRows, statsRows),
@@ -50,7 +45,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           </div>
         </div>
 
-        <div className="relative mb-4">
+        <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
@@ -60,30 +55,15 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
             className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all"
           />
         </div>
-
-        {managerSuggestions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {managerSuggestions.map((manager) => (
-              <button
-                key={manager}
-                type="button"
-                onClick={() => setManagerQuery(manager)}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold ${
-                  selectedManager === manager
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                }`}
-              >
-                {manager}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
-      {summary.seasons === 0 ? (
+      {!selectedManager ? (
         <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-          No manager career rows found yet.
+          Search for a manager to view their career analytics.
+        </div>
+      ) : summary.seasons === 0 ? (
+        <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
+          No manager career rows found for “{selectedManager}”.
         </div>
       ) : (
         <>
@@ -95,8 +75,55 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
             <StatCard label="Avg ETOT" value={fmt(summary.averageETOT, 2)} />
             <StatCard label="Avg finish" value={fmt(summary.averageFinish, 2)} />
             <StatCard label="Stats matched" value={`${summary.statsMatched}/${summary.seasons}`} />
-            <StatCard label="Net strength" value={fmt(summary.netStrengthGain, 2, "signed")} />
+            <StatCard
+              label="Net strength"
+              value={fmt(summary.netStrengthGain, 2, "signed")}
+              hint="Sum of each club spell’s ETOT change"
+            />
           </div>
+
+          {summary.clubSpells.length > 0 && (
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-bold">Club spell strength changes</h3>
+                <p className="text-sm text-gray-500">
+                  Inherited ETOT to left ETOT for each uninterrupted spell at a club.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left py-3 px-3">Club</th>
+                      <th className="text-right py-3 px-3">Seasons</th>
+                      <th className="text-right py-3 px-3">From</th>
+                      <th className="text-right py-3 px-3">To</th>
+                      <th className="text-right py-3 px-3">Inherited</th>
+                      <th className="text-right py-3 px-3">Left</th>
+                      <th className="text-right py-3 px-3">Highest</th>
+                      <th className="text-right py-3 px-3">Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.clubSpells.map((spell, index) => (
+                      <tr key={`${spell.club}-${index}`} className="border-t">
+                        <td className="py-3 px-3 font-semibold">{spell.club}</td>
+                        <td className="py-3 px-3 text-right">{spell.seasons}</td>
+                        <td className="py-3 px-3 text-right">S{spell.firstSeason}</td>
+                        <td className="py-3 px-3 text-right">S{spell.lastSeason}</td>
+                        <td className="py-3 px-3 text-right">{fmt(spell.inheritedStrength, 2)}</td>
+                        <td className="py-3 px-3 text-right">{fmt(spell.leftStrength, 2)}</td>
+                        <td className="py-3 px-3 text-right">{fmt(spell.highestStrength, 2)}</td>
+                        <td className={`py-3 px-3 text-right font-bold ${Number(spell.netStrengthGain) > 0 ? "text-green-700" : Number(spell.netStrengthGain) < 0 ? "text-red-700" : ""}`}>
+                          {fmt(spell.netStrengthGain, 2, "signed")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-white rounded-xl shadow p-6">
@@ -180,43 +207,47 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
               </table>
             </div>
           </div>
-
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="text-lg font-bold">Average VA leaderboard</h3>
-              <p className="text-sm text-gray-500">Managers with matched Malcolm stats rows, ranked by average VA.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th className="text-left py-3 px-3">Rank</th>
-                    <th className="text-left py-3 px-3">Manager</th>
-                    <th className="text-right py-3 px-3">Seasons</th>
-                    <th className="text-right py-3 px-3">Clubs</th>
-                    <th className="text-right py-3 px-3">Avg VA</th>
-                    <th className="text-right py-3 px-3">Avg PVA</th>
-                    <th className="text-right py-3 px-3">Avg ETOT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {valueAddedTable.slice(0, 25).map((row, index) => (
-                    <tr key={row.manager} className="border-t">
-                      <td className="py-3 px-3 font-bold">#{index + 1}</td>
-                      <td className="py-3 px-3 font-semibold">{row.manager}</td>
-                      <td className="py-3 px-3 text-right">{row.seasons}</td>
-                      <td className="py-3 px-3 text-right">{row.clubsManaged}</td>
-                      <td className="py-3 px-3 text-right font-bold text-green-700">{fmt(row.averageVA, 2, "signed")}</td>
-                      <td className="py-3 px-3 text-right">{fmt(row.averagePVA, 3, "signed")}</td>
-                      <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
+
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="p-4 border-b">
+          <h3 className="text-lg font-bold">Average VA leaderboard</h3>
+          <p className="text-sm text-gray-500">
+            Managers with at least five matched Malcolm stats rows, ranked by average VA.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-600">
+              <tr>
+                <th className="text-left py-3 px-3">Rank</th>
+                <th className="text-left py-3 px-3">Manager</th>
+                <th className="text-right py-3 px-3">Seasons</th>
+                <th className="text-right py-3 px-3">Clubs</th>
+                <th className="text-right py-3 px-3">Avg VA</th>
+                <th className="text-right py-3 px-3">Avg PVA</th>
+                <th className="text-right py-3 px-3">Avg ETOT</th>
+                <th className="text-right py-3 px-3">Net strength</th>
+              </tr>
+            </thead>
+            <tbody>
+              {valueAddedTable.slice(0, 25).map((row, index) => (
+                <tr key={row.manager} className="border-t">
+                  <td className="py-3 px-3 font-bold">#{index + 1}</td>
+                  <td className="py-3 px-3 font-semibold">{row.manager}</td>
+                  <td className="py-3 px-3 text-right">{row.seasons}</td>
+                  <td className="py-3 px-3 text-right">{row.clubsManaged}</td>
+                  <td className="py-3 px-3 text-right font-bold text-green-700">{fmt(row.averageVA, 2, "signed")}</td>
+                  <td className="py-3 px-3 text-right">{fmt(row.averagePVA, 3, "signed")}</td>
+                  <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 2)}</td>
+                  <td className="py-3 px-3 text-right">{fmt(row.netStrengthGain, 2, "signed")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
