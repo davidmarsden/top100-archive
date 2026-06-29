@@ -27,7 +27,15 @@ const StatCard = ({ label, value, hint }) => (
   </div>
 );
 
-const LeaderboardTable = ({ title, description, rows, metricLabel, metricKey, metricDigits = 2 }) => (
+const LeaderboardTable = ({
+  title,
+  description,
+  rows,
+  metricLabel,
+  metricKey,
+  metricDigits = 2,
+  limit = 20,
+}) => (
   <div className="bg-white rounded-xl shadow-lg overflow-hidden">
     <div className="p-4 border-b">
       <h3 className="text-lg font-bold">{title}</h3>
@@ -47,7 +55,7 @@ const LeaderboardTable = ({ title, description, rows, metricLabel, metricKey, me
           </tr>
         </thead>
         <tbody>
-          {rows.slice(0, 15).map((row, index) => (
+          {rows.slice(0, limit).map((row, index) => (
             <tr key={row.manager} className="border-t">
               <td className="py-3 px-3 font-bold">#{index + 1}</td>
               <td className="py-3 px-3 font-semibold">{row.manager}</td>
@@ -314,6 +322,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Avg PVA"
           metricKey="averagePVA"
           metricDigits={3}
+          limit={20}
         />
         <LeaderboardTable
           title="Net strength gain"
@@ -322,6 +331,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Net strength"
           metricKey="netStrengthGain"
           metricDigits={2}
+          limit={20}
         />
         <LeaderboardTable
           title="Net strength loss"
@@ -330,6 +340,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           metricLabel="Net strength"
           metricKey="netStrengthGain"
           metricDigits={2}
+          limit={20}
         />
       </div>
     </div>
