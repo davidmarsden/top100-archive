@@ -1,12 +1,22 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, Search, TrendingDown, TrendingUp, Trophy, Users } from "lucide-react";
-import { getManagerCareerSummary, getManagerValueAddedTable } from "../analytics/managerAnalytics";
+import {
+  getManagerCareerSummary,
+  getManagerOptions,
+  getManagerValueAddedTable,
+} from "../analytics/managerAnalytics";
 
 const fmt = (value, digits = 2, prefix = "") => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
   const n = Number(value);
   const sign = prefix === "signed" && n > 0 ? "+" : "";
   return `${sign}${n.toFixed(digits)}`;
+};
+
+const fmtStrength = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  return n.toFixed(2);
 };
 
 const StatCard = ({ label, value, hint }) => (
@@ -17,12 +27,74 @@ const StatCard = ({ label, value, hint }) => (
   </div>
 );
 
+const LeaderboardTable = ({ title, description, rows, metricLabel, metricKey, metricDigits = 2 }) => (
+  <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="p-4 border-b">
+      <h3 className="text-lg font-bold">{title}</h3>
+      {description && <p className="text-sm text-gray-500">{description}</p>}
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-gray-600">
+          <tr>
+            <th className="text-left py-3 px-3">Rank</th>
+            <th className="text-left py-3 px-3">Manager</th>
+            <th className="text-right py-3 px-3">Seasons</th>
+            <th className="text-right py-3 px-3">Clubs</th>
+            <th className="text-right py-3 px-3">{metricLabel}</th>
+            <th className="text-right py-3 px-3">Avg VA</th>
+            <th className="text-right py-3 px-3">Avg PVA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, 15).map((row, index) => (
+            <tr key={row.manager} className="border-t">
+              <td className="py-3 px-3 font-bold">#{index + 1}</td>
+              <td className="py-3 px-3 font-semibold">{row.manager}</td>
+              <td className="py-3 px-3 text-right">{row.seasons}</td>
+              <td className="py-3 px-3 text-right">{row.clubsManaged}</td>
+              <td className="py-3 px-3 text-right font-bold text-green-700">
+                {fmt(row[metricKey], metricDigits, "signed")}
+              </td>
+              <td className="py-3 px-3 text-right">{fmt(row.averageVA, 2, "signed")}</td>
+              <td className="py-3 px-3 text-right">{fmt(row.averagePVA, 3, "signed")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
 const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [managerQuery, setManagerQuery] = useState("");
+
+  const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
 
   const valueAddedTable = useMemo(
     () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons: 5 }),
     [archiveRows, statsRows]
+  );
+
+  const pvaLeaders = useMemo(
+    () => [...valueAddedTable].sort((a, b) => b.averagePVA - a.averagePVA || b.averageVA - a.averageVA),
+    [valueAddedTable]
+  );
+
+  const netStrengthGainLeaders = useMemo(
+    () =>
+      [...valueAddedTable]
+        .filter((row) => row.netStrengthGain !== null && row.netStrengthGain !== undefined)
+        .sort((a, b) => b.netStrengthGain - a.netStrengthGain),
+    [valueAddedTable]
+  );
+
+  const netStrengthLossLeaders = useMemo(
+    () =>
+      [...valueAddedTable]
+        .filter((row) => row.netStrengthGain !== null && row.netStrengthGain !== undefined)
+        .sort((a, b) => a.netStrengthGain - b.netStrengthGain),
+    [valueAddedTable]
   );
 
   const selectedManager = managerQuery.trim();
@@ -45,21 +117,36 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            value={managerQuery}
+        <div className="grid md:grid-cols-2 gap-3">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              value={managerQuery}
+              onChange={(e) => setManagerQuery(e.target.value)}
+              placeholder="Search manager name..."
+              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all"
+            />
+          </div>
+
+          <select
+            value={managerOptions.some((option) => option.manager === managerQuery) ? managerQuery : ""}
             onChange={(e) => setManagerQuery(e.target.value)}
-            placeholder="Search manager name..."
-            className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all"
-          />
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-100 focus:border-purple-500 bg-white transition-all"
+          >
+            <option value="">Select manager…</option>
+            {managerOptions.map((option) => (
+              <option key={option.manager} value={option.manager}>
+                {option.manager} ({option.seasons} seasons)
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {!selectedManager ? (
         <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-          Search for a manager to view their career analytics.
+          Search for a manager or select one from the dropdown to view their career analytics.
         </div>
       ) : summary.seasons === 0 ? (
         <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
@@ -87,7 +174,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
               <div className="p-4 border-b">
                 <h3 className="text-lg font-bold">Club spell strength changes</h3>
                 <p className="text-sm text-gray-500">
-                  Inherited ETOT to left ETOT for each uninterrupted spell at a club.
+                  Inherited ETOT to last ETOT for each uninterrupted spell at a club.
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -99,7 +186,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
                       <th className="text-right py-3 px-3">From</th>
                       <th className="text-right py-3 px-3">To</th>
                       <th className="text-right py-3 px-3">Inherited</th>
-                      <th className="text-right py-3 px-3">Left</th>
+                      <th className="text-right py-3 px-3">Last</th>
                       <th className="text-right py-3 px-3">Highest</th>
                       <th className="text-right py-3 px-3">Net</th>
                     </tr>
@@ -111,9 +198,9 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
                         <td className="py-3 px-3 text-right">{spell.seasons}</td>
                         <td className="py-3 px-3 text-right">S{spell.firstSeason}</td>
                         <td className="py-3 px-3 text-right">S{spell.lastSeason}</td>
-                        <td className="py-3 px-3 text-right">{fmt(spell.inheritedStrength, 2)}</td>
-                        <td className="py-3 px-3 text-right">{fmt(spell.leftStrength, 2)}</td>
-                        <td className="py-3 px-3 text-right">{fmt(spell.highestStrength, 2)}</td>
+                        <td className="py-3 px-3 text-right">{fmtStrength(spell.inheritedStrength)}</td>
+                        <td className="py-3 px-3 text-right">{fmtStrength(spell.lastStrength)}</td>
+                        <td className="py-3 px-3 text-right">{fmtStrength(spell.highestStrength)}</td>
                         <td className={`py-3 px-3 text-right font-bold ${Number(spell.netStrengthGain) > 0 ? "text-green-700" : Number(spell.netStrengthGain) < 0 ? "text-red-700" : ""}`}>
                           {fmt(spell.netStrengthGain, 2, "signed")}
                         </td>
@@ -193,14 +280,14 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
                     <tr key={`${row.season}-${row.division}-${row.team}-${index}`} className="border-t">
                       <td className="py-3 px-3 font-semibold">S{row.season}</td>
                       <td className="py-3 px-3">D{row.division}</td>
-                      <td className="py-3 px-3 font-semibold">{row.team}</td>
+                      <td className="py-3 px-3 font-semibold">{row.canonicalClub || row.team}</td>
                       <td className="py-3 px-3 text-right">{row.predictedPosition ?? "—"}</td>
                       <td className="py-3 px-3 text-right">{row.position ?? row.finalPositionFromStats ?? "—"}</td>
                       <td className={`py-3 px-3 text-right font-bold ${Number(row.valueAdded) > 0 ? "text-green-700" : Number(row.valueAdded) < 0 ? "text-red-700" : ""}`}>
                         {row.valueAdded === null || row.valueAdded === undefined ? "—" : fmt(row.valueAdded, 0, "signed")}
                       </td>
                       <td className="py-3 px-3 text-right">{fmt(row.pva, 3, "signed")}</td>
-                      <td className="py-3 px-3 text-right">{fmt(row.etot, 2)}</td>
+                      <td className="py-3 px-3 text-right">{fmtStrength(row.etot)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -210,43 +297,31 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         </>
       )}
 
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="p-4 border-b">
-          <h3 className="text-lg font-bold">Average VA leaderboard</h3>
-          <p className="text-sm text-gray-500">
-            Managers with at least five matched Malcolm stats rows, ranked by average VA.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="text-left py-3 px-3">Rank</th>
-                <th className="text-left py-3 px-3">Manager</th>
-                <th className="text-right py-3 px-3">Seasons</th>
-                <th className="text-right py-3 px-3">Clubs</th>
-                <th className="text-right py-3 px-3">Avg VA</th>
-                <th className="text-right py-3 px-3">Avg PVA</th>
-                <th className="text-right py-3 px-3">Avg ETOT</th>
-                <th className="text-right py-3 px-3">Net strength</th>
-              </tr>
-            </thead>
-            <tbody>
-              {valueAddedTable.slice(0, 25).map((row, index) => (
-                <tr key={row.manager} className="border-t">
-                  <td className="py-3 px-3 font-bold">#{index + 1}</td>
-                  <td className="py-3 px-3 font-semibold">{row.manager}</td>
-                  <td className="py-3 px-3 text-right">{row.seasons}</td>
-                  <td className="py-3 px-3 text-right">{row.clubsManaged}</td>
-                  <td className="py-3 px-3 text-right font-bold text-green-700">{fmt(row.averageVA, 2, "signed")}</td>
-                  <td className="py-3 px-3 text-right">{fmt(row.averagePVA, 3, "signed")}</td>
-                  <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 2)}</td>
-                  <td className="py-3 px-3 text-right">{fmt(row.netStrengthGain, 2, "signed")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <LeaderboardTable
+          title="Average PVA leaderboard"
+          description="Managers with at least five matched Malcolm stats rows, ranked by average PVA."
+          rows={pvaLeaders}
+          metricLabel="Avg PVA"
+          metricKey="averagePVA"
+          metricDigits={3}
+        />
+        <LeaderboardTable
+          title="Net strength gain"
+          description="Largest total ETOT gains across club spells."
+          rows={netStrengthGainLeaders}
+          metricLabel="Net strength"
+          metricKey="netStrengthGain"
+          metricDigits={2}
+        />
+        <LeaderboardTable
+          title="Net strength loss"
+          description="Largest total ETOT losses across club spells."
+          rows={netStrengthLossLeaders}
+          metricLabel="Net strength"
+          metricKey="netStrengthGain"
+          metricDigits={2}
+        />
       </div>
     </div>
   );
