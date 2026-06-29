@@ -11,6 +11,7 @@ import ManagerCareerVaPvaChart from "./ManagerCareerVaPvaChart";
 import ManagerComparisonPanel from "./ManagerComparisonPanel";
 import ManagerSpellSummaryCards from "./ManagerSpellSummaryCards";
 import ManagerStrengthSpellChart from "./ManagerStrengthSpellChart";
+import SimilarManagersPanel from "./SimilarManagersPanel";
 
 const fmt = (value, digits = 2, prefix = "") => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -90,6 +91,11 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [comparisonManagers, setComparisonManagers] = useState(["", ""]);
 
   const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
+
+  const allManagerSummaries = useMemo(
+    () => managerOptions.map((option) => getManagerCareerSummary(option.manager, archiveRows, statsRows)),
+    [managerOptions, archiveRows, statsRows]
+  );
 
   const valueAddedTable = useMemo(
     () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons }),
@@ -212,6 +218,12 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           </div>
 
           <ManagerSpellSummaryCards summary={summary} />
+
+          <SimilarManagersPanel
+            summary={summary}
+            allSummaries={allManagerSummaries}
+            onSelectManager={setManagerQuery}
+          />
 
           {summary.clubSpells.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
