@@ -24,7 +24,14 @@ export const buildCanonicalClubMap = (canonicalNames = []) => {
   canonicalNames.filter(Boolean).forEach((name) => {
     const stripped = stripClubCodes(name);
     const key = normaliseClub(stripped);
-    if (key && !map.has(key)) map.set(key, stripped);
+    if (!key) return;
+
+    const aliasTarget = CLUB_ALIASES.get(key);
+    const canonical = aliasTarget || stripped;
+    const canonicalKey = normaliseClub(canonical);
+
+    if (!map.has(key)) map.set(key, canonical);
+    if (canonicalKey && !map.has(canonicalKey)) map.set(canonicalKey, canonical);
   });
 
   return map;
@@ -38,10 +45,11 @@ export const resolveClubName = (name = "", canonicalNameMap = null) => {
   const aliasTarget = CLUB_ALIASES.get(key);
   const aliasKey = aliasTarget ? normaliseClub(aliasTarget) : "";
 
-  if (canonicalNameMap?.has(key)) return canonicalNameMap.get(key);
   if (aliasKey && canonicalNameMap?.has(aliasKey)) return canonicalNameMap.get(aliasKey);
+  if (aliasTarget) return aliasTarget;
+  if (canonicalNameMap?.has(key)) return canonicalNameMap.get(key);
 
-  return aliasTarget || stripped;
+  return stripped;
 };
 
 export const canonicalClubName = (name = "", canonicalNameMap = null) =>

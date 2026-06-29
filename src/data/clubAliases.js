@@ -28,6 +28,7 @@ export const CLUB_ALIASES = new Map([
   ["hertha", "Hertha Berlin"],
   ["hertha bsc", "Hertha Berlin"],
   ["h berlin", "Hertha Berlin"],
+  ["berlin", "Hertha Berlin"],
   ["hertha berlin", "Hertha Berlin"],
 
   ["borussia monchengladbach", "Borussia Mönchengladbach"],

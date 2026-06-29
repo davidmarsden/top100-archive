@@ -1,7 +1,6 @@
 // src/App.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import {
-} from "lucide-react";
+
 import Charts from "./Charts";
 import ManagerProfilesTab from "./components/ManagerProfilesTab";
 import Winners from "./Winners";
@@ -14,6 +13,7 @@ import InsightsTab from "./components/InsightsTab";
 import ArchiveFooter from "./components/ArchiveFooter";
 import ArchiveHeroHeader from "./components/ArchiveHeroHeader";
 import ArchiveControls from "./components/ArchiveControls";
+import ManagerAnalyticsRoute from "./components/ManagerAnalyticsRoute";
 
 /* =========================
    Helpers & Status Logic
@@ -944,6 +944,12 @@ if (managersRes.ok) {
           ))}
       {activeTab === "honours" && <Winners />}
       {activeTab === "import" && <StatsImporter />}
+{activeTab === "manager-analytics" &&
+  (dataLoaded ? (
+    <ManagerAnalyticsRoute archiveRows={allPositionData} />
+  ) : (
+    <DataPlaceholder />
+  ))}
       </div>
 
       {/* Footer */}
