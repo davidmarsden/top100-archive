@@ -74,15 +74,6 @@ const sortCareerRows = (rows = []) =>
     return getDivision(a) - getDivision(b);
   });
 
-export const getManagerCareerRows = (managerName, archiveRows = [], statsRows = []) => {
-  const managerKey = normaliseName(managerName);
-  if (!managerKey) return [];
-
-  const { joinedRows } = joinArchiveRowsToStats(archiveRows, statsRows);
-
-  return sortCareerRows(joinedRows.filter((row) => rowHasManager(row, managerName)));
-};
-
 const canContinueSpell = (spell, row) => {
   const season = getSeason(row);
   if (!season || !spell.lastSeasonNumber) return false;
@@ -141,8 +132,7 @@ const buildClubSpells = (careerRows = []) => {
     .sort((a, b) => normaliseSeason(a.firstSeason) - normaliseSeason(b.firstSeason));
 };
 
-export const getManagerCareerSummary = (managerName, archiveRows = [], statsRows = []) => {
-  const careerRows = getManagerCareerRows(managerName, archiveRows, statsRows);
+const buildSummaryFromCareerRows = (managerName, careerRows = []) => {
   const clubs = [...new Set(careerRows.map(getClub).filter(Boolean))];
   const statsRowsMatched = careerRows.filter((row) => row.statsMatched);
   const clubSpells = buildClubSpells(careerRows);
@@ -187,9 +177,7 @@ export const getManagerCareerSummary = (managerName, archiveRows = [], statsRows
   };
 };
 
-export const getManagerValueAddedTable = (archiveRows = [], statsRows = [], options = {}) => {
-  const { minMatchedSeasons = 5 } = options;
-  const { joinedRows } = joinArchiveRowsToStats(archiveRows, statsRows);
+const groupJoinedRowsByManager = (joinedRows = []) => {
   const byManager = new Map();
 
   joinedRows.forEach((row) => {
@@ -198,6 +186,35 @@ export const getManagerValueAddedTable = (archiveRows = [], statsRows = [], opti
       byManager.get(manager).push(row);
     });
   });
+
+  return byManager;
+};
+
+export const getManagerCareerRows = (managerName, archiveRows = [], statsRows = []) => {
+  const managerKey = normaliseName(managerName);
+  if (!managerKey) return [];
+
+  const { joinedRows } = joinArchiveRowsToStats(archiveRows, statsRows);
+
+  return sortCareerRows(joinedRows.filter((row) => rowHasManager(row, managerName)));
+};
+
+export const getManagerCareerSummary = (managerName, archiveRows = [], statsRows = []) =>
+  buildSummaryFromCareerRows(managerName, getManagerCareerRows(managerName, archiveRows, statsRows));
+
+export const getAllManagerCareerSummaries = (archiveRows = [], statsRows = []) => {
+  const { joinedRows } = joinArchiveRowsToStats(archiveRows, statsRows);
+  const byManager = groupJoinedRowsByManager(joinedRows);
+
+  return [...byManager.entries()]
+    .map(([manager, rows]) => buildSummaryFromCareerRows(manager, sortCareerRows(rows)))
+    .sort((a, b) => a.manager.localeCompare(b.manager));
+};
+
+export const getManagerValueAddedTable = (archiveRows = [], statsRows = [], options = {}) => {
+  const { minMatchedSeasons = 5 } = options;
+  const { joinedRows } = joinArchiveRowsToStats(archiveRows, statsRows);
+  const byManager = groupJoinedRowsByManager(joinedRows);
 
   return [...byManager.entries()]
     .map(([manager, rows]) => {
