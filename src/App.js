@@ -4,7 +4,7 @@ import {
   Search,
 } from "lucide-react";
 import Charts from "./Charts";
-import ManagerProfiles from "./ManagerProfiles";
+import ManagerProfilesTab from "./components/ManagerProfilesTab";
 import Winners from "./Winners";
 import HistoryChartModal from "./components/HistoryChartModal";
 import ArchiveNavigation from "./components/ArchiveNavigation";
@@ -978,7 +978,7 @@ if (managersRes.ok) {
           (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
         {activeTab === "managers" &&
           (dataLoaded ? (
-            <ManagerProfiles allPositionData={allPositionData} winnersSet={playoffWinnersSet} />
+            <ManagerProfilesTab allPositionData={allPositionData} winnersSet={playoffWinnersSet} />
           ) : (
             <DataPlaceholder />
           ))}
