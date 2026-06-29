@@ -218,7 +218,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
               <div className="p-4 border-b">
                 <h3 className="text-lg font-bold">Club spell strength changes</h3>
                 <p className="text-sm text-gray-500">
-                  Inherited ETOT to last ETOT for each uninterrupted spell at a club.
+                  First known ETOT to last known ETOT for each uninterrupted spell at a club.
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -229,8 +229,8 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
                       <th className="text-right py-3 px-3">Seasons</th>
                       <th className="text-right py-3 px-3">From</th>
                       <th className="text-right py-3 px-3">To</th>
-                      <th className="text-right py-3 px-3">Inherited</th>
-                      <th className="text-right py-3 px-3">Last</th>
+                      <th className="text-right py-3 px-3">First known</th>
+                      <th className="text-right py-3 px-3">Last known</th>
                       <th className="text-right py-3 px-3">Highest</th>
                       <th className="text-right py-3 px-3">Net</th>
                     </tr>
