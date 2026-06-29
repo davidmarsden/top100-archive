@@ -1,14 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 const toNumber = (value) => {
   const n = Number(value);
@@ -22,38 +13,53 @@ const fmt = (value, digits = 2, prefix = "") => {
   return `${sign}${n.toFixed(digits)}`;
 };
 
-const TooltipContent = ({ active, payload }) => {
-  if (!active || !payload?.length) return null;
-  const row = payload[0].payload;
+const LegacyCard = ({ spell }) => {
+  const net = toNumber(spell.netStrengthGain);
+  const positive = net > 0;
+  const negative = net < 0;
+  const Icon = positive ? TrendingUp : negative ? TrendingDown : null;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-sm max-w-xs">
-      <div className="font-black text-gray-900 mb-1">{row.label}</div>
-      <div className="text-gray-600 space-y-0.5">
-        <div>Inherited ETOT: <strong>{fmt(row.inheritedStrength, 2)}</strong></div>
-        <div>Last ETOT: <strong>{fmt(row.lastStrength, 2)}</strong></div>
-        <div>Highest ETOT: <strong>{fmt(row.highestStrength, 2)}</strong></div>
-        <div>Net: <strong>{fmt(row.netStrengthGain, 2, "signed")}</strong></div>
-        <div>Seasons: <strong>{row.seasons}</strong></div>
+    <div className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h4 className="font-black text-gray-900">{spell.club}</h4>
+          <p className="text-xs text-gray-500">
+            S{spell.firstSeason}–S{spell.lastSeason} · {spell.seasons} season{spell.seasons === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className={`flex items-center gap-1 text-lg font-black ${positive ? "text-green-700" : negative ? "text-red-700" : "text-gray-700"}`}>
+          {Icon && <Icon className="w-5 h-5" />}
+          {fmt(net, 2, "signed")}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-sm">
+        <div>
+          <div className="text-gray-500">Inherited</div>
+          <div className="font-bold">{fmt(spell.inheritedStrength, 2)}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Peak</div>
+          <div className="font-bold">{fmt(spell.highestStrength, 2)}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Last</div>
+          <div className="font-bold">{fmt(spell.lastStrength, 2)}</div>
+        </div>
       </div>
     </div>
   );
 };
 
 const ManagerStrengthSpellChart = ({ summary }) => {
-  const chartData = useMemo(() => {
+  const spells = useMemo(() => {
     if (!summary?.clubSpells?.length) return [];
 
-    return summary.clubSpells
-      .filter((spell) => toNumber(spell.netStrengthGain) !== null)
-      .map((spell) => ({
-        ...spell,
-        label: `${spell.club} S${spell.firstSeason}–S${spell.lastSeason}`,
-        netStrengthGain: toNumber(spell.netStrengthGain),
-      }));
+    return summary.clubSpells.filter((spell) => toNumber(spell.netStrengthGain) !== null);
   }, [summary]);
 
-  if (!chartData.length) {
+  if (!spells.length) {
     return (
       <div className="bg-white rounded-xl shadow p-6 text-gray-500">
         No inherited/last strength data available for this manager yet.
@@ -64,23 +70,16 @@ const ManagerStrengthSpellChart = ({ summary }) => {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       <div className="p-4 border-b">
-        <h3 className="text-lg font-bold">Inherited vs last strength</h3>
+        <h3 className="text-lg font-bold">Club legacy cards</h3>
         <p className="text-sm text-gray-500">
-          Net ETOT change by club spell. Positive means the squad ended stronger than the first known inherited strength.
+          Inherited, peak and last known ETOT for each club spell. This answers whether the manager left clubs stronger or weaker.
         </p>
       </div>
 
-      <div className="p-4 h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 24, left: 90, bottom: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" tickFormatter={(value) => Number(value).toFixed(0)} />
-            <YAxis type="category" dataKey="label" width={120} tick={{ fontSize: 11 }} />
-            <ReferenceLine x={0} stroke="#6b7280" strokeDasharray="4 4" />
-            <Tooltip content={<TooltipContent />} />
-            <Bar dataKey="netStrengthGain" name="Net strength" radius={[4, 4, 4, 4]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="p-4 grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {spells.map((spell, index) => (
+          <LegacyCard key={`${spell.club}-${spell.firstSeason}-${index}`} spell={spell} />
+        ))}
       </div>
     </div>
   );
