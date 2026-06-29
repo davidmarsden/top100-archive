@@ -83,48 +83,62 @@ export const getManagerCareerRows = (managerName, archiveRows = [], statsRows = 
   return sortCareerRows(joinedRows.filter((row) => rowHasManager(row, managerName)));
 };
 
+const canContinueSpell = (spell, row) => {
+  const season = getSeason(row);
+  if (!season || !spell.lastSeasonNumber) return false;
+  return season <= spell.lastSeasonNumber + 1;
+};
+
 const buildClubSpells = (careerRows = []) => {
   const spells = [];
 
-  careerRows.forEach((row) => {
+  sortCareerRows(careerRows).forEach((row) => {
     const club = getClub(row);
-    const previous = spells[spells.length - 1];
+    const season = getSeason(row);
+    const existingSpell = [...spells]
+      .reverse()
+      .find((spell) => spell.club === club && canContinueSpell(spell, row));
 
-    if (!previous || previous.club !== club) {
-      spells.push({ club, rows: [row] });
+    if (existingSpell) {
+      existingSpell.rows.push(row);
+      existingSpell.lastSeasonNumber = Math.max(existingSpell.lastSeasonNumber || season, season || 0);
     } else {
-      previous.rows.push(row);
+      spells.push({ club, rows: [row], lastSeasonNumber: season || null });
     }
   });
 
-  return spells.map((spell) => {
-    const matchedRows = spell.rows.filter((row) => getKnownStrength(row) !== null);
-    const first = matchedRows[0] || null;
-    const last = matchedRows[matchedRows.length - 1] || null;
-    const inheritedStrength = first ? getKnownStrength(first) : null;
-    const lastStrength = last ? getKnownStrength(last) : null;
+  return spells
+    .map((spell) => {
+      const rows = sortCareerRows(spell.rows);
+      const matchedRows = rows.filter((row) => getKnownStrength(row) !== null);
+      const first = matchedRows[0] || null;
+      const last = matchedRows[matchedRows.length - 1] || null;
+      const inheritedStrength = first ? getKnownStrength(first) : null;
+      const lastStrength = last ? getKnownStrength(last) : null;
 
-    return {
-      club: spell.club,
-      seasons: spell.rows.length,
-      firstSeason: spell.rows[0]?.season || null,
-      lastSeason: spell.rows[spell.rows.length - 1]?.season || null,
-      firstKnownStrengthSeason: first?.season || null,
-      lastKnownStrengthSeason: last?.season || null,
-      rows: spell.rows,
-      inheritedStrength,
-      lastStrength,
-      netStrengthGain:
-        inheritedStrength !== null && lastStrength !== null ? round(lastStrength - inheritedStrength, 2) : null,
-      highestStrength: round(
-        matchedRows.reduce((max, row) => Math.max(max, getKnownStrength(row)), Number.NEGATIVE_INFINITY),
-        2
-      ),
-    };
-  }).map((spell) => ({
-    ...spell,
-    highestStrength: Number.isFinite(spell.highestStrength) ? spell.highestStrength : null,
-  }));
+      return {
+        club: spell.club,
+        seasons: rows.length,
+        firstSeason: rows[0]?.season || null,
+        lastSeason: rows[rows.length - 1]?.season || null,
+        firstKnownStrengthSeason: first?.season || null,
+        lastKnownStrengthSeason: last?.season || null,
+        rows,
+        inheritedStrength,
+        lastStrength,
+        netStrengthGain:
+          inheritedStrength !== null && lastStrength !== null ? round(lastStrength - inheritedStrength, 2) : null,
+        highestStrength: round(
+          matchedRows.reduce((max, row) => Math.max(max, getKnownStrength(row)), Number.NEGATIVE_INFINITY),
+          2
+        ),
+      };
+    })
+    .map((spell) => ({
+      ...spell,
+      highestStrength: Number.isFinite(spell.highestStrength) ? spell.highestStrength : null,
+    }))
+    .sort((a, b) => normaliseSeason(a.firstSeason) - normaliseSeason(b.firstSeason));
 };
 
 export const getManagerCareerSummary = (managerName, archiveRows = [], statsRows = []) => {
