@@ -5,6 +5,7 @@ import {
   getManagerOptions,
   getManagerValueAddedTable,
 } from "../analytics/managerAnalytics";
+import ManagerCareerEtotChart from "./ManagerCareerEtotChart";
 
 const fmt = (value, digits = 2, prefix = "") => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -189,6 +190,8 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
               hint="Sum of each club spell’s ETOT change"
             />
           </div>
+
+          <ManagerCareerEtotChart summary={summary} />
 
           {summary.clubSpells.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
