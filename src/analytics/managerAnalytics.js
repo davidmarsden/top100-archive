@@ -102,7 +102,7 @@ const buildClubSpells = (careerRows = []) => {
     const first = matchedRows[0] || null;
     const last = matchedRows[matchedRows.length - 1] || null;
     const inheritedStrength = first ? getKnownStrength(first) : null;
-    const leftStrength = last ? getKnownStrength(last) : null;
+    const lastStrength = last ? getKnownStrength(last) : null;
 
     return {
       club: spell.club,
@@ -113,9 +113,9 @@ const buildClubSpells = (careerRows = []) => {
       lastKnownStrengthSeason: last?.season || null,
       rows: spell.rows,
       inheritedStrength,
-      leftStrength,
+      lastStrength,
       netStrengthGain:
-        inheritedStrength !== null && leftStrength !== null ? round(leftStrength - inheritedStrength, 2) : null,
+        inheritedStrength !== null && lastStrength !== null ? round(lastStrength - inheritedStrength, 2) : null,
       highestStrength: round(
         matchedRows.reduce((max, row) => Math.max(max, getKnownStrength(row)), Number.NEGATIVE_INFINITY),
         2
@@ -216,4 +216,25 @@ export const getManagerValueAddedTable = (archiveRows = [], statsRows = [], opti
     })
     .filter((row) => row.statsMatched >= minMatchedSeasons)
     .sort((a, b) => b.averageVA - a.averageVA || b.totalVA - a.totalVA);
+};
+
+export const getManagerOptions = (archiveRows = []) => {
+  const byManager = new Map();
+
+  archiveRows.forEach((row) => {
+    splitManagerNames(row.manager).forEach((manager) => {
+      if (!byManager.has(manager)) byManager.set(manager, { manager, seasons: 0, clubs: new Set() });
+      const entry = byManager.get(manager);
+      entry.seasons += 1;
+      if (row.team || row.club) entry.clubs.add(row.team || row.club);
+    });
+  });
+
+  return [...byManager.values()]
+    .map((entry) => ({
+      manager: entry.manager,
+      seasons: entry.seasons,
+      clubsManaged: entry.clubs.size,
+    }))
+    .sort((a, b) => a.manager.localeCompare(b.manager));
 };
