@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ManagerAnalyticsTab from "./ManagerAnalyticsTab";
+import SuccessEvidencePanel from "./SuccessEvidencePanel";
 
 const PUBLIC_ARCHIVE_URL = "/data/statsArchive.json";
 const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
@@ -111,7 +112,12 @@ const ManagerAnalyticsRoute = ({ archiveRows = [] }) => {
     );
   }
 
-  return <ManagerAnalyticsTab archiveRows={archiveRows} statsRows={statsRows} honours={honours} />;
+  return (
+    <div className="space-y-8">
+      <ManagerAnalyticsTab archiveRows={archiveRows} statsRows={statsRows} />
+      <SuccessEvidencePanel archiveRows={archiveRows} statsRows={statsRows} honours={honours} />
+    </div>
+  );
 };
 
 export default ManagerAnalyticsRoute;
