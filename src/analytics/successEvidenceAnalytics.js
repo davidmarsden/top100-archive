@@ -43,20 +43,12 @@ const pearson = (pairs = []) => {
   });
 
   const denominator = Math.sqrt(xSq * ySq);
-  if (!denominator) return null;
-
-  return round(numerator / denominator, 3);
+  return denominator ? round(numerator / denominator, 3) : null;
 };
 
 const getSeason = (row) => String(row.season || "").trim();
 const getDivision = (row) => toNumberOrNull(row.division);
 const getPosition = (row) => toNumberOrNull(row.position ?? row.finalPositionFromStats ?? row.finalPosition);
-const getGlobalRank = (row) => {
-  const division = getDivision(row);
-  const position = getPosition(row);
-  if (division === null || position === null) return null;
-  return (division - 1) * 20 + position;
-};
 const getEtot = (row) => {
   const etot = toNumberOrNull(row.etot);
   return etot !== null && etot > 0 ? etot : null;
@@ -88,23 +80,41 @@ const isAutoSacked = (row) => {
   return position >= 18 && position <= 20;
 };
 
-const etotBand = (etot) => {
+const pct = (part, total) => (total ? round((part / total) * 100, 1) : null);
+
+const etotBand = (etot, width = 10) => {
   const n = toNumberOrNull(etot);
   if (n === null) return "Unknown";
-  if (n < 84) return "<84";
-  if (n >= 94) return "94+";
-  const start = Math.floor(n / 2) * 2;
-  return `${start}–${start + 1.99}`;
+  const start = Math.floor(n / width) * width;
+  return `${start}-${start + width - 1}`;
 };
 
 const bandSortValue = (band) => {
-  if (band === "Unknown") return 999;
-  if (band === "<84") return 0;
-  if (band === "94+") return 94;
-  return Number(String(band).split("–")[0]) || 0;
+  if (band === "Unknown") return 9999;
+  return Number(String(band).split("-")[0]) || 0;
 };
 
-const pct = (part, total) => (total ? round((part / total) * 100, 1) : null);
+const competitionFamily = (competition = "") => {
+  const key = normalise(competition);
+
+  if (key.includes("youth")) return "Youth";
+  if (key.includes("smfa") || key.includes("champions cup") || key.includes("champions league")) return "European";
+  if (key.includes("world club")) return "World";
+  if (key.includes("top 100") && (key.includes("cup") || key.includes("shield"))) return "Domestic";
+  if (key.includes("play") && key.includes("off")) return "Playoff";
+  if (key.includes("division") || key.includes("league") || key.includes("title")) return "League";
+  if (key.includes("cup") || key.includes("shield")) return "Other Cups";
+  return "Other";
+};
+
+const competitionType = (competition = "") => {
+  const key = normalise(competition);
+  if (key.includes("shield")) return "Shield";
+  if (key.includes("cup")) return "Cup";
+  if (key.includes("play") && key.includes("off")) return "Playoff";
+  if (key.includes("division") || key.includes("league") || key.includes("title")) return "League";
+  return "Other";
+};
 
 const buildHonoursLong = (rows = [], winnerKey) =>
   rows.flatMap((row) => {
@@ -120,20 +130,11 @@ const buildHonoursLong = (rows = [], winnerKey) =>
         season,
         competition,
         competitionKey: normalise(competition),
+        family: competitionFamily(competition),
+        type: competitionType(competition),
         [winnerKey]: String(value || "").trim(),
       }));
   });
-
-const classifyCompetition = (competition = "") => {
-  const key = normalise(competition);
-  if (key.includes("youth") && key.includes("shield")) return "Youth Shield";
-  if (key.includes("youth") && key.includes("cup")) return "Youth Cup";
-  if (key.includes("shield")) return "Shield";
-  if (key.includes("cup")) return "Cup";
-  if (key.includes("play") && key.includes("off")) return "Playoff";
-  if (key.includes("division") || key.includes("league") || key.includes("title")) return "League";
-  return competition || "Other";
-};
 
 const buildHonoursLookup = (clubHonours = [], managerHonours = []) => {
   const clubLong = buildHonoursLong(clubHonours, "club");
@@ -143,52 +144,42 @@ const buildHonoursLookup = (clubHonours = [], managerHonours = []) => {
   clubLong.forEach((honour) => {
     const key = `${honour.season}|${normalise(honour.club)}`;
     if (!clubBySeasonClub.has(key)) clubBySeasonClub.set(key, []);
-    clubBySeasonClub.get(key).push({
-      ...honour,
-      type: classifyCompetition(honour.competition),
-    });
+    clubBySeasonClub.get(key).push(honour);
   });
 
   const managerBySeasonManager = new Map();
   managerLong.forEach((honour) => {
     const key = `${honour.season}|${normalise(honour.manager)}`;
     if (!managerBySeasonManager.has(key)) managerBySeasonManager.set(key, []);
-    managerBySeasonManager.get(key).push({
-      ...honour,
-      type: classifyCompetition(honour.competition),
-    });
+    managerBySeasonManager.get(key).push(honour);
   });
 
-  return {
-    clubLong,
-    managerLong,
-    clubBySeasonClub,
-    managerBySeasonManager,
-  };
+  return { clubLong, managerLong, clubBySeasonClub, managerBySeasonManager };
 };
 
 const addHonoursToRows = (joinedRows = [], honoursLookup) =>
   joinedRows.map((row) => {
     const season = getSeason(row);
-    const club = normalise(getClub(row));
-    const clubHonours = honoursLookup.clubBySeasonClub.get(`${season}|${club}`) || [];
-    const managerNames = String(row.manager || "")
+    const clubHonours = honoursLookup.clubBySeasonClub.get(`${season}|${normalise(getClub(row))}`) || [];
+    const managerHonours = String(row.manager || "")
       .split("/")
       .map(normalise)
-      .filter(Boolean);
-    const managerHonours = managerNames.flatMap(
-      (manager) => honoursLookup.managerBySeasonManager.get(`${season}|${manager}`) || []
-    );
+      .filter(Boolean)
+      .flatMap((manager) => honoursLookup.managerBySeasonManager.get(`${season}|${manager}`) || []);
+
     const honours = [...clubHonours, ...managerHonours];
-    const honourTypes = [...new Set(honours.map((honour) => honour.type))];
+    const honourFamilies = [...new Set(honours.map((honour) => honour.family))];
 
     return {
       ...row,
       honours,
-      honourTypes,
+      honourFamilies,
       hasHonour: honours.length > 0,
-      hasCupHonour: honourTypes.some((type) => ["Cup", "Shield", "Youth Cup", "Youth Shield"].includes(type)),
-      hasYouthHonour: honourTypes.some((type) => type.includes("Youth")),
+      hasEuropeanHonour: honourFamilies.includes("European"),
+      hasWorldHonour: honourFamilies.includes("World"),
+      hasDomesticHonour: honourFamilies.includes("Domestic"),
+      hasYouthHonour: honourFamilies.includes("Youth"),
+      hasCupHonour: honourFamilies.some((family) => ["European", "World", "Domestic", "Youth", "Other Cups"].includes(family)),
     };
   });
 
@@ -204,14 +195,15 @@ const summarizeOutcomeBands = (rows = []) => {
         band,
         samples: 0,
         etots: [],
-        ranks: [],
         finishes: [],
         titles: 0,
         topFour: 0,
         promotionContenders: 0,
         relegations: 0,
         sackings: 0,
-        cupHonours: 0,
+        europeanHonours: 0,
+        worldHonours: 0,
+        domesticHonours: 0,
         youthHonours: 0,
       });
     }
@@ -219,14 +211,15 @@ const summarizeOutcomeBands = (rows = []) => {
     const entry = byBand.get(band);
     entry.samples += 1;
     entry.etots.push(etot);
-    entry.ranks.push(getGlobalRank(row));
     entry.finishes.push(getPosition(row));
     if (isChampion(row)) entry.titles += 1;
     if (isTopFour(row)) entry.topFour += 1;
     if (isPromotionContender(row)) entry.promotionContenders += 1;
     if (isRelegated(row)) entry.relegations += 1;
     if (isAutoSacked(row)) entry.sackings += 1;
-    if (row.hasCupHonour) entry.cupHonours += 1;
+    if (row.hasEuropeanHonour) entry.europeanHonours += 1;
+    if (row.hasWorldHonour) entry.worldHonours += 1;
+    if (row.hasDomesticHonour) entry.domesticHonours += 1;
     if (row.hasYouthHonour) entry.youthHonours += 1;
   });
 
@@ -234,138 +227,133 @@ const summarizeOutcomeBands = (rows = []) => {
     .map((entry) => ({
       ...entry,
       averageETOT: round(average(entry.etots), 2),
-      averageRank: round(average(entry.ranks), 2),
       averageFinish: round(average(entry.finishes), 2),
       titleRate: pct(entry.titles, entry.samples),
       topFourRate: pct(entry.topFour, entry.samples),
       promotionRate: pct(entry.promotionContenders, entry.samples),
       relegationRate: pct(entry.relegations, entry.samples),
       sackingRate: pct(entry.sackings, entry.samples),
-      cupHonourRate: pct(entry.cupHonours, entry.samples),
-      youthHonourRate: pct(entry.youthHonours, entry.samples),
+      europeanRate: pct(entry.europeanHonours, entry.samples),
+      worldRate: pct(entry.worldHonours, entry.samples),
+      domesticRate: pct(entry.domesticHonours, entry.samples),
+      youthRate: pct(entry.youthHonours, entry.samples),
     }))
     .sort((a, b) => bandSortValue(a.band) - bandSortValue(b.band));
 };
 
-const summarizeTrophyEfficiency = (rows = []) => {
+const honourWeight = (honour) => {
+  if (honour.family === "League") return 3;
+  if (honour.family === "European") return 3;
+  if (honour.family === "World") return 3;
+  if (honour.family === "Domestic") return 2;
+  if (honour.family === "Youth") return 1;
+  if (honour.family === "Other Cups") return 1;
+  return 0;
+};
+
+const summarizeTrophyConversion = (rows = []) => {
   const byManager = new Map();
 
   rows.forEach((row) => {
-    const managers = String(row.manager || "")
+    String(row.manager || "")
       .split("/")
       .map((name) => String(name || "").trim())
-      .filter(Boolean);
-    if (!managers.length) return;
+      .filter(Boolean)
+      .forEach((manager) => {
+        if (!byManager.has(manager)) {
+          byManager.set(manager, {
+            manager,
+            seasons: 0,
+            etots: [],
+            pvas: [],
+            leagueTitles: 0,
+            european: 0,
+            world: 0,
+            domestic: 0,
+            youth: 0,
+            otherCups: 0,
+            honourScore: 0,
+          });
+        }
 
-    managers.forEach((manager) => {
-      if (!byManager.has(manager)) {
-        byManager.set(manager, {
-          manager,
-          seasons: 0,
-          etots: [],
-          pvas: [],
-          titles: 0,
-          cupHonours: 0,
-          youthHonours: 0,
-          totalHonours: 0,
+        const entry = byManager.get(manager);
+        entry.seasons += 1;
+        entry.etots.push(getEtot(row));
+        entry.pvas.push(getPva(row));
+        if (isChampion(row)) {
+          entry.leagueTitles += 1;
+          entry.honourScore += 3;
+        }
+        (row.honours || []).forEach((honour) => {
+          if (honour.family === "European") entry.european += 1;
+          if (honour.family === "World") entry.world += 1;
+          if (honour.family === "Domestic") entry.domestic += 1;
+          if (honour.family === "Youth") entry.youth += 1;
+          if (honour.family === "Other Cups") entry.otherCups += 1;
+          entry.honourScore += honourWeight(honour);
         });
-      }
-
-      const entry = byManager.get(manager);
-      entry.seasons += 1;
-      entry.etots.push(getEtot(row));
-      entry.pvas.push(getPva(row));
-      if (isChampion(row)) entry.titles += 1;
-      if (row.hasCupHonour) entry.cupHonours += 1;
-      if (row.hasYouthHonour) entry.youthHonours += 1;
-      entry.totalHonours += row.honours?.length || 0;
-    });
+      });
   });
 
   return [...byManager.values()]
     .map((entry) => {
-      const avgETOT = round(average(entry.etots), 2);
-      const avgPVA = round(average(entry.pvas), 3);
-      const honourScore = entry.titles * 3 + entry.cupHonours * 2 + entry.youthHonours;
+      const averageETOT = round(average(entry.etots), 2);
+      const scorePerSeason = entry.seasons ? round(entry.honourScore / entry.seasons, 3) : null;
       return {
         ...entry,
-        averageETOT: avgETOT,
-        averagePVA: avgPVA,
-        honourScore,
-        honoursPerSeason: round(entry.totalHonours / entry.seasons, 3),
-        trophyEfficiency: avgETOT ? round((honourScore / entry.seasons) / avgETOT, 4) : null,
+        averageETOT,
+        averagePVA: round(average(entry.pvas), 3),
+        scorePerSeason,
+        trophyConversion: averageETOT ? round(scorePerSeason / averageETOT, 5) : null,
       };
     })
-    .filter((entry) => entry.seasons >= 3 && entry.honourScore > 0)
-    .sort((a, b) => b.trophyEfficiency - a.trophyEfficiency || b.honourScore - a.honourScore)
-    .slice(0, 20);
+    .filter((entry) => entry.seasons >= 3)
+    .sort((a, b) => b.trophyConversion - a.trophyConversion || b.honourScore - a.honourScore);
 };
 
-const summarizeCupSpecialists = (rows = []) => {
+const summarizeCupFamilies = (rows = []) => {
   const byManager = new Map();
 
   rows.forEach((row) => {
-    const managers = String(row.manager || "")
+    String(row.manager || "")
       .split("/")
       .map((name) => String(name || "").trim())
-      .filter(Boolean);
-    if (!managers.length) return;
-
-    managers.forEach((manager) => {
-      if (!byManager.has(manager)) {
-        byManager.set(manager, {
-          manager,
-          seasons: 0,
-          leagueTitles: 0,
-          cup: 0,
-          shield: 0,
-          youthCup: 0,
-          youthShield: 0,
+      .filter(Boolean)
+      .forEach((manager) => {
+        if (!byManager.has(manager)) {
+          byManager.set(manager, { manager, european: 0, world: 0, domestic: 0, youth: 0, otherCups: 0 });
+        }
+        const entry = byManager.get(manager);
+        (row.honours || []).forEach((honour) => {
+          if (honour.family === "European") entry.european += 1;
+          if (honour.family === "World") entry.world += 1;
+          if (honour.family === "Domestic") entry.domestic += 1;
+          if (honour.family === "Youth") entry.youth += 1;
+          if (honour.family === "Other Cups") entry.otherCups += 1;
         });
-      }
-
-      const entry = byManager.get(manager);
-      entry.seasons += 1;
-      if (isChampion(row)) entry.leagueTitles += 1;
-      (row.honourTypes || []).forEach((type) => {
-        if (type === "Cup") entry.cup += 1;
-        if (type === "Shield") entry.shield += 1;
-        if (type === "Youth Cup") entry.youthCup += 1;
-        if (type === "Youth Shield") entry.youthShield += 1;
       });
-    });
   });
 
   return [...byManager.values()]
-    .map((entry) => ({
-      ...entry,
-      cupTotal: entry.cup + entry.shield + entry.youthCup + entry.youthShield,
-      youthTotal: entry.youthCup + entry.youthShield,
-    }))
-    .filter((entry) => entry.cupTotal > 0)
-    .sort((a, b) => b.cupTotal - a.cupTotal || b.youthTotal - a.youthTotal || a.manager.localeCompare(b.manager))
-    .slice(0, 20);
+    .map((entry) => ({ ...entry, total: entry.european + entry.world + entry.domestic + entry.youth + entry.otherCups }))
+    .filter((entry) => entry.total > 0)
+    .sort((a, b) => b.total - a.total || b.youth - a.youth || a.manager.localeCompare(b.manager));
 };
 
-const summarizeCupHonoursByCompetition = (honoursLookup) => {
-  const all = [...honoursLookup.clubLong, ...honoursLookup.managerLong].map((honour) => ({
-    ...honour,
-    type: classifyCompetition(honour.competition),
-  }));
-  const byType = new Map();
+const summarizeHonoursCoverage = (honoursLookup) => {
+  const all = [...honoursLookup.clubLong, ...honoursLookup.managerLong];
+  const byFamily = new Map();
 
   all.forEach((honour) => {
-    if (!byType.has(honour.type)) {
-      byType.set(honour.type, { type: honour.type, honours: 0, seasons: new Set() });
-    }
-    const entry = byType.get(honour.type);
-    entry.honours += 1;
+    if (!byFamily.has(honour.family)) byFamily.set(honour.family, { family: honour.family, records: 0, seasons: new Set() });
+    const entry = byFamily.get(honour.family);
+    entry.records += 1;
     entry.seasons.add(honour.season);
   });
 
-  return [...byType.values()]
+  return [...byFamily.values()]
     .map((entry) => ({ ...entry, seasons: entry.seasons.size }))
-    .sort((a, b) => b.honours - a.honours || a.type.localeCompare(b.type));
+    .sort((a, b) => b.records - a.records || a.family.localeCompare(b.family));
 };
 
 export const buildSuccessEvidence = (archiveRows = [], statsRows = [], honours = {}) => {
@@ -373,39 +361,6 @@ export const buildSuccessEvidence = (archiveRows = [], statsRows = [], honours =
   const honoursLookup = buildHonoursLookup(honours.clubHonours || [], honours.managerHonours || []);
   const evidenceRows = addHonoursToRows(joinedRows, honoursLookup);
   const matchedRows = evidenceRows.filter((row) => getEtot(row) !== null);
-
-  const correlations = [
-    {
-      id: "etot-rank",
-      label: "ETOT vs global rank",
-      value: pearson(matchedRows.map((row) => [getEtot(row), getGlobalRank(row)])),
-      note: "Negative means stronger squads tend to finish higher in the whole Top 100 pyramid.",
-    },
-    {
-      id: "etot-finish",
-      label: "ETOT vs divisional finish",
-      value: pearson(matchedRows.map((row) => [getEtot(row), getPosition(row)])),
-      note: "Negative means stronger squads tend to finish nearer 1st within their division.",
-    },
-    {
-      id: "etot-pva",
-      label: "ETOT vs PVA",
-      value: pearson(matchedRows.map((row) => [getEtot(row), getPva(row)])),
-      note: "Shows whether strong squads also overperform, or whether PVA is spread across squad strengths.",
-    },
-    {
-      id: "pva-rank",
-      label: "PVA vs global rank",
-      value: pearson(matchedRows.map((row) => [getPva(row), getGlobalRank(row)])),
-      note: "Negative should be expected: better-than-expected seasons usually land higher.",
-    },
-    {
-      id: "va-rank",
-      label: "VA vs global rank",
-      value: pearson(matchedRows.map((row) => [getVa(row), getGlobalRank(row)])),
-      note: "Value added expressed against finishing rank rather than PVA weighting.",
-    },
-  ];
 
   const titleRows = matchedRows.filter(isChampion);
   const cupRows = matchedRows.filter((row) => row.hasCupHonour);
@@ -415,11 +370,36 @@ export const buildSuccessEvidence = (archiveRows = [], statsRows = [], honours =
     rowCount: evidenceRows.length,
     matchedRowCount: matchedRows.length,
     honoursRowCount: honoursLookup.clubLong.length + honoursLookup.managerLong.length,
-    correlations,
+    correlations: [
+      {
+        id: "etot-finish",
+        label: "ETOT vs divisional finish",
+        value: pearson(matchedRows.map((row) => [getEtot(row), getPosition(row)])),
+        note: "Negative means stronger squads tend to finish nearer 1st within their own division.",
+      },
+      {
+        id: "pva-finish",
+        label: "PVA vs divisional finish",
+        value: pearson(matchedRows.map((row) => [getPva(row), getPosition(row)])),
+        note: "Shows whether expectation-beating seasons translate into better league finishes.",
+      },
+      {
+        id: "va-finish",
+        label: "VA vs divisional finish",
+        value: pearson(matchedRows.map((row) => [getVa(row), getPosition(row)])),
+        note: "Value added against divisional placing, avoiding the pyramid-structure distortion.",
+      },
+      {
+        id: "etot-pva",
+        label: "ETOT vs PVA",
+        value: pearson(matchedRows.map((row) => [getEtot(row), getPva(row)])),
+        note: "Near zero is useful: it suggests PVA is not simply rewarding stronger squads.",
+      },
+    ],
     outcomeBands: summarizeOutcomeBands(matchedRows),
-    trophyEfficiency: summarizeTrophyEfficiency(matchedRows),
-    cupSpecialists: summarizeCupSpecialists(matchedRows),
-    cupHonoursByCompetition: summarizeCupHonoursByCompetition(honoursLookup),
+    trophyConversion: summarizeTrophyConversion(matchedRows),
+    cupFamilies: summarizeCupFamilies(matchedRows),
+    honoursCoverage: summarizeHonoursCoverage(honoursLookup),
     headlineAverages: {
       allAverageETOT: round(average(matchedRows.map(getEtot)), 2),
       titleAverageETOT: round(average(titleRows.map(getEtot)), 2),
