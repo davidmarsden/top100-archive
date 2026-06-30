@@ -23,6 +23,12 @@ const fmt = (value, digits = 2, prefix = "") => {
   return `${sign}${n.toFixed(digits)}`;
 };
 
+const etotSourceLabel = (source) => {
+  if (source === "reconstructed") return "reconstructed";
+  if (source === "published") return "published";
+  return "unknown source";
+};
+
 const isKnownStrength = (value) => {
   const n = toNumber(value);
   return n !== null && n > 0;
@@ -62,9 +68,9 @@ const CustomTooltip = ({ active, payload }) => {
         S{row.season} · {row.club}
       </div>
       <div className="text-gray-600 space-y-0.5">
-        <div>ETOT: <strong>{fmt(row.etot, 2)}</strong></div>
-        <div>Inherited: <strong>{fmt(row.inheritedStrength, 2)}</strong></div>
-        <div>Net from inherited: <strong>{fmt(row.netFromInherited, 2, "signed")}</strong></div>
+        <div>ETOT: <strong>{fmt(row.etot, 2)}</strong> <span className="text-xs text-gray-400">({etotSourceLabel(row.etotSource)})</span></div>
+        <div>First known ETOT: <strong>{fmt(row.inheritedStrength, 2)}</strong></div>
+        <div>Net from first known: <strong>{fmt(row.netFromInherited, 2, "signed")}</strong></div>
         <div>Highest in spell: <strong>{fmt(row.highestStrength, 2)}</strong></div>
         <div>Predicted: <strong>{row.predictedPosition ?? "—"}</strong></div>
         <div>Finished: <strong>{row.position ?? row.finalPositionFromStats ?? "—"}</strong></div>
@@ -208,7 +214,7 @@ const ManagerCareerEtotChart = ({ summary }) => {
       <div className="p-4 border-b">
         <h3 className="text-lg font-bold">Career ETOT graph</h3>
         <p className="text-sm text-gray-500">
-          Squad strength over time. Segment colour shows season-to-season movement; dashed lines mark inherited strength and club spell starts.
+          Estimated total team strength over time. Missing published ETOT is reconstructed from GK, DEF, MID, ATT and Top 18 when available.
         </p>
       </div>
 
@@ -256,7 +262,7 @@ const ManagerCareerEtotChart = ({ summary }) => {
             <Line
               type="stepAfter"
               dataKey="inheritedStrength"
-              name="Inherited ETOT"
+              name="First known ETOT"
               stroke="#9ca3af"
               strokeWidth={2}
               strokeDasharray="6 6"

@@ -16,6 +16,25 @@ code {
     monospace;
 }
 
+/* Keep native dropdown menus readable in browser/app dark modes. */
+select {
+  color: #111827;
+  font-weight: 600;
+  color-scheme: light;
+}
+
+select option {
+  color: #111827;
+  background-color: #ffffff;
+  font-weight: 500;
+}
+
+select option:checked {
+  color: #111827;
+  background-color: #ede9fe;
+  font-weight: 700;
+}
+
 /* Ensure Tailwind works properly */
 @tailwind base;
 @tailwind components;

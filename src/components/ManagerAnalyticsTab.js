@@ -1,11 +1,18 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, Search, TrendingDown, TrendingUp, Trophy, Users } from "lucide-react";
 import {
+  getAllManagerCareerSummaries,
   getManagerCareerSummary,
   getManagerOptions,
   getManagerValueAddedTable,
 } from "../analytics/managerAnalytics";
 import ManagerCareerEtotChart from "./ManagerCareerEtotChart";
+import ManagerCareerSummaryCard from "./ManagerCareerSummaryCard";
+import ManagerCareerVaPvaChart from "./ManagerCareerVaPvaChart";
+import ManagerComparisonPanel from "./ManagerComparisonPanel";
+import ManagerSpellSummaryCards from "./ManagerSpellSummaryCards";
+import ManagerStrengthSpellChart from "./ManagerStrengthSpellChart";
+import SimilarManagersPanel from "./SimilarManagersPanel";
 
 const fmt = (value, digits = 2, prefix = "") => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -82,8 +89,14 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [managerQuery, setManagerQuery] = useState("");
   const [leaderboardLimit, setLeaderboardLimit] = useState(20);
   const [minMatchedSeasons, setMinMatchedSeasons] = useState(5);
+  const [comparisonManagers, setComparisonManagers] = useState(["", ""]);
 
   const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
+
+  const allManagerSummaries = useMemo(
+    () => getAllManagerCareerSummaries(archiveRows, statsRows),
+    [archiveRows, statsRows]
+  );
 
   const valueAddedTable = useMemo(
     () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons }),
@@ -114,8 +127,10 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const selectedManager = managerQuery.trim();
 
   const summary = useMemo(
-    () => getManagerCareerSummary(selectedManager, archiveRows, statsRows),
-    [selectedManager, archiveRows, statsRows]
+    () =>
+      allManagerSummaries.find((item) => item.manager === selectedManager) ||
+      getManagerCareerSummary(selectedManager, archiveRows, statsRows),
+    [selectedManager, allManagerSummaries, archiveRows, statsRows]
   );
 
   const careerRowsForDisplay = useMemo(
@@ -176,6 +191,8 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         </div>
       ) : (
         <>
+          <ManagerCareerSummaryCard summary={summary} />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Seasons" value={summary.seasons} />
             <StatCard label="Clubs" value={summary.clubsManaged} hint={summary.clubs.join(", ")} />
@@ -191,14 +208,32 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
             />
           </div>
 
-          <ManagerCareerEtotChart summary={summary} />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-xl font-black text-gray-900">Career performance</h3>
+              <p className="text-sm text-gray-500">
+                Strength, expectation-beating and club-building viewed together.
+              </p>
+            </div>
+            <ManagerCareerEtotChart summary={summary} />
+            <ManagerCareerVaPvaChart summary={summary} />
+            <ManagerStrengthSpellChart summary={summary} />
+          </div>
+
+          <ManagerSpellSummaryCards summary={summary} />
+
+          <SimilarManagersPanel
+            summary={summary}
+            allSummaries={allManagerSummaries}
+            onSelectManager={setManagerQuery}
+          />
 
           {summary.clubSpells.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="p-4 border-b">
                 <h3 className="text-lg font-bold">Club spell strength changes</h3>
                 <p className="text-sm text-gray-500">
-                  Inherited ETOT to last ETOT for each uninterrupted spell at a club.
+                  First known ETOT to last known ETOT for each uninterrupted spell at a club.
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -209,8 +244,8 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
                       <th className="text-right py-3 px-3">Seasons</th>
                       <th className="text-right py-3 px-3">From</th>
                       <th className="text-right py-3 px-3">To</th>
-                      <th className="text-right py-3 px-3">Inherited</th>
-                      <th className="text-right py-3 px-3">Last</th>
+                      <th className="text-right py-3 px-3">First known</th>
+                      <th className="text-right py-3 px-3">Last known</th>
                       <th className="text-right py-3 px-3">Highest</th>
                       <th className="text-right py-3 px-3">Net</th>
                     </tr>
@@ -321,6 +356,14 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
           </div>
         </>
       )}
+
+      <ManagerComparisonPanel
+        managerOptions={managerOptions}
+        comparisonManagers={comparisonManagers}
+        setComparisonManagers={setComparisonManagers}
+        archiveRows={archiveRows}
+        statsRows={statsRows}
+      />
 
       <div className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>

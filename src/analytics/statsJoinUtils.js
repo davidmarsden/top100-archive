@@ -1,4 +1,5 @@
 import { buildCanonicalClubMap, canonicalClubName, normaliseClub } from "../data/clubNameUtils";
+import { getEtotWithSource } from "./etotUtils";
 
 export const toNumberOrNull = (value) => {
   const n = Number(value);
@@ -55,6 +56,7 @@ export const joinArchiveRowsToStats = (archiveRows = [], statsRows = []) => {
   const joinedRows = archiveRows.map((archiveRow) => {
     const key = buildStatsRowKey(archiveRow, canonicalNameMap);
     const statsRow = key ? lookup.get(key) || null : null;
+    const { etot, etotSource, reconstructedEtot } = getEtotWithSource(statsRow || {});
 
     return {
       ...archiveRow,
@@ -65,7 +67,13 @@ export const joinArchiveRowsToStats = (archiveRows = [], statsRows = []) => {
       finalPositionFromStats: toNumberOrNull(statsRow?.finalPosition),
       valueAdded: toNumberOrNull(statsRow?.valueAdded),
       pva: toNumberOrNull(statsRow?.pva),
-      etot: toNumberOrNull(statsRow?.etot),
+      etot,
+      etotSource,
+      reconstructedEtot,
+      gk: toNumberOrNull(statsRow?.gk),
+      def: toNumberOrNull(statsRow?.def),
+      mid: toNumberOrNull(statsRow?.mid),
+      att: toNumberOrNull(statsRow?.att),
       average: toNumberOrNull(statsRow?.average),
       top18: toNumberOrNull(statsRow?.top18),
     };
@@ -73,6 +81,8 @@ export const joinArchiveRowsToStats = (archiveRows = [], statsRows = []) => {
 
   const matchedCount = joinedRows.filter((row) => row.statsMatched).length;
   const unmatchedArchiveRows = joinedRows.filter((row) => !row.statsMatched);
+  const reconstructedEtotCount = joinedRows.filter((row) => row.etotSource === "reconstructed").length;
+  const publishedEtotCount = joinedRows.filter((row) => row.etotSource === "published").length;
 
   return {
     joinedRows,
@@ -80,5 +90,7 @@ export const joinArchiveRowsToStats = (archiveRows = [], statsRows = []) => {
     unmatchedArchiveRows,
     duplicateStatsRows: duplicates,
     matchRate: joinedRows.length ? matchedCount / joinedRows.length : 0,
+    reconstructedEtotCount,
+    publishedEtotCount,
   };
 };
