@@ -64,7 +64,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
           <StatCard label="Matched stat seasons" value={evidence.matchedRowCount} hint={`${evidence.rowCount} history rows joined`} />
           <StatCard label="Honours records" value={evidence.honoursRowCount} hint="Club + manager honours rows" />
           <StatCard label="Title avg ETOT" value={fmt(evidence.headlineAverages.titleAverageETOT, 2)} hint={`All matched avg ${fmt(evidence.headlineAverages.allAverageETOT, 2)}`} />
-          <StatCard label="Cup avg ETOT" value={fmt(evidence.headlineAverages.cupAverageETOT, 2)} hint="Cup, Shield and youth honours" />
+          <StatCard label="Youth avg ETOT" value={fmt(evidence.headlineAverages.youthAverageETOT, 2)} hint="Useful mainly as a rebuild signal" />
         </div>
 
         <div className="px-5 pb-5 grid lg:grid-cols-2 gap-3">
@@ -77,7 +77,9 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
           <h3 className="text-lg font-bold flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-600" /> ETOT success curve
           </h3>
-          <p className="text-sm text-gray-500">Squad-strength bands against league and honours outcomes.</p>
+          <p className="text-sm text-gray-500">
+            Malcolm&apos;s ETOT is total squad strength, so bands are 10-point squad-strength ranges rather than player-rating ranges.
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -85,13 +87,15 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
               <tr>
                 <th className="text-left py-3 px-3">ETOT band</th>
                 <th className="text-right py-3 px-3">Samples</th>
-                <th className="text-right py-3 px-3">Avg rank</th>
+                <th className="text-right py-3 px-3">Avg finish</th>
                 <th className="text-right py-3 px-3">Title %</th>
                 <th className="text-right py-3 px-3">Top 4 %</th>
                 <th className="text-right py-3 px-3">Promo race %</th>
                 <th className="text-right py-3 px-3">Relegation %</th>
-                <th className="text-right py-3 px-3">Cup honour %</th>
-                <th className="text-right py-3 px-3">Youth honour %</th>
+                <th className="text-right py-3 px-3">European %</th>
+                <th className="text-right py-3 px-3">World %</th>
+                <th className="text-right py-3 px-3">Domestic %</th>
+                <th className="text-right py-3 px-3">Youth %</th>
               </tr>
             </thead>
             <tbody>
@@ -99,17 +103,19 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                 <tr key={row.band} className="border-t">
                   <td className="py-3 px-3 font-black">{row.band}</td>
                   <td className="py-3 px-3 text-right">{row.samples}</td>
-                  <td className="py-3 px-3 text-right">{fmt(row.averageRank, 2)}</td>
+                  <td className="py-3 px-3 text-right">{fmt(row.averageFinish, 2)}</td>
                   <td className="py-3 px-3 text-right font-semibold">{pct(row.titleRate)}</td>
                   <td className="py-3 px-3 text-right">{pct(row.topFourRate)}</td>
                   <td className="py-3 px-3 text-right">{pct(row.promotionRate)}</td>
                   <td className="py-3 px-3 text-right">{pct(row.relegationRate)}</td>
-                  <td className="py-3 px-3 text-right">{pct(row.cupHonourRate)}</td>
-                  <td className="py-3 px-3 text-right">{pct(row.youthHonourRate)}</td>
+                  <td className="py-3 px-3 text-right">{pct(row.europeanRate)}</td>
+                  <td className="py-3 px-3 text-right">{pct(row.worldRate)}</td>
+                  <td className="py-3 px-3 text-right">{pct(row.domesticRate)}</td>
+                  <td className="py-3 px-3 text-right">{pct(row.youthRate)}</td>
                 </tr>
               ))}
               {!evidence.outcomeBands.length && (
-                <tr><td colSpan="9" className="py-8 text-center text-gray-500">No matched ETOT data available yet.</td></tr>
+                <tr><td colSpan="11" className="py-8 text-center text-gray-500">No matched ETOT data available yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -120,9 +126,11 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold flex items-center gap-2">
-              <Medal className="w-5 h-5 text-purple-600" /> Trophy efficiency
+              <Medal className="w-5 h-5 text-purple-600" /> Silverware conversion
             </h3>
-            <p className="text-sm text-gray-500">Managers converting squad strength into silverware.</p>
+            <p className="text-sm text-gray-500">
+              Formula: honour score per season divided by average ETOT. League, European and World wins = 3; Domestic = 2; Youth/other cups = 1.
+            </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -131,22 +139,24 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                   <th className="text-left py-3 px-3">Manager</th>
                   <th className="text-right py-3 px-3">Seasons</th>
                   <th className="text-right py-3 px-3">Avg ETOT</th>
-                  <th className="text-right py-3 px-3">Honour score</th>
-                  <th className="text-right py-3 px-3">Efficiency</th>
+                  <th className="text-right py-3 px-3">Score</th>
+                  <th className="text-right py-3 px-3">Score/season</th>
+                  <th className="text-right py-3 px-3">Conversion</th>
                 </tr>
               </thead>
               <tbody>
-                {evidence.trophyEfficiency.map((row) => (
+                {evidence.trophyConversion.slice(0, 30).map((row) => (
                   <tr key={row.manager} className="border-t">
                     <td className="py-3 px-3 font-semibold">{row.manager}</td>
                     <td className="py-3 px-3 text-right">{row.seasons}</td>
                     <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 2)}</td>
                     <td className="py-3 px-3 text-right font-bold">{row.honourScore}</td>
-                    <td className="py-3 px-3 text-right font-black text-purple-700">{fmt(row.trophyEfficiency, 4)}</td>
+                    <td className="py-3 px-3 text-right">{fmt(row.scorePerSeason, 3)}</td>
+                    <td className="py-3 px-3 text-right font-black text-purple-700">{fmt(row.trophyConversion, 5)}</td>
                   </tr>
                 ))}
-                {!evidence.trophyEfficiency.length && (
-                  <tr><td colSpan="5" className="py-8 text-center text-gray-500">No trophy efficiency rows yet.</td></tr>
+                {!evidence.trophyConversion.length && (
+                  <tr><td colSpan="6" className="py-8 text-center text-gray-500">No silverware conversion rows yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -156,39 +166,55 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-600" /> Cup specialists
+              <Shield className="w-5 h-5 text-blue-600" /> Cup specialists by competition family
             </h3>
-            <p className="text-sm text-gray-500">Cup, Shield, Youth Cup and Youth Shield wins by manager.</p>
+            <p className="text-sm text-gray-500">
+              European, World, Domestic and Youth cups are separated because they test different things.
+            </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <th className="text-left py-3 px-3">Manager</th>
-                  <th className="text-right py-3 px-3">Cup</th>
-                  <th className="text-right py-3 px-3">Shield</th>
-                  <th className="text-right py-3 px-3">Youth Cup</th>
-                  <th className="text-right py-3 px-3">Youth Shield</th>
+                  <th className="text-right py-3 px-3">European</th>
+                  <th className="text-right py-3 px-3">World</th>
+                  <th className="text-right py-3 px-3">Domestic</th>
+                  <th className="text-right py-3 px-3">Youth</th>
+                  <th className="text-right py-3 px-3">Other</th>
                   <th className="text-right py-3 px-3">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {evidence.cupSpecialists.map((row) => (
+                {evidence.cupFamilies.slice(0, 30).map((row) => (
                   <tr key={row.manager} className="border-t">
                     <td className="py-3 px-3 font-semibold">{row.manager}</td>
-                    <td className="py-3 px-3 text-right">{row.cup}</td>
-                    <td className="py-3 px-3 text-right">{row.shield}</td>
-                    <td className="py-3 px-3 text-right font-bold">{row.youthCup}</td>
-                    <td className="py-3 px-3 text-right">{row.youthShield}</td>
-                    <td className="py-3 px-3 text-right font-black">{row.cupTotal}</td>
+                    <td className="py-3 px-3 text-right font-semibold">{row.european}</td>
+                    <td className="py-3 px-3 text-right font-semibold">{row.world}</td>
+                    <td className="py-3 px-3 text-right font-semibold">{row.domestic}</td>
+                    <td className="py-3 px-3 text-right font-bold">{row.youth}</td>
+                    <td className="py-3 px-3 text-right">{row.otherCups}</td>
+                    <td className="py-3 px-3 text-right font-black">{row.total}</td>
                   </tr>
                 ))}
-                {!evidence.cupSpecialists.length && (
-                  <tr><td colSpan="6" className="py-8 text-center text-gray-500">No cup specialist rows yet.</td></tr>
+                {!evidence.cupFamilies.length && (
+                  <tr><td colSpan="7" className="py-8 text-center text-gray-500">No cup family rows yet.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow p-4">
+        <h3 className="text-lg font-bold mb-3">Honours coverage</h3>
+        <div className="flex flex-wrap gap-2">
+          {evidence.honoursCoverage.map((row) => (
+            <span key={row.family} className="px-3 py-2 rounded-full bg-gray-100 text-gray-800 text-sm font-semibold">
+              {row.family}: {row.records} records / {row.seasons} seasons
+            </span>
+          ))}
+          {!evidence.honoursCoverage.length && <span className="text-sm text-gray-500">No honours rows loaded.</span>}
         </div>
       </div>
     </div>
