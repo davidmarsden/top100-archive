@@ -424,7 +424,7 @@ const buildMostClubsManaged = () => {
   // env
   const SHEET_ID = process.env.REACT_APP_SHEET_ID;
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-  const SHEET_RANGE = "Sorted by team!A:R";
+  const SHEET_RANGE = "Full History!A:R";
   const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
   const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || "Clubs!A:Z";
   const WINNERS_MANAGERS_RANGE =
