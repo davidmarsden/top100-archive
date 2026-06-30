@@ -4,7 +4,6 @@ import {
   getAllManagerCareerSummaries,
   getManagerCareerSummary,
   getManagerOptions,
-  getManagerValueAddedTable,
 } from "../analytics/managerAnalytics";
 import ManagerCareerEtotChart from "./ManagerCareerEtotChart";
 import ManagerCareerSummaryCard from "./ManagerCareerSummaryCard";
@@ -12,6 +11,7 @@ import ManagerCareerVaPvaChart from "./ManagerCareerVaPvaChart";
 import ManagerComparisonPanel from "./ManagerComparisonPanel";
 import ManagerSpellSummaryCards from "./ManagerSpellSummaryCards";
 import ManagerStrengthSpellChart from "./ManagerStrengthSpellChart";
+import RecruitmentAnalyticsPanel from "./RecruitmentAnalyticsPanel";
 import SimilarManagersPanel from "./SimilarManagersPanel";
 
 const fmt = (value, digits = 2, prefix = "") => {
@@ -35,60 +35,8 @@ const StatCard = ({ label, value, hint }) => (
   </div>
 );
 
-const LeaderboardTable = ({
-  title,
-  description,
-  rows,
-  metricLabel,
-  metricKey,
-  metricDigits = 2,
-  contextLabel = "Avg PVA",
-  contextKey = "averagePVA",
-  contextDigits = 3,
-  limit = 20,
-}) => (
-  <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-    <div className="p-4 border-b">
-      <h3 className="text-lg font-bold">{title}</h3>
-      {description && <p className="text-sm text-gray-500">{description}</p>}
-    </div>
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600">
-          <tr>
-            <th className="text-left py-3 px-3">Rank</th>
-            <th className="text-left py-3 px-3">Manager</th>
-            <th className="text-right py-3 px-3">Seasons</th>
-            <th className="text-right py-3 px-3">Clubs</th>
-            <th className="text-right py-3 px-3">{metricLabel}</th>
-            <th className="text-right py-3 px-3">Avg VA</th>
-            <th className="text-right py-3 px-3">{contextLabel}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, limit).map((row, index) => (
-            <tr key={row.manager} className="border-t">
-              <td className="py-3 px-3 font-bold">#{index + 1}</td>
-              <td className="py-3 px-3 font-semibold">{row.manager}</td>
-              <td className="py-3 px-3 text-right">{row.seasons}</td>
-              <td className="py-3 px-3 text-right">{row.clubsManaged}</td>
-              <td className="py-3 px-3 text-right font-bold text-green-700">
-                {fmt(row[metricKey], metricDigits, "signed")}
-              </td>
-              <td className="py-3 px-3 text-right">{fmt(row.averageVA, 2, "signed")}</td>
-              <td className="py-3 px-3 text-right">{fmt(row[contextKey], contextDigits, "signed")}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-);
-
 const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const [managerQuery, setManagerQuery] = useState("");
-  const [leaderboardLimit, setLeaderboardLimit] = useState(20);
-  const [minMatchedSeasons, setMinMatchedSeasons] = useState(5);
   const [comparisonManagers, setComparisonManagers] = useState(["", ""]);
 
   const managerOptions = useMemo(() => getManagerOptions(archiveRows), [archiveRows]);
@@ -96,32 +44,6 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
   const allManagerSummaries = useMemo(
     () => getAllManagerCareerSummaries(archiveRows, statsRows),
     [archiveRows, statsRows]
-  );
-
-  const valueAddedTable = useMemo(
-    () => getManagerValueAddedTable(archiveRows, statsRows, { minMatchedSeasons }),
-    [archiveRows, statsRows, minMatchedSeasons]
-  );
-
-  const pvaLeaders = useMemo(
-    () => [...valueAddedTable].sort((a, b) => b.averagePVA - a.averagePVA || b.averageVA - a.averageVA),
-    [valueAddedTable]
-  );
-
-  const netStrengthGainLeaders = useMemo(
-    () =>
-      [...valueAddedTable]
-        .filter((row) => row.netStrengthGain !== null && row.netStrengthGain !== undefined)
-        .sort((a, b) => b.netStrengthGain - a.netStrengthGain),
-    [valueAddedTable]
-  );
-
-  const netStrengthLossLeaders = useMemo(
-    () =>
-      [...valueAddedTable]
-        .filter((row) => row.netStrengthGain !== null && row.netStrengthGain !== undefined)
-        .sort((a, b) => a.netStrengthGain - b.netStrengthGain),
-    [valueAddedTable]
   );
 
   const selectedManager = managerQuery.trim();
@@ -183,7 +105,7 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
 
       {!selectedManager ? (
         <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-          Search for a manager or select one from the dropdown to view their career analytics.
+          Search for a manager, select one from the dropdown, or use the recruitment panel below.
         </div>
       ) : summary.seasons === 0 ? (
         <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
@@ -365,75 +287,10 @@ const ManagerAnalyticsTab = ({ archiveRows = [], statsRows = [] }) => {
         statsRows={statsRows}
       />
 
-      <div className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-bold">Manager leaderboards</h3>
-          <p className="text-sm text-gray-500">Adjust the shortlist size and minimum evidence threshold for manager recruitment comparisons.</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-            Minimum
-            <select
-              value={minMatchedSeasons}
-              onChange={(e) => setMinMatchedSeasons(Number(e.target.value))}
-              className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
-            >
-              {[1, 3, 5, 10, 15, 20].map((limit) => (
-                <option key={limit} value={limit}>
-                  {limit}+ matched seasons
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-            Show
-            <select
-              value={leaderboardLimit}
-              onChange={(e) => setLeaderboardLimit(Number(e.target.value))}
-              className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
-            >
-              {[10, 20, 30, 50].map((limit) => (
-                <option key={limit} value={limit}>
-                  Top {limit}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <LeaderboardTable
-          title="Average PVA leaderboard"
-          description={`Managers with at least ${minMatchedSeasons} matched Malcolm stats season${minMatchedSeasons === 1 ? "" : "s"}, ranked by average PVA.`}
-          rows={pvaLeaders}
-          metricLabel="Avg PVA"
-          metricKey="averagePVA"
-          metricDigits={3}
-          contextLabel="Net strength"
-          contextKey="netStrengthGain"
-          contextDigits={2}
-          limit={leaderboardLimit}
-        />
-        <LeaderboardTable
-          title="Net strength gain"
-          description={`Largest total ETOT gains across club spells, minimum ${minMatchedSeasons} matched season${minMatchedSeasons === 1 ? "" : "s"}.`}
-          rows={netStrengthGainLeaders}
-          metricLabel="Net strength"
-          metricKey="netStrengthGain"
-          metricDigits={2}
-          limit={leaderboardLimit}
-        />
-        <LeaderboardTable
-          title="Net strength loss"
-          description={`Largest total ETOT losses across club spells, minimum ${minMatchedSeasons} matched season${minMatchedSeasons === 1 ? "" : "s"}.`}
-          rows={netStrengthLossLeaders}
-          metricLabel="Net strength"
-          metricKey="netStrengthGain"
-          metricDigits={2}
-          limit={leaderboardLimit}
-        />
-      </div>
+      <RecruitmentAnalyticsPanel
+        allSummaries={allManagerSummaries}
+        onSelectManager={setManagerQuery}
+      />
     </div>
   );
 };
