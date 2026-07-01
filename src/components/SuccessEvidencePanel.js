@@ -44,7 +44,7 @@ const CorrelationBar = ({ item }) => {
     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <div className="font-black text-gray-900">{item.label}</div>
+          <div className="font-black text-gray-900">{item.title || item.label}</div>
           <p className="text-xs text-gray-500 mt-1">{item.note}</p>
         </div>
         <div className="text-right">
@@ -59,13 +59,46 @@ const CorrelationBar = ({ item }) => {
   );
 };
 
+const dataLinks = [
+  {
+    label: "Malcolm's Season Predictions & Reviews",
+    href: "https://smtop100.blog/category/stats/season-predictions-and-reviews/",
+  },
+  {
+    label: "All Managers, Clubs & Position History",
+    href: "https://smtop100.blog/2021/08/21/all-managers-team-and-position-history/",
+  },
+  {
+    label: "Complete Honours Archive",
+    href: "https://smtop100.blog/about/history/",
+  },
+];
+
+const definitions = [
+  {
+    term: "ETOT",
+    title: "Estimated Total Team Strength",
+    text: "Malcolm's estimate of a club's overall squad strength before each season. Higher ETOT means a stronger squad on paper.",
+  },
+  {
+    term: "VA",
+    title: "Value Added",
+    text: "The number of league places a manager finished above or below Malcolm's pre-season prediction. Positive means exceeded expectations; negative means underperformed.",
+  },
+  {
+    term: "PVA",
+    title: "Positional Value Added",
+    text: "VA adjusted to give greater credit for outperforming expectations nearer the top of the table. It lets managers from different divisions be compared on the same scale.",
+  },
+];
+
 const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }) => {
   const [division, setDivision] = useState("all");
   const [club, setClub] = useState("");
   const [manager, setManager] = useState("");
 
   const evidence = useMemo(
-    () => buildSuccessEvidence(archiveRows, statsRows, honours, { division, club, manager, etotBandWidth: 5 }),
+    () => buildSuccessEvidence(archiveRows, statsRows, honours, { division, club, manager }),
     [archiveRows, statsRows, honours, division, club, manager]
   );
 
@@ -80,6 +113,23 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
     sacked: row.bottomThreeRate || 0,
   }));
 
+  const keyFindings = evidence.correlations
+    .filter((item) => ["etot-finish", "etot-pva"].includes(item.id))
+    .map((item) => {
+      if (item.id === "etot-finish") {
+        return {
+          ...item,
+          title: "Do stronger squads finish higher?",
+          note: "Stronger squads generally climb the table, but the game is not played on paper. Within each division, management still makes a huge difference.",
+        };
+      }
+      return {
+        ...item,
+        title: "Is it all about having the best players?",
+        note: "There is more to winning than having the best players. Strong and modest squads can both overachieve when the manager gets more out of them.",
+      };
+    });
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -87,11 +137,39 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
           <div className="flex items-center gap-3">
             <BarChart3 className="w-6 h-6 text-indigo-600" />
             <div>
-              <h3 className="text-xl font-black text-gray-900">Success Evidence</h3>
+              <h3 className="text-xl font-black text-gray-900">Winning Formula</h3>
               <p className="text-sm text-gray-500">
-                Divisional evidence linking Malcolm&apos;s ETOT/PVA archive with league outcomes and honours history.
+                What actually wins in Top 100? This section combines Malcolm's stats archive with league history and honours.
               </p>
             </div>
+          </div>
+        </div>
+
+        <div className="p-5 border-b space-y-4">
+          <p className="text-sm text-gray-600 max-w-5xl">
+            Rather than relying on reputation, hunches or WhatsApp mythology, this looks at what has actually happened across the recorded Top 100 seasons.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {dataLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-2 rounded-full bg-indigo-50 text-indigo-700 text-sm font-bold hover:bg-indigo-100"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+          <div className="grid md:grid-cols-3 gap-3">
+            {definitions.map((item) => (
+              <div key={item.term} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div className="text-xs font-black uppercase tracking-wide text-indigo-600">{item.term}</div>
+                <div className="font-black text-gray-900 mt-1">{item.title}</div>
+                <p className="text-sm text-gray-600 mt-2">{item.text}</p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -121,7 +199,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         </div>
 
         <div className="px-5 pb-5 grid lg:grid-cols-2 gap-3">
-          {evidence.correlations.map((item) => <CorrelationBar key={item.id} item={item} />)}
+          {keyFindings.map((item) => <CorrelationBar key={item.id} item={item} />)}
         </div>
       </div>
 
@@ -131,7 +209,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
             <Trophy className="w-5 h-5 text-yellow-600" /> ETOT success curve
           </h3>
           <p className="text-sm text-gray-500">
-            Asymmetric ETOT bands merge the low/high tails and use two-point bands through the main competitive range. In D1 the useful lines are title, Top 4, Top 10 and danger zone; in D2-D5 promotion/playoffs matter more.
+            What can you realistically expect from squads of different strengths? This chart shows what actually happened historically: title chances, Top 4 or Top 10 finishes, promotion pushes, and danger-zone seasons.
           </p>
         </div>
 
@@ -201,7 +279,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold flex items-center gap-2"><Medal className="w-5 h-5 text-purple-600" /> Silverware conversion</h3>
-            <p className="text-sm text-gray-500">Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
+            <p className="text-sm text-gray-500">Which managers turn squad strength into trophies? Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
