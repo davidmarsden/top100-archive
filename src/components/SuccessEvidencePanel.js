@@ -1,5 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, Medal, Shield, Trophy } from "lucide-react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { buildSuccessEvidence, COMPETITION_FAMILIES } from "../analytics/successEvidenceAnalytics";
 
 const fmt = (value, digits = 2, prefix = "") => {
@@ -19,22 +28,33 @@ const StatCard = ({ label, value, hint }) => (
   </div>
 );
 
-const CorrelationCard = ({ item }) => {
+const correlationTone = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "Insufficient data";
+  if (Math.abs(n) >= 0.6) return "Strong";
+  if (Math.abs(n) >= 0.35) return "Moderate";
+  return "Weak";
+};
+
+const CorrelationBar = ({ item }) => {
   const n = Number(item.value);
-  const tone = Number.isFinite(n)
-    ? Math.abs(n) >= 0.6
-      ? "Strong"
-      : Math.abs(n) >= 0.35
-      ? "Moderate"
-      : "Weak"
-    : "Insufficient data";
+  const width = Number.isFinite(n) ? Math.min(100, Math.abs(n) * 100) : 0;
 
   return (
     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-      <div className="font-black text-gray-900">{item.label}</div>
-      <div className="text-2xl font-black text-purple-700 mt-2">{fmt(item.value, 3, "signed")}</div>
-      <div className="text-xs font-bold text-gray-500 mt-1">{tone}</div>
-      <p className="text-xs text-gray-500 mt-2">{item.note}</p>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="font-black text-gray-900">{item.label}</div>
+          <p className="text-xs text-gray-500 mt-1">{item.note}</p>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-black text-purple-700">{fmt(item.value, 3, "signed")}</div>
+          <div className="text-xs font-bold text-gray-500">{correlationTone(item.value)}</div>
+        </div>
+      </div>
+      <div className="h-3 rounded-full bg-white border border-gray-200 overflow-hidden">
+        <div className="h-full bg-purple-500" style={{ width: `${width}%` }} />
+      </div>
     </div>
   );
 };
@@ -49,6 +69,17 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
     () => buildSuccessEvidence(archiveRows, statsRows, honours, { division, club, manager, competitionFamily, etotBandWidth: 5 }),
     [archiveRows, statsRows, honours, division, club, manager, competitionFamily]
   );
+
+  const successCurveData = evidence.outcomeBands.map((row) => ({
+    band: row.band,
+    title: row.titleRate || 0,
+    top4: row.d1TopFourRate || 0,
+    top10: row.d1TopTenRate || 0,
+    promoted: row.promotedRate || 0,
+    playoff: row.playoffRate || 0,
+    danger: row.bottomFourRate || 0,
+    sacked: row.bottomThreeRate || 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -70,9 +101,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
             Division
             <select value={division} onChange={(event) => setDivision(event.target.value)} className="mt-1 w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white">
               <option value="all">All divisions</option>
-              {evidence.availableDivisions.map((item) => (
-                <option key={item} value={item}>Division {item}</option>
-              ))}
+              {evidence.availableDivisions.map((item) => <option key={item} value={item}>Division {item}</option>)}
             </select>
           </label>
           <label className="text-sm font-semibold text-gray-700">
@@ -86,9 +115,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
           <label className="text-sm font-semibold text-gray-700">
             Silverware family
             <select value={competitionFamily} onChange={(event) => setCompetitionFamily(event.target.value)} className="mt-1 w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white">
-              {COMPETITION_FAMILIES.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
+              {COMPETITION_FAMILIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </label>
         </div>
@@ -101,7 +128,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         </div>
 
         <div className="px-5 pb-5 grid lg:grid-cols-2 gap-3">
-          {evidence.correlations.map((item) => <CorrelationCard key={item.id} item={item} />)}
+          {evidence.correlations.map((item) => <CorrelationBar key={item.id} item={item} />)}
         </div>
       </div>
 
@@ -111,10 +138,28 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
             <Trophy className="w-5 h-5 text-yellow-600" /> ETOT success curve
           </h3>
           <p className="text-sm text-gray-500">
-            Five-point ETOT bands. D1 Top 4/Top 10 only matter in D1; promotion and playoffs only apply in D2-D5; bottom four is the relegation zone in D1-D4; bottom three are auto-sacking positions.
+            Five-point ETOT bands shown visually first, then as a table. In D1 the useful lines are title, Top 4, Top 10 and danger zone; in D2-D5 promotion/playoffs matter more.
           </p>
         </div>
-        <div className="overflow-x-auto">
+
+        <div className="p-4 h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={successCurveData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="band" />
+              <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+              <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
+              <Line type="monotone" dataKey="title" name="Title" stroke="#7c3aed" strokeWidth={3} dot />
+              <Line type="monotone" dataKey="top4" name="D1 Top 4" stroke="#2563eb" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="top10" name="D1 Top 10" stroke="#16a34a" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="promoted" name="Promoted" stroke="#0d9488" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="danger" name="Bottom 4" stroke="#dc2626" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="sacked" name="Bottom 3" stroke="#991b1b" strokeWidth={2} dot />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="overflow-x-auto border-t">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
@@ -153,9 +198,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                   <td className="py-3 px-3 text-right">{pct(row.youthRate)}</td>
                 </tr>
               ))}
-              {!evidence.outcomeBands.length && (
-                <tr><td colSpan="14" className="py-8 text-center text-gray-500">No matched ETOT data available for this scope.</td></tr>
-              )}
+              {!evidence.outcomeBands.length && <tr><td colSpan="14" className="py-8 text-center text-gray-500">No matched ETOT data available for this scope.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -164,12 +207,8 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <Medal className="w-5 h-5 text-purple-600" /> Silverware conversion
-            </h3>
-            <p className="text-sm text-gray-500">
-              Filtered by the selected silverware family. Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.
-            </p>
+            <h3 className="text-lg font-bold flex items-center gap-2"><Medal className="w-5 h-5 text-purple-600" /> Silverware conversion</h3>
+            <p className="text-sm text-gray-500">Filtered by the selected silverware family. Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -194,9 +233,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                     <td className="py-3 px-3 text-right font-black text-purple-700">{fmt(row.silverwareConversion, 5)}</td>
                   </tr>
                 ))}
-                {!evidence.silverwareConversion.length && (
-                  <tr><td colSpan="6" className="py-8 text-center text-gray-500">No silverware conversion rows for this filter.</td></tr>
-                )}
+                {!evidence.silverwareConversion.length && <tr><td colSpan="6" className="py-8 text-center text-gray-500">No silverware conversion rows for this filter.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -204,12 +241,8 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
 
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-600" /> Cup specialists by competition family
-            </h3>
-            <p className="text-sm text-gray-500">
-              SMFA, World Club, Top 100 and Youth competitions are separated because they reward different strengths.
-            </p>
+            <h3 className="text-lg font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-blue-600" /> Cup specialists by competition family</h3>
+            <p className="text-sm text-gray-500">SMFA, World Club, Top 100 and Youth competitions are separated because they reward different strengths.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -236,9 +269,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                     <td className="py-3 px-3 text-right font-black">{row.total}</td>
                   </tr>
                 ))}
-                {!evidence.cupFamilies.length && (
-                  <tr><td colSpan="7" className="py-8 text-center text-gray-500">No cup family rows for this filter.</td></tr>
-                )}
+                {!evidence.cupFamilies.length && <tr><td colSpan="7" className="py-8 text-center text-gray-500">No cup family rows for this filter.</td></tr>}
               </tbody>
             </table>
           </div>
