@@ -11,19 +11,26 @@ import {
 } from "recharts";
 import { buildSuccessEvidence } from "../analytics/successEvidenceAnalytics";
 
-const fmt = (value, digits = 2, prefix = "") => {
+const fmt = (value, digits = 1, prefix = "") => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
   const n = Number(value);
   const sign = prefix === "signed" && n > 0 ? "+" : "";
   return `${sign}${n.toFixed(digits)}`;
 };
 
+const fmtSigned = (value, digits = 2) => fmt(value, digits, "signed");
+
 const conversionIndex = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
   return fmt(Number(value) * 1000, 1);
 };
 
-const pct = (value) => (value === null || value === undefined ? "—" : `${Number(value).toFixed(1)}%`);
+const pct = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  const n = Number(value);
+  const digits = Math.abs(n) > 0 && Math.abs(n) < 10 ? 1 : 0;
+  return `${n.toFixed(digits)}%`;
+};
 
 const StatCard = ({ label, value, hint }) => (
   <div className="bg-white rounded-xl shadow p-4 border border-gray-100">
@@ -53,7 +60,7 @@ const CorrelationBar = ({ item }) => {
           <p className="text-xs text-gray-500 mt-1">{item.note}</p>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black text-purple-700">{fmt(item.value, 3, "signed")}</div>
+          <div className="text-2xl font-black text-purple-700">{fmtSigned(item.value, 2)}</div>
           <div className="text-xs font-bold text-gray-500">{correlationTone(item.value)}</div>
         </div>
       </div>
@@ -97,6 +104,44 @@ const definitions = [
   },
 ];
 
+const getEtotFinishInsight = (value, division) => {
+  const n = Number(value);
+  const scope = division === "all" ? "across the whole archive" : `in Division ${division}`;
+  if (!Number.isFinite(n)) {
+    return "Not enough matched seasons yet to say much about squad strength in this scope.";
+  }
+  const strength = Math.abs(n);
+  if (strength >= 0.65) {
+    return `Squad strength is a major separator ${scope}. Better players are very strongly linked with higher league finishes here.`;
+  }
+  if (strength >= 0.5) {
+    return `Squad strength clearly matters ${scope}, but it does not settle everything. Similar squads can still finish very differently.`;
+  }
+  if (strength >= 0.35) {
+    return `Squad strength matters ${scope}, but management has plenty of room to change the story.`;
+  }
+  return `Squad strength is only a weak guide ${scope}. This is where tactics, squad use and recruitment can really move the table.`;
+};
+
+const getEtotPvaInsight = (value, division) => {
+  const n = Number(value);
+  const scope = division === "all" ? "across the archive" : `in Division ${division}`;
+  if (!Number.isFinite(n)) {
+    return "Not enough matched seasons yet to judge how much PVA depends on squad strength.";
+  }
+  const strength = Math.abs(n);
+  if (strength < 0.18) {
+    return `Management is showing through ${scope}. PVA has little relationship with squad strength, so overachievement is not just about having better players.`;
+  }
+  if (strength < 0.35) {
+    return `There is only a light link ${scope}. Squad strength may help a little, but PVA is still mostly describing managers beating expectations.`;
+  }
+  if (n > 0) {
+    return `In this scope, stronger squads are also posting better PVA. The best players and best management may be arriving together.`;
+  }
+  return `In this scope, modest squads are posting stronger PVA. This points towards managers squeezing extra performance from weaker squads.`;
+};
+
 const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }) => {
   const [division, setDivision] = useState("all");
   const [club, setClub] = useState("");
@@ -125,13 +170,13 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         return {
           ...item,
           title: "Do stronger squads finish higher?",
-          note: "Yes. Better players usually produce better teams. But that only tells half the story — the league still isn't won on paper.",
+          note: getEtotFinishInsight(item.value, division),
         };
       }
       return {
         ...item,
-        title: "Does having the strongest squad make you the best manager?",
-        note: "No. Great managers outperform expectations at every squad level. Having the strongest squad doesn't make you the best manager — getting more from your squad does.",
+        title: "How much does management matter?",
+        note: getEtotPvaInsight(item.value, division),
       };
     });
 
@@ -199,8 +244,8 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Matched stat seasons" value={evidence.matchedRowCount} hint={`${evidence.rowCount} rows in selected scope`} />
           <StatCard label="Honours records" value={evidence.honoursRowCount} hint="Club + manager honours rows loaded" />
-          <StatCard label="Avg ETOT" value={fmt(evidence.headlineAverages.allAverageETOT, 2)} hint="Selected scope only" />
-          <StatCard label="Avg PVA" value={fmt(evidence.headlineAverages.allAveragePVA, 3, "signed")} hint="Selected scope only" />
+          <StatCard label="Avg ETOT" value={fmt(evidence.headlineAverages.allAverageETOT, 1)} hint="Selected scope only" />
+          <StatCard label="Avg PVA" value={fmtSigned(evidence.headlineAverages.allAveragePVA, 2)} hint="Selected scope only" />
         </div>
 
         <div className="px-5 pb-5 grid lg:grid-cols-2 gap-3">
@@ -224,7 +269,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="band" />
               <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-              <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
+              <Tooltip formatter={(value) => pct(value)} />
               <Line type="monotone" dataKey="title" name="Title" stroke="#7c3aed" strokeWidth={3} dot />
               <Line type="monotone" dataKey="top4" name="D1 Top 4" stroke="#2563eb" strokeWidth={2} dot />
               <Line type="monotone" dataKey="top10" name="D1 Top 10" stroke="#16a34a" strokeWidth={2} dot />
@@ -260,7 +305,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                 <tr key={row.band} className="border-t">
                   <td className="py-3 px-3 font-black">{row.band}</td>
                   <td className="py-3 px-3 text-right">{row.samples}</td>
-                  <td className="py-3 px-3 text-right">{fmt(row.averageFinish, 2)}</td>
+                  <td className="py-3 px-3 text-right">{fmt(row.averageFinish, 1)}</td>
                   <td className="py-3 px-3 text-right font-semibold">{pct(row.titleRate)}</td>
                   <td className="py-3 px-3 text-right">{pct(row.d1TopFourRate)}</td>
                   <td className="py-3 px-3 text-right">{pct(row.d1TopTenRate)}</td>
@@ -303,9 +348,9 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                   <tr key={row.manager} className="border-t">
                     <td className="py-3 px-3 font-semibold">{row.manager}</td>
                     <td className="py-3 px-3 text-right">{row.seasons}</td>
-                    <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 2)}</td>
+                    <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 1)}</td>
                     <td className="py-3 px-3 text-right font-bold">{row.honourScore}</td>
-                    <td className="py-3 px-3 text-right">{fmt(row.scorePerSeason, 3)}</td>
+                    <td className="py-3 px-3 text-right">{fmt(row.scorePerSeason, 1)}</td>
                     <td className="py-3 px-3 text-right font-black text-purple-700">{conversionIndex(row.silverwareConversion)}</td>
                   </tr>
                 ))}
