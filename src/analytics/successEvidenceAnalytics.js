@@ -86,16 +86,30 @@ const isBottomThreeAutoSackZone = (row) => {
 
 const pct = (part, total) => (total ? round((part / total) * 100, 1) : null);
 
-const etotBand = (etot, width = 5) => {
+const ETOT_BANDS = [
+  { label: "≤214", min: -Infinity, max: 214.999, sort: 214 },
+  { label: "215-216", min: 215, max: 216.999, sort: 215 },
+  { label: "217-218", min: 217, max: 218.999, sort: 217 },
+  { label: "219-220", min: 219, max: 220.999, sort: 219 },
+  { label: "221-222", min: 221, max: 222.999, sort: 221 },
+  { label: "223-224", min: 223, max: 224.999, sort: 223 },
+  { label: "225-226", min: 225, max: 226.999, sort: 225 },
+  { label: "227-228", min: 227, max: 228.999, sort: 227 },
+  { label: "229-230", min: 229, max: 230.999, sort: 229 },
+  { label: "231-232", min: 231, max: 232.999, sort: 231 },
+  { label: "233-234", min: 233, max: 234.999, sort: 233 },
+  { label: "≥235", min: 235, max: Infinity, sort: 235 },
+];
+
+const etotBand = (etot) => {
   const n = toNumberOrNull(etot);
   if (n === null) return "Unknown";
-  const start = Math.floor(n / width) * width;
-  return `${start}-${start + width - 1}`;
+  return ETOT_BANDS.find((band) => n >= band.min && n <= band.max)?.label || "Unknown";
 };
 
 const bandSortValue = (band) => {
   if (band === "Unknown") return 9999;
-  return Number(String(band).split("-")[0]) || 0;
+  return ETOT_BANDS.find((item) => item.label === band)?.sort ?? 9999;
 };
 
 export const COMPETITION_FAMILIES = [
@@ -190,13 +204,13 @@ const rowMatchesScope = (row, scope = {}) => {
 
 const honourMatchesFamily = (honour, family = "all") => family === "all" || honour.family === family;
 
-const summarizeOutcomeBands = (rows = [], width = 5) => {
+const summarizeOutcomeBands = (rows = []) => {
   const byBand = new Map();
 
   rows.forEach((row) => {
     const etot = getEtot(row);
     if (etot === null) return;
-    const band = etotBand(etot, width);
+    const band = etotBand(etot);
     if (!byBand.has(band)) {
       byBand.set(band, {
         band,
@@ -370,7 +384,6 @@ export const buildSuccessEvidence = (archiveRows = [], statsRows = [], honours =
   const scopedRows = evidenceRows.filter((row) => rowMatchesScope(row, options));
   const matchedRows = scopedRows.filter((row) => getEtot(row) !== null);
   const family = options.competitionFamily || "all";
-  const width = Number(options.etotBandWidth || 5);
 
   return {
     rowCount: scopedRows.length,
@@ -403,7 +416,7 @@ export const buildSuccessEvidence = (archiveRows = [], statsRows = [], honours =
         note: "Near zero is useful: it suggests PVA is not simply rewarding stronger squads.",
       },
     ],
-    outcomeBands: summarizeOutcomeBands(matchedRows, width),
+    outcomeBands: summarizeOutcomeBands(matchedRows),
     silverwareConversion: summarizeSilverwareConversion(matchedRows, family),
     cupFamilies: summarizeCupFamilies(matchedRows, family),
     honoursCoverage: summarizeHonoursCoverage(honoursLookup),
