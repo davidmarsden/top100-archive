@@ -17,7 +17,17 @@ const average = (values = []) => {
   return nums.reduce((sum, value) => sum + value, 0) / nums.length;
 };
 
-const getSeason = (row = {}) => toFiniteNumber(row.season) || 0;
+const parseSeasonValue = (value) => {
+  if (value && typeof value === "object") return parseSeasonValue(value.season);
+  const direct = toFiniteNumber(value);
+  if (direct !== null) return direct;
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : 0;
+};
+
+const getSeason = (row = {}) => parseSeasonValue(row?.season ?? row);
+const getPosition = (row = {}) => toFiniteNumber(row.position ?? row.finalPositionFromStats ?? row.finalPosition);
+const getDivision = (row = {}) => toFiniteNumber(row.division);
 const getEtot = (row = {}) => {
   const etot = toFiniteNumber(row.etot);
   return etot !== null && etot > 0 ? etot : null;
@@ -99,6 +109,55 @@ const getGlobalWeakSquadThreshold = (summaries = []) => {
   return etots[Math.floor(etots.length * 0.4)] || etots[0];
 };
 
+const getCurrentSpell = (summary = {}) => {
+  const spells = summary.clubSpells || [];
+  if (!spells.length) return null;
+  return [...spells].sort((a, b) => parseSeasonValue(b.lastSeason) - parseSeasonValue(a.lastSeason))[0] || null;
+};
+
+const calculateCurrentClubTrend = (spell) => {
+  const rows = sortCareerRows(spell?.rows || []);
+  if (!rows.length) return null;
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const firstPosition = getPosition(first);
+  const lastPosition = getPosition(last);
+  const firstDivision = getDivision(first);
+  const lastDivision = getDivision(last);
+  const firstRank = firstDivision && firstPosition ? (firstDivision - 1) * 20 + firstPosition : null;
+  const lastRank = lastDivision && lastPosition ? (lastDivision - 1) * 20 + lastPosition : null;
+
+  return {
+    firstSeason: first?.season || null,
+    lastSeason: last?.season || null,
+    firstPosition,
+    lastPosition,
+    firstDivision,
+    lastDivision,
+    rankImprovement: firstRank !== null && lastRank !== null ? round(firstRank - lastRank, 2) : null,
+    averagePVA: round(average(rows.map(getPva)), 3),
+    averageVA: round(average(rows.map(getVa)), 2),
+  };
+};
+
+const calculateEliteClubSeasons = (careerRows = []) =>
+  careerRows.filter((row) => getDivision(row) === 1 || (getEtot(row) !== null && getEtot(row) >= 230)).length;
+
+const scaled = (value, max, fallback = 0) => {
+  const n = toFiniteNumber(value);
+  if (n === null) return fallback;
+  return Math.max(0, Math.min(100, (n / max) * 100));
+};
+
+const recommendationLabel = (score, eligible) => {
+  if (!eligible) return "Not currently eligible";
+  if (score >= 78) return "Strong recommendation";
+  if (score >= 65) return "Recommended";
+  if (score >= 50) return "Worth interviewing";
+  if (score >= 35) return "Outside shortlist";
+  return "Not recommended";
+};
+
 export const RECRUITMENT_PRESETS = [
   { id: "overachievers", label: "Top Overachievers", metricLabel: "Avg PVA", metricKey: "averagePVA", digits: 3 },
   { id: "builders", label: "Top Builders", metricLabel: "Net ETOT", metricKey: "netStrengthGain", digits: 2 },
@@ -123,6 +182,15 @@ export const RECRUITMENT_FILTERS = [
   { id: "promotion-specialists", label: "Promotion specialists" },
 ];
 
+export const VACANCY_TYPES = [
+  { id: "balanced", label: "Balanced appointment" },
+  { id: "title", label: "Title challenge" },
+  { id: "promotion", label: "Promotion push" },
+  { id: "rebuild", label: "Rebuild / squad building" },
+  { id: "survival", label: "Survival / stabilise" },
+  { id: "cups", label: "Cup pedigree" },
+];
+
 export const buildRecruitmentAnalyticsRows = (summaries = []) => {
   const weakSquadThreshold = getGlobalWeakSquadThreshold(summaries);
 
@@ -135,6 +203,11 @@ export const buildRecruitmentAnalyticsRows = (summaries = []) => {
     const netStrengthGain = toFiniteNumber(summary.netStrengthGain);
     const averagePVA = toFiniteNumber(summary.averagePVA);
     const titles = Number(summary.titles || 0);
+    const currentSpell = getCurrentSpell(summary);
+    const currentClubTrend = calculateCurrentClubTrend(currentSpell);
+    const currentClubSeasons = Number(currentSpell?.seasons || 0);
+    const currentClubProgress = toFiniteNumber(currentClubTrend?.rankImprovement);
+    const eliteClubSeasons = calculateEliteClubSeasons(careerRows);
 
     return {
       ...summary,
@@ -159,9 +232,91 @@ export const buildRecruitmentAnalyticsRows = (summaries = []) => {
       winner: titles > 0,
       promotionSpecialist: promotionCount >= 2,
       weakSquadThreshold,
+      currentClub: currentSpell?.club || null,
+      currentClubSeasons,
+      currentClubProgress,
+      currentClubAveragePVA: currentClubTrend?.averagePVA ?? null,
+      currentClubAverageVA: currentClubTrend?.averageVA ?? null,
+      eliteClubSeasons,
+      relegations: Number(summary.relegations || 0),
+      autoSackings: Number(summary.autoSackings || 0),
       ...weakSquad,
     };
   });
+};
+
+export const buildRecruitmentReport = (row = {}, vacancyType = "balanced") => {
+  const qualified = {
+    currentSuccess: scaled((row.currentClubProgress || 0) + Math.max(0, (row.currentClubAveragePVA || 0) * 5), 35),
+    expectationBeating: scaled(Math.max(0, row.averagePVA || 0), 2),
+    squadBuilding: scaled(Math.max(0, row.netStrengthGain || 0), 15),
+    promotions: scaled(row.promotionCount || 0, 5),
+    trophies: scaled(row.titles || 0, 5),
+    youthDevelopment: 0,
+    weakSquadSuccess: scaled(Math.max(0, row.weakSquadSuccessScore || 0), 5),
+  };
+
+  const deserving = {
+    currentClubTenure: scaled(row.currentClubSeasons || 0, 4),
+    loyalty: scaled(Math.max(0, 5 - (row.clubsManaged || 0)), 5),
+    experience: scaled(row.seasons || 0, 20),
+    topClubExperience: scaled(row.eliteClubSeasons || 0, 8),
+    cleanRecordProxy: Math.max(0, 100 - (row.autoSackings || 0) * 18 - (row.relegations || 0) * 8),
+  };
+
+  const manual = {
+    transferMarket: null,
+    newsfeed: null,
+    blog: null,
+    community: null,
+    responsiveness: null,
+    discipline: null,
+  };
+
+  const contextWeights = {
+    balanced: { q: 0.6, d: 0.4, current: 1, trophies: 1, promotions: 1, building: 1, weak: 1 },
+    title: { q: 0.7, d: 0.3, current: 1, trophies: 1.8, promotions: 0.6, building: 0.8, weak: 0.6 },
+    promotion: { q: 0.65, d: 0.35, current: 1.1, trophies: 0.5, promotions: 1.8, building: 1, weak: 1.2 },
+    rebuild: { q: 0.65, d: 0.35, current: 1.2, trophies: 0.4, promotions: 0.8, building: 2, weak: 1.2 },
+    survival: { q: 0.55, d: 0.45, current: 1.2, trophies: 0.3, promotions: 0.8, building: 0.8, weak: 2 },
+    cups: { q: 0.65, d: 0.35, current: 0.8, trophies: 2, promotions: 0.4, building: 0.7, weak: 0.8 },
+  };
+
+  const weights = contextWeights[vacancyType] || contextWeights.balanced;
+  const qualifiedScore = round(
+    average([
+      qualified.currentSuccess * weights.current,
+      qualified.expectationBeating,
+      qualified.squadBuilding * weights.building,
+      qualified.promotions * weights.promotions,
+      qualified.trophies * weights.trophies,
+      qualified.weakSquadSuccess * weights.weak,
+    ]),
+    1
+  );
+  const deservingScore = round(average(Object.values(deserving)), 1);
+  const evidenceScore = round((qualifiedScore || 0) * weights.q + (deservingScore || 0) * weights.d, 1);
+  const eligible = (row.currentClubSeasons || 0) > 1;
+
+  return {
+    manager: row.manager,
+    currentClub: row.currentClub,
+    currentClubSeasons: row.currentClubSeasons,
+    eligible,
+    recommendation: recommendationLabel(evidenceScore, eligible),
+    evidenceScore,
+    qualifiedScore,
+    deservingScore,
+    qualified,
+    deserving,
+    manual,
+    notes: [
+      eligible ? "Meets the usual current-club tenure threshold." : "Usually below shortlist threshold: one full season or less at current club.",
+      row.autoSackings ? `${row.autoSackings} auto-sacking season(s) on record.` : "No auto-sacking seasons in the archive record.",
+      row.relegations ? `${row.relegations} relegation-zone finish(es) on record.` : "No relegation-zone finishes in the archive record.",
+      "Manual checks still needed for activity, responsiveness, transfer conduct and disciplinary issues.",
+    ],
+  };
 };
 
 export const applyRecruitmentFilters = (rows = [], options = {}) => {
