@@ -16,6 +16,62 @@ const fmt = (value, digits = 2, prefix = "") => {
   return `${sign}${n.toFixed(digits)}`;
 };
 
+const parseSeason = (value) => {
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : 0;
+};
+
+const getPosition = (row = {}) => Number(row.position ?? row.finalPositionFromStats ?? row.finalPosition) || null;
+const getDivision = (row = {}) => Number(row.division) || null;
+const getPva = (row = {}) => (Number.isFinite(Number(row.pva)) ? Number(row.pva) : null);
+const getVa = (row = {}) => (Number.isFinite(Number(row.valueAdded)) ? Number(row.valueAdded) : null);
+
+const average = (values = []) => {
+  const nums = values.filter((value) => value !== null && value !== undefined && Number.isFinite(Number(value))).map(Number);
+  if (!nums.length) return null;
+  return nums.reduce((sum, value) => sum + value, 0) / nums.length;
+};
+
+const getLatestSpell = (row = {}) => {
+  const spells = row.clubSpells || [];
+  if (!spells.length) return null;
+  return [...spells].sort((a, b) => parseSeason(b.lastSeason) - parseSeason(a.lastSeason))[0] || null;
+};
+
+const getCurrentTrend = (spell) => {
+  const rows = [...(spell?.rows || [])].sort((a, b) => parseSeason(a.season) - parseSeason(b.season));
+  if (!rows.length) return { progress: null, averagePVA: null, averageVA: null };
+
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const firstDivision = getDivision(first);
+  const lastDivision = getDivision(last);
+  const firstPosition = getPosition(first);
+  const lastPosition = getPosition(last);
+  const firstRank = firstDivision && firstPosition ? (firstDivision - 1) * 20 + firstPosition : null;
+  const lastRank = lastDivision && lastPosition ? (lastDivision - 1) * 20 + lastPosition : null;
+
+  return {
+    progress: firstRank !== null && lastRank !== null ? firstRank - lastRank : null,
+    averagePVA: average(rows.map(getPva)),
+    averageVA: average(rows.map(getVa)),
+  };
+};
+
+const withFreshCurrentSpell = (row = {}) => {
+  const latestSpell = getLatestSpell(row);
+  if (!latestSpell) return row;
+  const trend = getCurrentTrend(latestSpell);
+  return {
+    ...row,
+    currentClub: latestSpell.club || row.currentClub,
+    currentClubSeasons: Number(latestSpell.seasons || latestSpell.rows?.length || row.currentClubSeasons || 0),
+    currentClubProgress: trend.progress ?? row.currentClubProgress,
+    currentClubAveragePVA: trend.averagePVA ?? row.currentClubAveragePVA,
+    currentClubAverageVA: trend.averageVA ?? row.currentClubAverageVA,
+  };
+};
+
 const getPreset = (presetId) =>
   RECRUITMENT_PRESETS.find((preset) => preset.id === presetId) || RECRUITMENT_PRESETS[0];
 
@@ -41,9 +97,7 @@ const ManagerBadges = ({ row }) => {
 
   return (
     <div className="flex flex-wrap gap-1">
-      {badges.slice(0, 3).map((badge) => (
-        <span key={badge} className={badgeClass}>{badge}</span>
-      ))}
+      {badges.slice(0, 3).map((badge) => <span key={badge} className={badgeClass}>{badge}</span>)}
     </div>
   );
 };
@@ -65,7 +119,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
   const [selectedManagers, setSelectedManagers] = useState([]);
   const [vacancyType, setVacancyType] = useState("balanced");
 
-  const rows = useMemo(() => buildRecruitmentAnalyticsRows(allSummaries), [allSummaries]);
+  const rows = useMemo(() => buildRecruitmentAnalyticsRows(allSummaries).map(withFreshCurrentSpell), [allSummaries]);
 
   const shortlist = useMemo(
     () => applyRecruitmentFilters(rows, { activePreset, activeFilters, minimumSeasons, searchQuery }),
@@ -114,9 +168,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
               onChange={(event) => setMinimumSeasons(Number(event.target.value))}
               className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:ring-4 focus:ring-purple-100 focus:border-purple-500"
             >
-              {[1, 3, 5, 10, 15, 20].map((limit) => (
-                <option key={limit} value={limit}>{limit}+ matched</option>
-              ))}
+              {[1, 3, 5, 10, 15, 20].map((limit) => <option key={limit} value={limit}>{limit}+ matched</option>)}
             </select>
           </label>
         </div>
@@ -134,11 +186,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                   setActivePreset(item.id);
                   setShowAll(false);
                 }}
-                className={`px-3 py-2 rounded-full text-sm font-bold border transition-all ${
-                  activePreset === item.id
-                    ? "bg-purple-600 border-purple-600 text-white shadow"
-                    : "bg-white border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50"
-                }`}
+                className={`px-3 py-2 rounded-full text-sm font-bold border transition-all ${activePreset === item.id ? "bg-purple-600 border-purple-600 text-white shadow" : "bg-white border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50"}`}
               >
                 {item.label}
               </button>
@@ -159,11 +207,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                     key={filter.id}
                     type="button"
                     onClick={() => toggleFilter(filter.id)}
-                    className={`px-3 py-2 rounded-full text-sm font-semibold border transition-all ${
-                      active
-                        ? "bg-gray-900 border-gray-900 text-white"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-gray-400"
-                    }`}
+                    className={`px-3 py-2 rounded-full text-sm font-semibold border transition-all ${active ? "bg-gray-900 border-gray-900 text-white" : "bg-white border-gray-200 text-gray-700 hover:border-gray-400"}`}
                   >
                     {filter.label}
                   </button>
@@ -240,9 +284,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                 </tr>
               );
             })}
-            {!shortlist.length && (
-              <tr><td colSpan="10" className="py-8 px-3 text-center text-gray-500">No managers match those recruitment filters.</td></tr>
-            )}
+            {!shortlist.length && <tr><td colSpan="10" className="py-8 px-3 text-center text-gray-500">No managers match those recruitment filters.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -251,9 +293,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
             <h4 className="text-lg font-black text-gray-900">Recruitment report</h4>
-            <p className="text-sm text-gray-500">
-              Evidence-based qualified/deserving report. Community activity and disciplinary checks remain manual admin judgement.
-            </p>
+            <p className="text-sm text-gray-500">Evidence-based qualified/deserving report. Community activity and disciplinary checks remain manual admin judgement.</p>
           </div>
           <select value={vacancyType} onChange={(event) => setVacancyType(event.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white">
             {VACANCY_TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
@@ -287,9 +327,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                   <td className="py-3 px-3 text-right">{fmt(row.currentClubProgress, 0, "signed")}</td>
                 </tr>
               ))}
-              {!selectedReports.length && (
-                <tr><td colSpan="8" className="py-8 text-center text-gray-500">Tick managers in the shortlist above to compare applicants.</td></tr>
-              )}
+              {!selectedReports.length && <tr><td colSpan="8" className="py-8 text-center text-gray-500">Tick managers in the shortlist above to compare applicants.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -320,9 +358,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                 <div className="text-xs font-black uppercase tracking-wide text-gray-500 mb-2">Manual admin checks still required</div>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {Object.keys(report.manual).map((key) => (
-                    <span key={key} className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 font-semibold text-xs">
-                      {key.replace(/([A-Z])/g, " $1")}
-                    </span>
+                    <span key={key} className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 font-semibold text-xs">{key.replace(/([A-Z])/g, " $1")}</span>
                   ))}
                 </div>
 
