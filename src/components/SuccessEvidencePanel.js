@@ -112,15 +112,15 @@ const getEtotFinishInsight = (value, division) => {
   }
   const strength = Math.abs(n);
   if (strength >= 0.65) {
-    return `Squad strength is a major separator ${scope}. Better players are very strongly linked with higher league finishes here.`;
+    return `League position: squad strength is a major separator ${scope}. Better players are very strongly linked with higher finishes.`;
   }
   if (strength >= 0.5) {
-    return `Squad strength clearly matters ${scope}, but it does not settle everything. Similar squads can still finish very differently.`;
+    return `League position: squad strength clearly matters ${scope}, but it does not settle everything. Similar squads can still finish very differently.`;
   }
   if (strength >= 0.35) {
-    return `Squad strength matters ${scope}, but management has plenty of room to change the story.`;
+    return `League position: squad strength is a useful guide ${scope}, but it is not decisive. There is still plenty of room for managers to move the table.`;
   }
-  return `Squad strength is only a weak guide ${scope}. This is where tactics, squad use and recruitment can really move the table.`;
+  return `League position: squad strength is only a weak guide ${scope}. Tactics, squad use and recruitment can make a big difference here.`;
 };
 
 const getEtotPvaInsight = (value, division) => {
@@ -131,15 +131,15 @@ const getEtotPvaInsight = (value, division) => {
   }
   const strength = Math.abs(n);
   if (strength < 0.18) {
-    return `Management is showing through ${scope}. PVA has little relationship with squad strength, so overachievement is not just about having better players.`;
+    return `Beating expectations: PVA is almost independent of squad strength ${scope}. That is useful — it means overachievement is measuring more than simply having better players.`;
   }
   if (strength < 0.35) {
-    return `There is only a light link ${scope}. Squad strength may help a little, but PVA is still mostly describing managers beating expectations.`;
+    return `Beating expectations: there is only a light link with squad strength ${scope}. PVA is mostly describing managers who beat Malcolm's prediction.`;
   }
   if (n > 0) {
-    return `In this scope, stronger squads are also posting better PVA. The best players and best management may be arriving together.`;
+    return `Beating expectations: stronger squads are also posting better PVA in this scope. The best players and best management may be arriving together.`;
   }
-  return `In this scope, modest squads are posting stronger PVA. This points towards managers squeezing extra performance from weaker squads.`;
+  return `Beating expectations: modest squads are posting stronger PVA in this scope. This points towards managers squeezing extra performance from weaker squads.`;
 };
 
 const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }) => {
@@ -175,7 +175,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
       }
       return {
         ...item,
-        title: "How much does management matter?",
+        title: "Who beats expectations?",
         note: getEtotPvaInsight(item.value, division),
       };
     });
