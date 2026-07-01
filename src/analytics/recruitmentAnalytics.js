@@ -17,7 +17,15 @@ const average = (values = []) => {
   return nums.reduce((sum, value) => sum + value, 0) / nums.length;
 };
 
-const getSeason = (row = {}) => toFiniteNumber(row.season) || 0;
+const parseSeasonValue = (value) => {
+  if (value && typeof value === "object") return parseSeasonValue(value.season);
+  const direct = toFiniteNumber(value);
+  if (direct !== null) return direct;
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : 0;
+};
+
+const getSeason = (row = {}) => parseSeasonValue(row?.season ?? row);
 const getPosition = (row = {}) => toFiniteNumber(row.position ?? row.finalPositionFromStats ?? row.finalPosition);
 const getDivision = (row = {}) => toFiniteNumber(row.division);
 const getEtot = (row = {}) => {
@@ -104,7 +112,7 @@ const getGlobalWeakSquadThreshold = (summaries = []) => {
 const getCurrentSpell = (summary = {}) => {
   const spells = summary.clubSpells || [];
   if (!spells.length) return null;
-  return [...spells].sort((a, b) => getSeason(b.lastSeason) - getSeason(a.lastSeason))[0] || null;
+  return [...spells].sort((a, b) => parseSeasonValue(b.lastSeason) - parseSeasonValue(a.lastSeason))[0] || null;
 };
 
 const calculateCurrentClubTrend = (spell) => {
