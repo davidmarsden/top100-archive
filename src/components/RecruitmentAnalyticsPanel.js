@@ -23,6 +23,7 @@ const parseSeason = (value) => {
 
 const getPosition = (row = {}) => Number(row.position ?? row.finalPositionFromStats ?? row.finalPosition) || null;
 const getDivision = (row = {}) => Number(row.division) || null;
+const getClub = (row = {}) => row.canonicalClub || row.team || row.club || "";
 const getPva = (row = {}) => (Number.isFinite(Number(row.pva)) ? Number(row.pva) : null);
 const getVa = (row = {}) => (Number.isFinite(Number(row.valueAdded)) ? Number(row.valueAdded) : null);
 
@@ -32,10 +33,28 @@ const average = (values = []) => {
   return nums.reduce((sum, value) => sum + value, 0) / nums.length;
 };
 
-const getLatestSpell = (row = {}) => {
-  const spells = row.clubSpells || [];
-  if (!spells.length) return null;
-  return [...spells].sort((a, b) => parseSeason(b.lastSeason) - parseSeason(a.lastSeason))[0] || null;
+const sameClub = (a = "", b = "") =>
+  String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+const getLatestCareerRow = (row = {}) => {
+  const careerRows = row.careerRows || [];
+  if (!careerRows.length) return null;
+  return [...careerRows].sort((a, b) => parseSeason(b.season) - parseSeason(a.season))[0] || null;
+};
+
+const getLatestSpellForCurrentClub = (row = {}, latestRow) => {
+  const currentClub = getClub(latestRow);
+  const latestSeason = parseSeason(latestRow?.season);
+  const matchingSpells = (row.clubSpells || []).filter((spell) => sameClub(spell.club, currentClub));
+
+  return (
+    matchingSpells.find(
+      (spell) =>
+        parseSeason(spell.firstSeason) <= latestSeason && parseSeason(spell.lastSeason) >= latestSeason
+    ) ||
+    [...matchingSpells].sort((a, b) => parseSeason(b.lastSeason) - parseSeason(a.lastSeason))[0] ||
+    null
+  );
 };
 
 const getCurrentTrend = (spell) => {
@@ -59,13 +78,15 @@ const getCurrentTrend = (spell) => {
 };
 
 const withFreshCurrentSpell = (row = {}) => {
-  const latestSpell = getLatestSpell(row);
-  if (!latestSpell) return row;
-  const trend = getCurrentTrend(latestSpell);
+  const latestRow = getLatestCareerRow(row);
+  if (!latestRow) return row;
+  const latestSpell = getLatestSpellForCurrentClub(row, latestRow);
+  const trend = getCurrentTrend(latestSpell || { rows: [latestRow] });
+
   return {
     ...row,
-    currentClub: latestSpell.club || row.currentClub,
-    currentClubSeasons: Number(latestSpell.seasons || latestSpell.rows?.length || row.currentClubSeasons || 0),
+    currentClub: getClub(latestRow) || latestSpell?.club || row.currentClub,
+    currentClubSeasons: Number(latestSpell?.seasons || latestSpell?.rows?.length || 1),
     currentClubProgress: trend.progress ?? row.currentClubProgress,
     currentClubAveragePVA: trend.averagePVA ?? row.currentClubAveragePVA,
     currentClubAverageVA: trend.averageVA ?? row.currentClubAverageVA,
@@ -81,6 +102,23 @@ const getMetricClass = (value) => {
   if (n > 0) return "text-green-700";
   if (n < 0) return "text-red-700";
   return "text-gray-700";
+};
+
+const softRecommendation = (score, eligible = true) => {
+  if (!eligible) return "Below tenure threshold";
+  if (score >= 70) return "Strong recommendation";
+  if (score >= 55) return "Recommended";
+  if (score >= 40) return "Worth interviewing";
+  if (score >= 25) return "Watchlist / outside shortlist";
+  return "Not recommended";
+};
+
+const scoreClass = (score) => {
+  if (score >= 70) return "text-green-700";
+  if (score >= 55) return "text-emerald-700";
+  if (score >= 40) return "text-amber-700";
+  if (score >= 25) return "text-orange-700";
+  return "text-red-700";
 };
 
 const badgeClass = "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold bg-purple-50 text-purple-700";
@@ -100,14 +138,6 @@ const ManagerBadges = ({ row }) => {
       {badges.slice(0, 3).map((badge) => <span key={badge} className={badgeClass}>{badge}</span>)}
     </div>
   );
-};
-
-const scoreClass = (score) => {
-  if (score >= 78) return "text-green-700";
-  if (score >= 65) return "text-emerald-700";
-  if (score >= 50) return "text-amber-700";
-  if (score >= 35) return "text-orange-700";
-  return "text-red-700";
 };
 
 const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
@@ -131,7 +161,10 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
   const selectedReports = selectedManagers
     .map((manager) => rows.find((row) => row.manager === manager))
     .filter(Boolean)
-    .map((row) => ({ row, report: buildRecruitmentReport(row, vacancyType) }))
+    .map((row) => {
+      const report = buildRecruitmentReport(row, vacancyType);
+      return { row, report, recommendation: softRecommendation(report.evidenceScore, report.eligible) };
+    })
     .sort((a, b) => b.report.evidenceScore - a.report.evidenceScore);
 
   const toggleFilter = (filterId) => {
@@ -247,6 +280,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
               <th className="text-left py-3 px-3">Compare</th>
               <th className="text-left py-3 px-3">Rank</th>
               <th className="text-left py-3 px-3">Manager</th>
+              <th className="text-right py-3 px-3">Career</th>
               <th className="text-right py-3 px-3">Current club</th>
               <th className="text-right py-3 px-3">Tenure</th>
               <th className="text-right py-3 px-3">{preset.metricLabel}</th>
@@ -272,6 +306,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                       <div className="text-xs text-gray-500">S{row.bestFiveSeasonRun.fromSeason}–S{row.bestFiveSeasonRun.toSeason}</div>
                     )}
                   </td>
+                  <td className="py-3 px-3 text-right">{row.seasons}/{row.clubsManaged}</td>
                   <td className="py-3 px-3 text-right">{row.currentClub || "—"}</td>
                   <td className="py-3 px-3 text-right">{row.currentClubSeasons || 0}</td>
                   <td className={`py-3 px-3 text-right font-black ${getMetricClass(metricValue)}`}>
@@ -284,7 +319,7 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
                 </tr>
               );
             })}
-            {!shortlist.length && <tr><td colSpan="10" className="py-8 px-3 text-center text-gray-500">No managers match those recruitment filters.</td></tr>}
+            {!shortlist.length && <tr><td colSpan="11" className="py-8 px-3 text-center text-gray-500">No managers match those recruitment filters.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -315,10 +350,10 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
               </tr>
             </thead>
             <tbody>
-              {selectedReports.map(({ row, report }) => (
+              {selectedReports.map(({ row, report, recommendation }) => (
                 <tr key={row.manager} className="border-t">
                   <td className="py-3 px-3 font-black text-purple-700">{row.manager}</td>
-                  <td className={`py-3 px-3 font-black ${scoreClass(report.evidenceScore)}`}>{report.recommendation}</td>
+                  <td className={`py-3 px-3 font-black ${scoreClass(report.evidenceScore)}`}>{recommendation}</td>
                   <td className={`py-3 px-3 text-right font-black ${scoreClass(report.evidenceScore)}`}>{fmt(report.evidenceScore, 1)}</td>
                   <td className="py-3 px-3 text-right">{fmt(report.qualifiedScore, 1)}</td>
                   <td className="py-3 px-3 text-right">{fmt(report.deservingScore, 1)}</td>
@@ -334,14 +369,14 @@ const RecruitmentAnalyticsPanel = ({ allSummaries = [], onSelectManager }) => {
 
         {selectedReports.length > 0 && (
           <div className="grid lg:grid-cols-2 gap-4">
-            {selectedReports.map(({ row, report }) => (
+            {selectedReports.map(({ row, report, recommendation }) => (
               <div key={row.manager} className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
                     <h5 className="text-lg font-black text-gray-900">{row.manager}</h5>
                     <p className="text-sm text-gray-500">{report.currentClub || "Current club unknown"} · {report.currentClubSeasons} season(s)</p>
                   </div>
-                  <div className={`text-right font-black ${scoreClass(report.evidenceScore)}`}>{report.recommendation}</div>
+                  <div className={`text-right font-black ${scoreClass(report.evidenceScore)}`}>{recommendation}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">
