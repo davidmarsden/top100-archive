@@ -131,7 +131,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
             <Trophy className="w-5 h-5 text-yellow-600" /> ETOT success curve
           </h3>
           <p className="text-sm text-gray-500">
-            Five-point ETOT bands shown visually first, then as a table. In D1 the useful lines are title, Top 4, Top 10 and danger zone; in D2-D5 promotion/playoffs matter more.
+            Asymmetric ETOT bands merge the low/high tails and use two-point bands through the main competitive range. In D1 the useful lines are title, Top 4, Top 10 and danger zone; in D2-D5 promotion/playoffs matter more.
           </p>
         </div>
 
