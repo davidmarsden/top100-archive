@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { buildSuccessEvidence, COMPETITION_FAMILIES } from "../analytics/successEvidenceAnalytics";
+import { buildSuccessEvidence } from "../analytics/successEvidenceAnalytics";
 
 const fmt = (value, digits = 2, prefix = "") => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -63,11 +63,10 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
   const [division, setDivision] = useState("all");
   const [club, setClub] = useState("");
   const [manager, setManager] = useState("");
-  const [competitionFamily, setCompetitionFamily] = useState("all");
 
   const evidence = useMemo(
-    () => buildSuccessEvidence(archiveRows, statsRows, honours, { division, club, manager, competitionFamily, etotBandWidth: 5 }),
-    [archiveRows, statsRows, honours, division, club, manager, competitionFamily]
+    () => buildSuccessEvidence(archiveRows, statsRows, honours, { division, club, manager, etotBandWidth: 5 }),
+    [archiveRows, statsRows, honours, division, club, manager]
   );
 
   const successCurveData = evidence.outcomeBands.map((row) => ({
@@ -96,7 +95,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
           </div>
         </div>
 
-        <div className="p-5 grid md:grid-cols-4 gap-3 border-b">
+        <div className="p-5 grid md:grid-cols-3 gap-3 border-b">
           <label className="text-sm font-semibold text-gray-700">
             Division
             <select value={division} onChange={(event) => setDivision(event.target.value)} className="mt-1 w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white">
@@ -111,12 +110,6 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
           <label className="text-sm font-semibold text-gray-700">
             Manager
             <input value={manager} onChange={(event) => setManager(event.target.value)} placeholder="Optional manager filter" className="mt-1 w-full px-3 py-2 border-2 border-gray-200 rounded-lg" />
-          </label>
-          <label className="text-sm font-semibold text-gray-700">
-            Silverware family
-            <select value={competitionFamily} onChange={(event) => setCompetitionFamily(event.target.value)} className="mt-1 w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white">
-              {COMPETITION_FAMILIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
           </label>
         </div>
 
@@ -208,7 +201,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold flex items-center gap-2"><Medal className="w-5 h-5 text-purple-600" /> Silverware conversion</h3>
-            <p className="text-sm text-gray-500">Filtered by the selected silverware family. Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
+            <p className="text-sm text-gray-500">Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -233,7 +226,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                     <td className="py-3 px-3 text-right font-black text-purple-700">{fmt(row.silverwareConversion, 5)}</td>
                   </tr>
                 ))}
-                {!evidence.silverwareConversion.length && <tr><td colSpan="6" className="py-8 text-center text-gray-500">No silverware conversion rows for this filter.</td></tr>}
+                {!evidence.silverwareConversion.length && <tr><td colSpan="6" className="py-8 text-center text-gray-500">No silverware conversion rows available.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -269,7 +262,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                     <td className="py-3 px-3 text-right font-black">{row.total}</td>
                   </tr>
                 ))}
-                {!evidence.cupFamilies.length && <tr><td colSpan="7" className="py-8 text-center text-gray-500">No cup family rows for this filter.</td></tr>}
+                {!evidence.cupFamilies.length && <tr><td colSpan="7" className="py-8 text-center text-gray-500">No cup family rows available.</td></tr>}
               </tbody>
             </table>
           </div>
