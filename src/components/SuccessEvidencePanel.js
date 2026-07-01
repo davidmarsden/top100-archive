@@ -18,6 +18,11 @@ const fmt = (value, digits = 2, prefix = "") => {
   return `${sign}${n.toFixed(digits)}`;
 };
 
+const conversionIndex = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  return fmt(Number(value) * 1000, 1);
+};
+
 const pct = (value) => (value === null || value === undefined ? "—" : `${Number(value).toFixed(1)}%`);
 
 const StatCard = ({ label, value, hint }) => (
@@ -120,13 +125,13 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         return {
           ...item,
           title: "Do stronger squads finish higher?",
-          note: "Stronger squads generally climb the table, but the game is not played on paper. Within each division, management still makes a huge difference.",
+          note: "Yes. Better players usually produce better teams. But that only tells half the story — the league still isn't won on paper.",
         };
       }
       return {
         ...item,
-        title: "Is it all about having the best players?",
-        note: "There is more to winning than having the best players. Strong and modest squads can both overachieve when the manager gets more out of them.",
+        title: "Does having the strongest squad make you the best manager?",
+        note: "No. Great managers outperform expectations at every squad level. Having the strongest squad doesn't make you the best manager — getting more from your squad does.",
       };
     });
 
@@ -279,7 +284,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold flex items-center gap-2"><Medal className="w-5 h-5 text-purple-600" /> Silverware conversion</h3>
-            <p className="text-sm text-gray-500">Which managers turn squad strength into trophies? Formula: honour score per season divided by average ETOT. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
+            <p className="text-sm text-gray-500">Which managers turn squad strength into trophies? Conversion Index = honour score per season divided by average ETOT, then multiplied by 1000. League, SMFA and WCC/WCS wins = 3; Top 100 cups = 2; Youth/other cups = 1.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -290,7 +295,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                   <th className="text-right py-3 px-3">Avg ETOT</th>
                   <th className="text-right py-3 px-3">Score</th>
                   <th className="text-right py-3 px-3">Score/season</th>
-                  <th className="text-right py-3 px-3">Conversion</th>
+                  <th className="text-right py-3 px-3">Conversion Index</th>
                 </tr>
               </thead>
               <tbody>
@@ -301,7 +306,7 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
                     <td className="py-3 px-3 text-right">{fmt(row.averageETOT, 2)}</td>
                     <td className="py-3 px-3 text-right font-bold">{row.honourScore}</td>
                     <td className="py-3 px-3 text-right">{fmt(row.scorePerSeason, 3)}</td>
-                    <td className="py-3 px-3 text-right font-black text-purple-700">{fmt(row.silverwareConversion, 5)}</td>
+                    <td className="py-3 px-3 text-right font-black text-purple-700">{conversionIndex(row.silverwareConversion)}</td>
                   </tr>
                 ))}
                 {!evidence.silverwareConversion.length && <tr><td colSpan="6" className="py-8 text-center text-gray-500">No silverware conversion rows available.</td></tr>}
