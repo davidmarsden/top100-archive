@@ -69,7 +69,7 @@ const MiniBadge = ({ children, tone = "gray" }) => {
   return <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold border ${styles[tone]}`}>{children}</span>;
 };
 
-const HistoricalStatsArchive = () => {
+const HistoricalStatsArchive = ({ allowImport = true }) => {
   const [archive, setArchive] = useState(readSavedArchive);
   const [selectedSeason, setSelectedSeason] = useState(27);
   const [selectedDivision, setSelectedDivision] = useState(1);
@@ -216,12 +216,18 @@ const HistoricalStatsArchive = () => {
     return (
       <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
         <h2 className="text-3xl font-black text-gray-900">Historical Stats Archive</h2>
-        <p className="text-gray-600 mt-2">Load your saved statsArchive.json to browse Malcolm&apos;s historical team-strength archive.</p>
-        <label className="mt-6 inline-flex items-center px-5 py-3 rounded-xl bg-blue-600 text-white font-bold shadow hover:bg-blue-700 cursor-pointer">
-          Load statsArchive.json
-          <input type="file" accept=".json,application/json" onChange={handleLoadJson} className="hidden" />
-        </label>
-        {error && <div className="mt-4 text-red-700 font-semibold">{error}</div>}
+        <p className="text-gray-600 mt-2">
+          {allowImport
+            ? "Import the latest archive data to browse Malcolm's historical team-strength archive."
+            : "The public stats archive is temporarily unavailable."}
+        </p>
+        {allowImport && (
+          <label className="mt-6 inline-flex items-center px-5 py-3 rounded-xl bg-blue-600 text-white font-bold shadow hover:bg-blue-700 cursor-pointer">
+            Import season data
+            <input type="file" accept=".json,application/json" onChange={handleLoadJson} className="hidden" />
+          </label>
+        )}
+        {allowImport && error && <div className="mt-4 text-red-700 font-semibold">{error}</div>}
       </div>
     );
   }
@@ -234,20 +240,22 @@ const HistoricalStatsArchive = () => {
             <h2 className="text-3xl font-black text-gray-900">Historical Stats Archive</h2>
             <p className="text-gray-600 mt-1">Browse team strength, predicted finish, actual finish, VA and PVA across Malcolm&apos;s S2–S27 dataset.</p>
           </div>
-          <label className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:bg-blue-700 cursor-pointer">
-            Load different JSON
-            <input type="file" accept=".json,application/json" onChange={handleLoadJson} className="hidden" />
-          </label>
+          {allowImport && (
+            <label className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:bg-blue-700 cursor-pointer">
+              Import season data
+              <input type="file" accept=".json,application/json" onChange={handleLoadJson} className="hidden" />
+            </label>
+          )}
         </div>
-        {error && <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 font-semibold">{error}</div>}
+        {allowImport && error && <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 font-semibold">{error}</div>}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard label="Rows" value={rows.length} />
-        <StatCard label="Files" value={summaries.length} />
+        <StatCard label="Season records" value={rows.length} />
+        <StatCard label="Source documents" value={summaries.length} />
         <StatCard label="Seasons" value={seasons.length} note={`${Math.min(...seasons)}–${Math.max(...seasons)}`} />
-        <StatCard label="Missing divisions" value={health.missing.length} />
-        <StatCard label="Warnings" value={warnings.length} />
+        <StatCard label="Missing season data" value={health.missing.length} />
+        <StatCard label="Data notes" value={warnings.length} />
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-5">
@@ -305,7 +313,7 @@ const HistoricalStatsArchive = () => {
         <div className="p-5 border-b flex flex-col lg:flex-row lg:items-end gap-3 lg:justify-between">
           <div>
             <h3 className="font-black text-gray-900 text-xl">Archive Explorer</h3>
-            <p className="text-sm text-gray-500">Select a season and division to inspect the imported stats table.</p>
+            <p className="text-sm text-gray-500">Select a season and division to inspect the historical stats table.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <select className="border rounded-lg px-3 py-2" value={selectedSeason} onChange={(event) => setSelectedSeason(Number(event.target.value))}>
