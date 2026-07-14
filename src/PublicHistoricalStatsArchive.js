@@ -67,7 +67,7 @@ const PublicHistoricalStatsArchive = () => {
           {message}
         </div>
       )}
-      <HistoricalStatsArchive />
+      <HistoricalStatsArchive allowImport={false} />
     </>
   );
 };
