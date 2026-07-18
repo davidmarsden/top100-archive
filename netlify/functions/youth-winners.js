@@ -127,8 +127,9 @@ async function fetchPublicCsv(range) {
   }
   const values = parseCsv(text);
   const headersRow = (values[0] || []).map(normalise);
-  if (!headersRow.includes('season')) {
-    throw new Error(`Public CSV for ${sheetName} did not return the expected header row.`);
+  const validSeasonHeaders = ['season', 'seas', 's'];
+  if (!validSeasonHeaders.some((header) => headersRow.includes(header))) {
+    throw new Error(`Public CSV for ${sheetName} did not return a supported season header.`);
   }
   return values;
 }
