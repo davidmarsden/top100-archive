@@ -116,6 +116,7 @@ async function fetchPublicCsv(range) {
     tqx: 'out:csv',
     sheet: sheetName,
     range: cellRange,
+    headers: '1',
   });
   const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(SHEET_ID)}/gviz/tq?${params.toString()}`;
   const result = await fetch(url);
@@ -124,7 +125,13 @@ async function fetchPublicCsv(range) {
   if (/<!doctype html|<html/i.test(text)) {
     throw new Error('The winners spreadsheet is not publicly readable via CSV export.');
   }
-  return parseCsv(text);
+  const values = parseCsv(text);
+  const headersRow = (values[0] || []).map(normalise);
+  const validSeasonHeaders = ['season', 'seas', 's'];
+  if (!validSeasonHeaders.some((header) => headersRow.includes(header))) {
+    throw new Error(`Public CSV for ${sheetName} did not return a supported season header.`);
+  }
+  return values;
 }
 
 async function fetchApiRange(range) {
