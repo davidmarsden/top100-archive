@@ -3,16 +3,29 @@ const CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
 const MANAGERS_RANGE = process.env.REACT_APP_WINNERS_MANAGERS_RANGE || 'Managers!A:Z';
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 
-const headers = {
+const baseHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
   'Content-Type': 'application/json; charset=utf-8',
 };
 
+const successHeaders = {
+  ...baseHeaders,
+  'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
+};
+
+const errorHeaders = {
+  ...baseHeaders,
+  'Cache-Control': 'no-store',
+};
+
 function response(statusCode, body) {
-  return { statusCode, headers, body: JSON.stringify(body) };
+  return {
+    statusCode,
+    headers: statusCode >= 200 && statusCode < 300 ? successHeaders : errorHeaders,
+    body: JSON.stringify(body),
+  };
 }
 
 function normalise(value) {
@@ -74,7 +87,7 @@ async function fetchRange(range) {
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: successHeaders, body: '' };
   if (event.httpMethod !== 'GET') return response(405, { error: 'Method not allowed' });
   if (!SHEET_ID || !API_KEY) return response(500, { error: 'Archive winners data source is not configured.' });
 
