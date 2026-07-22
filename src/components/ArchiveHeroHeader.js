@@ -10,7 +10,7 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
       <div className="text-center">
         <div className="flex justify-center mb-6">
           <img
-            src="https://anotherurl.wordpress.com/wp-content/uploads/2025/05/1000017272.png"
+            src="https://anotherurl.wordpress.com/wp-content/uploads/2026/07/edited-photo.png"
             alt="Top 100"
             className="h-28 md:h-36 drop-shadow-lg"
           />
