@@ -1,7 +1,7 @@
 import React from "react";
 import { AlertCircle, Database, Loader } from "lucide-react";
 
-const LOGO_URL = "https://anotherurl.wordpress.com/wp-content/uploads/2026/07/edited-photo.png";
+const LOGO_URL = "/top100-logo.svg";
 
 const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
   <header className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
