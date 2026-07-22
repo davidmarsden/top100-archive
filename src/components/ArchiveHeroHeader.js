@@ -2,6 +2,7 @@ import React from "react";
 import { AlertCircle, Database, Loader } from "lucide-react";
 
 const LOGO_URL = "/top100-logo.svg";
+const DONATION_URL = "https://donate.stripe.com/14A7sx289eLk9G4e6f5Rm00";
 
 const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
   <header className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
@@ -28,6 +29,7 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
           <a href="https://archive.smtop100.blog/" aria-current="page" className="shrink-0 rounded-full border border-white/45 bg-white/15 px-4 py-2 text-sm font-bold text-white no-underline">Archive</a>
           <a href="https://youth-cup.smtop100.blog/" className="shrink-0 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-bold text-white no-underline transition hover:border-white/50 hover:bg-white/15">Tournaments</a>
           <a href="https://youth-cup.smtop100.blog/manager" className="shrink-0 rounded-full border border-white/50 bg-[#f4c8d6] px-4 py-2 text-sm font-black text-[#211820] no-underline transition hover:bg-white">Manager portal</a>
+          <a href={DONATION_URL} target="_blank" rel="noreferrer" className="shrink-0 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-bold text-white no-underline transition hover:border-white/50 hover:bg-white/15">Support Top 100</a>
         </nav>
       </div>
     </div>
