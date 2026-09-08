@@ -7,7 +7,7 @@ const ArchiveFooter = () => (
         <a href="https://smtop100.blog/" className="inline-flex items-baseline no-underline">
           <span className="text-xl font-black text-white">Top</span>
           <span className="text-xl font-black text-[#10B981]">100</span>
-          <span className="ml-3 text-xs font-black uppercase tracking-[0.18em] text-slate-500">Stats &amp; History</span>
+          <span className="ml-3 text-xs font-black uppercase tracking-[0.18em] text-slate-300">Stats &amp; History</span>
         </a>
 
         <nav className="flex flex-wrap gap-x-5 gap-y-3 text-sm font-semibold" aria-label="Top 100 footer navigation">
@@ -18,7 +18,7 @@ const ArchiveFooter = () => (
           <a href="https://awards.smtop100.blog/" className="text-slate-300 no-underline hover:text-white">Awards</a>
         </nav>
       </div>
-      <p className="mt-6 border-t border-white/10 pt-5 text-xs text-slate-500">
+      <p className="mt-6 border-t border-white/10 pt-5 text-xs text-slate-300">
         The historical record of the Top 100 Soccer Manager community.
       </p>
     </div>
