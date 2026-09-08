@@ -7,13 +7,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #071526;
-    color: #e2e8f0;
-  }
-}
-
 * {
   box-sizing: border-box;
 }
