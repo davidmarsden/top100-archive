@@ -1,80 +1,66 @@
 import React from "react";
 import { AlertCircle, Database, Loader } from "lucide-react";
 
-const LOGO_URL = "/top100-logo.svg";
-const DONATION_URL = "https://donate.stripe.com/14A7sx289eLk9G4e6f5Rm00";
-
 const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
-  <header className="relative overflow-hidden bg-black text-pink-100 border-b-4 border-pink-300">
-    <div className="absolute inset-0 bg-gradient-to-r from-black via-black to-[#e9a6ad]" />
-    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_70%_40%,#f9a8d4_0,transparent_35%)]" />
+  <header className="relative overflow-hidden bg-[#0B1F3B] text-white border-b border-white/10">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(16,185,129,0.18),transparent_34%)]" />
 
-    <div className="relative border-b border-white/15 bg-black/25 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
-        <a
-          href="https://smtop100.blog/"
-          aria-label="Visit the Top 100 main site"
-          className="inline-flex self-start rounded-2xl border border-white/35 bg-white/90 px-4 py-2 shadow-2xl transition hover:-translate-y-0.5 hover:bg-white"
-        >
-          <img src={LOGO_URL} alt="Top 100 — Probably the best GW in SM" className="h-14 sm:h-16 w-auto object-contain" />
+    <div className="relative border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <a href="https://smtop100.blog/" aria-label="Visit the Top 100 main site" className="inline-block no-underline">
+          <div className="text-4xl sm:text-5xl font-black tracking-tight leading-none">
+            <span className="text-white">Top</span><span className="text-[#10B981]">100</span>
+          </div>
+          <div className="mt-3 flex items-center gap-0 max-w-[360px]" aria-hidden="true">
+            <span className="h-px flex-1 bg-slate-300" />
+            <span className="w-5 h-5 rounded-full border-2 border-slate-300" />
+            <span className="h-px flex-1 bg-slate-300" />
+          </div>
+          <div className="mt-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.28em] text-slate-300">
+            Managers. Stories. A bigger game.
+          </div>
         </a>
 
-        <div className="hidden lg:block leading-tight">
-          <div className="text-xs font-black uppercase tracking-[0.16em] text-[#f4c8d6]">Top 100</div>
-          <div className="text-xl font-black text-white">Historical Archive</div>
-        </div>
-
-        <nav className="lg:ml-auto flex gap-2 overflow-x-auto pb-1 lg:pb-0" aria-label="Top 100 websites">
-          <a href="https://smtop100.blog/" className="shrink-0 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-bold text-white no-underline transition hover:border-white/50 hover:bg-white/15">Main site</a>
-          <a href="https://archive.smtop100.blog/" aria-current="page" className="shrink-0 rounded-full border border-white/45 bg-white/15 px-4 py-2 text-sm font-bold text-white no-underline">Archive</a>
-          <a href="https://youth-cup.smtop100.blog/" className="shrink-0 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-bold text-white no-underline transition hover:border-white/50 hover:bg-white/15">Tournaments</a>
-          <a href="https://youth-cup.smtop100.blog/manager" className="shrink-0 rounded-full border border-white/50 bg-[#f4c8d6] px-4 py-2 text-sm font-black text-[#211820] no-underline transition hover:bg-white">Manager portal</a>
-          <a href={DONATION_URL} target="_blank" rel="noreferrer" className="shrink-0 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-bold text-white no-underline transition hover:border-white/50 hover:bg-white/15">Support Top 100</a>
+        <nav className="mt-6 flex gap-2 overflow-x-auto pb-1" aria-label="Top 100 websites">
+          <a href="https://smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100</a>
+          <a href="https://archive.smtop100.blog/" aria-current="page" className="shrink-0 rounded-2xl border border-[#10B981] bg-[#10B981] px-4 py-2.5 text-sm font-black text-[#0B1F3B] no-underline">Stats &amp; History</a>
+          <a href="https://youth-cup.smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Tournaments</a>
+          <a href="https://awards.smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Awards</a>
+          <a href="https://top100regen.website/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Regen</a>
         </nav>
       </div>
     </div>
 
-    <div className="relative max-w-7xl mx-auto px-6 py-12">
-      <div className="text-center">
-        <div
-          className="absolute right-0 top-0 w-[700px] h-[700px] opacity-10"
-          style={{
-            backgroundImage: "url('/football-watermark.png')",
-            backgroundRepeat: "no-repeat",
-            backgroundSize: "contain",
-          }}
-        />
-
-        <div className="mb-4 text-sm font-black uppercase tracking-[0.18em] text-[#f0b6be]">Top 100 · Historical database</div>
-
-        <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 text-[#f4c8d6]">
-          FULL 27 SEASONS DATA ARCHIVE
+    <div className="relative max-w-7xl mx-auto px-6 py-12 md:py-16">
+      <div className="max-w-4xl">
+        <div className="text-sm font-black uppercase tracking-[0.18em] text-[#10B981]">Top 100 · Stats &amp; History</div>
+        <h1 className="mt-4 text-4xl md:text-6xl font-black tracking-tight leading-[0.98] text-white">
+          Every season. Every manager. <span className="text-[#10B981]">The story in numbers.</span>
         </h1>
+        <p className="mt-6 text-lg md:text-xl leading-relaxed text-slate-300 max-w-3xl">
+          League tables, careers, honours, records and historical trends from across the Top 100 game world.
+        </p>
 
-        <div className="text-xl md:text-2xl text-[#f0b6be] mb-8">
-          Soccer Manager Worlds Elite Community • Complete Historical Database
-        </div>
-
-        <div className="flex items-center justify-center gap-3 text-lg">
+        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold">
           {loading ? (
             <>
-              <Loader className="w-5 h-5 animate-spin text-yellow-300" />
-              <span className="text-pink-100">Loading historical data...</span>
+              <Loader className="w-4 h-4 animate-spin text-[#10B981]" />
+              <span className="text-slate-200">Loading historical data…</span>
             </>
           ) : error ? (
             <>
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <span className="text-red-300">Database Error: {error}</span>
+              <AlertCircle className="w-4 h-4 text-red-300" />
+              <span className="text-red-200">Database error: {error}</span>
             </>
           ) : dataLoaded ? (
             <>
-              <Database className="w-5 h-5 text-green-300" />
-              <span className="text-green-300">✅ Live Database Connected</span>
+              <Database className="w-4 h-4 text-[#10B981]" />
+              <span className="text-slate-200">Live database connected</span>
             </>
           ) : (
             <>
-              <AlertCircle className="w-5 h-5 text-yellow-300" />
-              <span className="text-yellow-300">⚙️ Setup Required</span>
+              <AlertCircle className="w-4 h-4 text-amber-300" />
+              <span className="text-amber-200">Setup required</span>
             </>
           )}
         </div>
