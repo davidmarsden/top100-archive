@@ -1,13 +1,15 @@
 import React from "react";
 import { AlertCircle, Database, Loader } from "lucide-react";
 
+const MAIN_SITE_URL = "https://smtop100.micro.blog/";
+
 const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
   <header className="relative overflow-hidden bg-[#0B1F3B] text-white border-b border-white/10">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(16,185,129,0.18),transparent_34%)]" />
 
     <div className="relative border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <a href="https://smtop100.blog/" aria-label="Visit the Top 100 main site" className="inline-block no-underline">
+        <a href={MAIN_SITE_URL} aria-label="Visit the Top 100 main site" className="inline-block no-underline">
           <div className="text-4xl sm:text-5xl font-black tracking-tight leading-none">
             <span className="text-white">Top</span><span className="text-[#10B981]">100</span>
           </div>
@@ -22,7 +24,7 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
         </a>
 
         <nav className="mt-6 flex gap-2 overflow-x-auto pb-1" aria-label="Top 100 websites">
-          <a href="https://smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100</a>
+          <a href={MAIN_SITE_URL} className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100</a>
           <a href="https://archive.smtop100.blog/" aria-current="page" className="shrink-0 rounded-2xl border border-[#10B981] bg-[#10B981] px-4 py-2.5 text-sm font-black text-[#0B1F3B] no-underline">Stats &amp; History</a>
           <a href="https://youth-cup.smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Tournaments</a>
           <a href="https://awards.smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Awards</a>
