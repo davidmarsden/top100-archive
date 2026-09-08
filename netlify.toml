@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+  functions = "netlify/functions"
+
+[build.environment]
+  # These REACT_APP_* values are intentionally exposed to the browser by Create React App.
+  # Sheet IDs/ranges are public identifiers; the Google browser API key must remain
+  # restricted in Google Cloud to the required API and approved HTTP referrers.
+  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_GOOGLE_API_KEY,REACT_APP_SHEET_ID,REACT_APP_WINNERS_SHEET_ID,REACT_APP_WINNERS_CLUBS_RANGE,REACT_APP_WINNERS_MANAGERS_RANGE"

@@ -10,29 +10,21 @@ const ICONS = {
   Users,
 };
 
-const colourClasses = {
-  blue: "from-blue-500 to-blue-600",
-  purple: "from-purple-500 to-purple-600",
-  green: "from-green-500 to-green-600",
-  indigo: "from-indigo-500 to-indigo-600",
-  teal: "from-teal-500 to-teal-600",
-  amber: "from-amber-500 to-amber-600",
-  pink: "from-pink-500 to-pink-600",
-};
-
 const baseClass =
-  "flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105";
-
-const inactiveClass = "bg-[#e9a6ad] hover:bg-[#de8f99] text-gray-900";
+  "flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[#10B981]/60";
 
 const ArchiveNavigation = ({ activeTab, setActiveTab, tabs = PUBLIC_ARCHIVE_TABS }) => (
-  <div className="bg-white shadow-xl sticky top-0 z-50 border-b border-gray-200">
-    <div className="max-w-7xl mx-auto px-6">
-      <div className="flex flex-wrap gap-2 py-4">
+  <div className="sticky top-0 z-50 border-b border-slate-200 bg-[#F8FAFC]/95 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#071526]/95">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="flex gap-2 overflow-x-auto py-3" aria-label="Stats and History sections">
         {tabs.map((tab) => {
           const Icon = ICONS[tab.icon] || BarChart3;
-          const activeClass = `bg-gradient-to-r ${colourClasses[tab.color] || colourClasses.blue} text-white shadow-lg`;
-          const className = `${baseClass} ${activeTab === tab.id ? activeClass : inactiveClass}`;
+          const isActive = activeTab === tab.id;
+          const className = `${baseClass} ${
+            isActive
+              ? "border-[#10B981] bg-[#10B981] text-[#0B1F3B] shadow-sm"
+              : "border-slate-300 bg-white text-slate-700 hover:border-[#10B981] hover:text-[#0B1F3B] dark:border-white/20 dark:bg-[#0B1F3B] dark:text-slate-200 dark:hover:border-[#10B981] dark:hover:text-white"
+          }`;
 
           if (tab.type === "route") {
             return (
