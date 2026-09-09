@@ -109,9 +109,18 @@ const LeagueTableTab = ({
                   className={`${getRowStyling(team.position, team.division)} border-b border-gray-100 transition-all hover:shadow-md`}
                 >
                   <td className="py-4 px-4">
-                    <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${badge.bg} ${badge.text}`}>
-                      {badge.icon ? `${badge.icon} ` : ""}
-                      {team.position}
+                    <span
+                      className={`relative inline-flex w-10 h-10 shrink-0 items-center justify-center rounded-full font-bold tabular-nums leading-none ${badge.bg} ${badge.text}`}
+                    >
+                      <span>{team.position}</span>
+                      {badge.icon && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -right-1 -top-1 inline-flex min-w-4 h-4 items-center justify-center rounded-full bg-white px-0.5 text-[10px] leading-none shadow-sm ring-1 ring-black/10"
+                        >
+                          {badge.icon}
+                        </span>
+                      )}
                     </span>
                   </td>
                   <td className="py-4 px-4">
