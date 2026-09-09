@@ -8,6 +8,16 @@ const LegendSwatch = ({ color, label }) => (
   </span>
 );
 
+const getStatusPillClass = (tag) => {
+  if (tag.label === "Auto-Sacked") {
+    return "bg-rose-600 text-white border border-rose-700 shadow-sm";
+  }
+  if (tag.label === "Relegated") {
+    return "bg-red-100 text-red-800 border border-red-300";
+  }
+  return tag.style;
+};
+
 const LeagueTableTab = ({
   getFilteredData,
   selectedSeason,
@@ -113,9 +123,12 @@ const LeagueTableTab = ({
                           {team.manager || "Unknown Manager"}
                         </div>
                         {rowTags.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             {rowTags.map((t, i) => (
-                              <span key={i} className={`px-2 py-0.5 rounded-md text-xs font-semibold ${t.style}`}>
+                              <span
+                                key={i}
+                                className={`inline-flex items-center min-h-[24px] px-2.5 py-1 rounded-full text-xs font-bold leading-none ${getStatusPillClass(t)}`}
+                              >
                                 {t.label}
                               </span>
                             ))}
@@ -159,7 +172,7 @@ const LeagueTableTab = ({
               <LegendSwatch color="bg-green-300 border-green-600" label="Promoted (Auto or Playoff Winner)" />
               <LegendSwatch color="bg-blue-300 border-blue-600" label="Playoff Places (4th–7th in D2–D5)" />
               <LegendSwatch color="bg-red-300 border-red-700" label="Relegated (17th–20th in D1–D4)" />
-              <LegendSwatch color="bg-rose-400 border-rose-700" label="Automatic Sacking (18th–20th all divisions)" />
+              <LegendSwatch color="bg-rose-500 text-white border-rose-700" label="Automatic Sacking (18th–20th all divisions)" />
               <LegendSwatch color="bg-purple-300 border-purple-500" label="D1: SMFA Champions Cup (2nd–4th)" />
               <LegendSwatch color="bg-indigo-300 border-indigo-500" label="D1: SMFA Shield (5th–10th)" />
             </div>
