@@ -1,7 +1,7 @@
 import React from "react";
 import { AlertCircle, Database, Loader } from "lucide-react";
 
-const MAIN_SITE_URL = "https://smtop100.micro.blog/";
+const MAIN_SITE_URL = "https://smtop100.blog/";
 
 const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
   <header className="relative overflow-hidden bg-[#0B1F3B] text-white border-b border-white/10">
@@ -9,27 +9,36 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
 
     <div className="relative border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <a href={MAIN_SITE_URL} aria-label="Visit the Top 100 main site" className="inline-block no-underline">
-          <div className="text-4xl sm:text-5xl font-black tracking-tight leading-none">
-            <span className="text-white">Top</span><span className="text-[#10B981]">100</span>
-          </div>
-          <div className="mt-3 flex items-center gap-0 max-w-[360px]" aria-hidden="true">
-            <span className="h-px flex-1 bg-slate-300" />
-            <span className="w-5 h-5 rounded-full border-2 border-slate-300" />
-            <span className="h-px flex-1 bg-slate-300" />
-          </div>
-          <div className="mt-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.28em] text-slate-300">
-            Managers. Stories. A bigger game.
-          </div>
-        </a>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <a href={MAIN_SITE_URL} aria-label="Visit the Top 100 main site" className="inline-block no-underline">
+            <div className="text-4xl sm:text-5xl font-black tracking-tight leading-none">
+              <span className="text-white">Top</span><span className="text-[#10B981]">100</span>
+            </div>
+            <div className="mt-3 flex items-center gap-0 max-w-[360px]" aria-hidden="true">
+              <span className="h-px flex-1 bg-slate-300" />
+              <span className="w-5 h-5 rounded-full border-2 border-slate-300" />
+              <span className="h-px flex-1 bg-slate-300" />
+            </div>
+            <div className="mt-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.28em] text-slate-300">
+              Managers. Stories. A bigger game.
+            </div>
+          </a>
 
-        <nav className="mt-6 flex gap-2 overflow-x-auto pb-1" aria-label="Top 100 websites">
-          <a href={MAIN_SITE_URL} className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100</a>
-          <a href="https://archive.smtop100.blog/" aria-current="page" className="shrink-0 rounded-2xl border border-[#10B981] bg-[#10B981] px-4 py-2.5 text-sm font-black text-[#0B1F3B] no-underline">Stats &amp; History</a>
-          <a href="https://youth-cup.smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Tournaments</a>
-          <a href="https://awards.smtop100.blog/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Awards</a>
-          <a href="https://top100regen.website/" className="shrink-0 rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Regen</a>
-        </nav>
+          <div className="text-left lg:text-right">
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-[#10B981]">Top 100</div>
+            <div className="text-xl font-black">Stats &amp; History</div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          <nav className="flex flex-wrap gap-2" aria-label="Top 100 public navigation">
+            <a href={MAIN_SITE_URL} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100</a>
+            <a href={`${MAIN_SITE_URL}regen/`} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100 Regen</a>
+            <a href={`${MAIN_SITE_URL}about/`} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">About</a>
+            <a href={`${MAIN_SITE_URL}explore/`} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Explore</a>
+          </nav>
+          <a href="https://manager.smtop100.blog/" className="rounded-2xl border border-[#10B981] bg-[#10B981] px-4 py-2.5 text-sm font-black text-[#0B1F3B] no-underline transition hover:bg-[#34D399]">Manager sign-in</a>
+        </div>
       </div>
     </div>
 
