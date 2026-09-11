@@ -1,6 +1,6 @@
 import React from "react";
 
-const MAIN_SITE_URL = "https://smtop100.micro.blog/";
+const MAIN_SITE_URL = "https://smtop100.blog/";
 
 const ArchiveFooter = () => (
   <footer className="mt-16 border-t border-white/10 bg-[#071526] text-slate-300">
@@ -14,10 +14,12 @@ const ArchiveFooter = () => (
 
         <nav className="flex flex-wrap gap-x-5 gap-y-3 text-sm font-semibold" aria-label="Top 100 footer navigation">
           <a href={MAIN_SITE_URL} className="text-slate-300 no-underline hover:text-white">Top 100</a>
-          <a href={`${MAIN_SITE_URL}rules/`} className="text-slate-300 no-underline hover:text-white">Rules</a>
+          <a href={`${MAIN_SITE_URL}regen/`} className="text-slate-300 no-underline hover:text-white">Top 100 Regen</a>
+          <a href={`${MAIN_SITE_URL}about/`} className="text-slate-300 no-underline hover:text-white">About</a>
+          <a href={`${MAIN_SITE_URL}explore/`} className="text-slate-300 no-underline hover:text-white">Explore</a>
           <a href={`${MAIN_SITE_URL}support/`} className="text-slate-300 no-underline hover:text-white">Support</a>
-          <a href="https://youth-cup.smtop100.blog/" className="text-slate-300 no-underline hover:text-white">Tournaments</a>
-          <a href="https://awards.smtop100.blog/" className="text-slate-300 no-underline hover:text-white">Awards</a>
+          <a href={`${MAIN_SITE_URL}subscribe/`} className="text-slate-300 no-underline hover:text-white">Subscribe</a>
+          <a href="https://manager.smtop100.blog/" className="text-slate-300 no-underline hover:text-white">Manager portal</a>
         </nav>
       </div>
       <p className="mt-6 border-t border-white/10 pt-5 text-xs text-slate-300">
