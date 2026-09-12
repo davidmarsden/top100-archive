@@ -6,7 +6,7 @@ export const PUBLIC_ARCHIVE_TABS = [
   { id: "managers", label: "Manager Profiles", icon: "Users", color: "teal", type: "tab" },
   { id: "manager-analytics", label: "Manager Analytics", icon: "Users", color: "purple", type: "tab" },
   { id: "honours", label: "Honours", icon: "Trophy", color: "amber", type: "tab" },
-  { id: "legends", label: "Legends", icon: "Trophy", color: "amber", type: "tab" },
+  { id: "legends", label: "Legends", icon: "Trophy", color: "amber", type: "route", href: "/legends/" },
   { id: "stats-archive", label: "Stats Archive", icon: "Database", color: "pink", type: "route", href: "#stats-archive" },
 ];
 
