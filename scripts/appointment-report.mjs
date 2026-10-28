@@ -87,7 +87,8 @@ const history = sheetRows.map((row) => ({ ...row, valueAdded: valueAdded.get(sta
 const liveSource = JSON.parse(fs.readFileSync(args.live, "utf8"));
 const liveRows = Array.isArray(liveSource) ? liveSource : liveSource.rows || [];
 const live = buildLiveSeasonRows(liveRows, sheetRows).map((row, i) => {
-  const predicted = Number(liveRows[i].predicted_position);
+  const raw = liveRows[i].predicted_position;
+  const predicted = raw === null || raw === undefined || raw === "" ? NaN : Number(raw);
   return { ...row, valueAdded: Number.isFinite(predicted) ? predicted - Number(row.position) : null };
 });
 

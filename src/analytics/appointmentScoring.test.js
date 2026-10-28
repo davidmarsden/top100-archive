@@ -92,3 +92,14 @@ test("allocates the highest score for each applicant's preferred club", () => {
   expect(result.unfilled).toEqual([]);
   expect(result.unplaced).toEqual(["Dee"]);
 });
+
+test("leaves a season with no value-added data out of the recent average", () => {
+  const known = [
+    { season: 26, division: 1, position: 5, team: "Delta", manager: "Eve", valueAdded: 10 },
+    { season: 27, division: 1, position: 5, team: "Delta", manager: "Eve" },
+  ];
+  const missing = [known[0], { ...known[1], valueAdded: null }];
+  const a = scoreApplicant({ manager: "Eve", currentSeason: 28, rows: known });
+  const b = scoreApplicant({ manager: "Eve", currentSeason: 28, rows: missing });
+  expect(b.breakdown.recent).toBe(a.breakdown.recent);
+});

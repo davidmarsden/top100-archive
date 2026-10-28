@@ -299,7 +299,8 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
 const ManagerCard = ({ name }) => {
   const rows = rowsByManager.get(name) || [];
-const outcomeRows = rows.filter((r) => isOutcomeManager(r, name));
+// A season still in progress has no titles, promotions or sackings yet.
+const outcomeRows = rows.filter((r) => !r.inProgress && isOutcomeManager(r, name));
 const managerPrediction = buildManagerPrediction(allPositionData, name);
 
   const titles = outcomeRows.filter((r) => isChampion(r.position)).length;

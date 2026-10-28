@@ -47,6 +47,7 @@ const activityPoints = (activity = {}) => ({
 const DIVISION_SIZE = 20;
 
 const num = (value) => {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
