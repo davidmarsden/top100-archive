@@ -35,7 +35,8 @@ const round = (value, digits = 2) => {
   return Math.round(n * factor) / factor;
 };
 
-const countWhere = (rows = [], predicate) => rows.filter(predicate).length;
+// Season outcomes (titles, promotions, sackings) count only once the season is complete.
+const countWhere = (rows = [], predicate) => rows.filter((row) => !row.inProgress && predicate(row)).length;
 
 const getPosition = (row) => toNumberOrNull(row.position ?? row.finalPositionFromStats ?? row.finalPosition);
 const getDivision = (row) => toNumberOrNull(row.division);

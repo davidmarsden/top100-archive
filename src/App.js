@@ -14,6 +14,8 @@ import ArchiveFooter from "./components/ArchiveFooter";
 import ArchiveHeroHeader from "./components/ArchiveHeroHeader";
 import ArchiveControls from "./components/ArchiveControls";
 import ManagerAnalyticsRoute from "./components/ManagerAnalyticsRoute";
+import LiveSeasonBanner from "./components/LiveSeasonBanner";
+import { buildLiveSeasonRows } from "./data/liveSeason";
 
 /* =========================
    Helpers & Status Logic
@@ -163,6 +165,8 @@ const Top100Archive = () => {
   const [selectedDivision, setSelectedDivision] = useState("1");
   const [sortBy, setSortBy] = useState("position");
   const [allPositionData, setAllPositionData] = useState([]);
+  const [sheetPositionData, setSheetPositionData] = useState([]);
+  const [liveSeasonRows, setLiveSeasonRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -505,7 +509,7 @@ const formatted = rows
     };
   });
 
-setAllPositionData(formatted);
+setSheetPositionData(formatted);
 setDataLoaded(true);
     } catch (e) {
       setError(e.message);
@@ -576,6 +580,29 @@ if (managersRes.ok) {
     loadFromGoogleSheets();
     loadWinners();
   }, [loadFromGoogleSheets, loadWinners]);
+
+  // Current season, live from Soccer Manager Sync, until it is in the sheet.
+  useEffect(() => {
+    let live = true;
+    fetch("/.netlify/functions/live-season")
+      .then((res) => (res.ok ? res.json() : { rows: [] }))
+      .then((body) => {
+        if (live) setLiveSeasonRows(Array.isArray(body.rows) ? body.rows : []);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const liveSeasonData = useMemo(
+    () => buildLiveSeasonRows(liveSeasonRows, sheetPositionData),
+    [liveSeasonRows, sheetPositionData]
+  );
+
+  useEffect(() => {
+    setAllPositionData([...sheetPositionData, ...liveSeasonData]);
+  }, [sheetPositionData, liveSeasonData]);
 
 /* =========================
      Derived lists & filters
@@ -648,11 +675,13 @@ if (managersRes.ok) {
   };
 
   const leaders = useMemo(() => {
-    const rowsTitles = allPositionData.filter((r) => isChampion(r.position));
+    // An unfinished live season has no titles, promotions or sackings yet.
+    const settledRows = allPositionData.filter((r) => !r.inProgress);
+    const rowsTitles = settledRows.filter((r) => isChampion(r.position));
 
     // promotions: auto + playoff winners
     const promos = [];
-    for (const r of allPositionData) {
+    for (const r of settledRows) {
       if (isAutoPromo(r.division, r.position)) {
         promos.push(r);
         continue;
@@ -665,8 +694,8 @@ if (managersRes.ok) {
       }
     }
 
-    const rowsReleg = allPositionData.filter((r) => isRelegated(r.division, r.position));
-    const rowsSack = allPositionData.filter((r) => isAutoSacked(r.position));
+    const rowsReleg = settledRows.filter((r) => isRelegated(r.division, r.position));
+    const rowsSack = settledRows.filter((r) => isAutoSacked(r.position));
 
     const byTeam = {
       titles: countBy(rowsTitles, (r) => r.team),
@@ -858,6 +887,7 @@ if (managersRes.ok) {
 
 {/* Main Content */}
 <div className="max-w-7xl mx-auto px-6 py-8">
+  <LiveSeasonBanner rows={liveSeasonData} />
   <ArchiveControls
   activeTab={activeTab}
   searchTerm={searchTerm}
