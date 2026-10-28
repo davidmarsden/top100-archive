@@ -48,13 +48,14 @@ test("never counts a season taken over part-way through against the manager", ()
   expect(latecomer.facts.bottomThreeLastFive).toEqual([]);
 });
 
-test("scores activity and contribution from administrators' assessment", () => {
+test("scores activity from measured data, with half marks for anything missing", () => {
   const unassessed = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
-  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 8, market: 6, community: 6 } });
   expect(unassessed.breakdown.activity).toBe(10);
+  expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, community.");
+  const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, community: 0 } });
+  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, community: 4 } });
+  expect(inactive.breakdown.activity).toBe(0);
   expect(active.breakdown.activity).toBe(20);
-  expect(active.total - unassessed.total).toBeCloseTo(10, 5);
-  expect(unassessed.notes).toContain("Activity and contribution not fully assessed: half marks used.");
 });
 
 test("applies the eligibility rules and weighs the rest", () => {

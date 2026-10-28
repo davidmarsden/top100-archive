@@ -12,8 +12,11 @@
 //   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
-//   F. Activity, contribution 20 competitions (8) + transfer market (6) + community (6),
-//                                entered by administrators; half marks when not yet assessed
+//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (6),
+//                                deals with other Top 100 managers this season (6), squad building:
+//                                the club's squad-strength rank gain since the manager arrived (4);
+//                                assessed by administrators: community contribution (4).
+//                                Any part not supplied gets half marks.
 //
 // A season a manager took over part-way through never counts against them
 // (rulebook 3.1): it is not a bottom-three finish for E or for eligibility.
@@ -31,7 +34,15 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
   activity: 20,
 });
 
-const ACTIVITY_PARTS = Object.freeze({ competitions: 8, market: 6, community: 6 });
+const ACTIVITY_PARTS = Object.freeze({ competitions: 6, market: 6, squadBuilding: 4, community: 4 });
+
+// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, community: 0..4 }
+const activityPoints = (activity = {}) => ({
+  competitions: num(activity.competitions) === null ? null : Math.min(6, 3 * num(activity.competitions)),
+  market: num(activity.topManagerDeals) === null ? null : Math.min(6, 0.6 * num(activity.topManagerDeals)),
+  squadBuilding: num(activity.squadRankGain) === null ? null : clamp(2 + num(activity.squadRankGain) / 10, 0, 4),
+  community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 4),
+});
 
 const DIVISION_SIZE = 20;
 
@@ -161,13 +172,14 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   const disciplinePoints = clamp(5 - 2.5 * (num(discipline.sanctions) || 0), 0, 5);
   const E = Math.min(5, tenure) + Math.max(0, 10 - 3 * bottomThree.length) + disciplinePoints;
 
-  // F. Activity and contribution, assessed by administrators (0..max for each part).
-  const assessed = Object.keys(ACTIVITY_PARTS).filter((part) => num(activity[part]) !== null);
+  // F. Activity and contribution: measured where possible, community assessed by administrators.
+  const activityParts = activityPoints(activity);
+  const missing = Object.keys(ACTIVITY_PARTS).filter((part) => activityParts[part] === null);
   const F = Object.entries(ACTIVITY_PARTS).reduce(
-    (sum, [part, max]) => sum + (num(activity[part]) === null ? max / 2 : clamp(num(activity[part]), 0, max)),
+    (sum, [part, max]) => sum + (activityParts[part] === null ? max / 2 : activityParts[part]),
     0
   );
-  if (assessed.length < Object.keys(ACTIVITY_PARTS).length) notes.push("Activity and contribution not fully assessed: half marks used.");
+  if (missing.length) notes.push(`Half marks used for: ${missing.join(", ")}.`);
 
   const total = round1(A + B + C + D + E + F);
 
@@ -196,7 +208,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
       bottomThreeLastFive: bottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
       midSeasonBottomThree: midSeasonBottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
       currentJoinedMidSeason: Boolean(current?.joinedMidSeason),
-      activityAssessed: assessed.length === Object.keys(ACTIVITY_PARTS).length,
+      activity: Object.fromEntries(Object.entries(activityParts).map(([part, points]) => [part, points === null ? null : round1(points)])),
       sanctions: num(discipline.sanctions) || 0,
     },
     notes,

@@ -9,10 +9,11 @@
 //           or the public_league_season_rows RPC; predicted_position gives value added
 // --config  { currentSeason, vacancies: [{ club, division, context }], applicants: [{ name, display }],
 //             preferences: { name: [club, ...] }, discipline: { name: { sanctions, openSanction } },
-//             activity: { name: { competitions: 0-8, market: 0-6, community: 0-6 } } }
+//             activity: { name: { competitions: entries in the last two seasons, topManagerDeals: count,
+//                                 community: 0-4 } } }  (squad building is measured from --stats)
 //           "name" is the manager's name as the sheet writes it.
 import fs from "node:fs";
-import { allocateVacancies, eligibility, scoreApplicant } from "../src/analytics/appointmentScoring.js";
+import { allocateVacancies, eligibility, managerCareer, scoreApplicant } from "../src/analytics/appointmentScoring.js";
 import { CLUB_ALIASES } from "../src/data/clubAliases.js";
 import { buildLiveSeasonRows } from "../src/data/liveSeason.js";
 
@@ -64,11 +65,22 @@ const normaliseClub = (name) =>
 const canonicalClub = (name) => normaliseClub(CLUB_ALIASES.get(normaliseClub(name)) || name);
 const statsKey = (season, division, club) => `${Number(season)}|${Number(division)}|${canonicalClub(club)}`;
 const valueAdded = new Map();
+// Squad-strength rank (1 = strongest of the 100) for each club-season, from ETOT.
+const strengthRank = new Map();
 if (args.stats) {
   const stats = JSON.parse(fs.readFileSync(args.stats, "utf8"));
-  (stats.rows || stats).forEach((row) => {
+  const statsRows = stats.rows || stats;
+  statsRows.forEach((row) => {
     if (row.valueAdded !== null && row.valueAdded !== undefined) valueAdded.set(statsKey(row.season, row.division, row.club), row.valueAdded);
   });
+  const bySeason = new Map();
+  statsRows.filter((row) => Number(row.etot) > 0).forEach((row) => {
+    if (!bySeason.has(row.season)) bySeason.set(row.season, []);
+    bySeason.get(row.season).push(row);
+  });
+  bySeason.forEach((seasonRows, season) =>
+    [...seasonRows].sort((a, b) => b.etot - a.etot).forEach((row, i) => strengthRank.set(`${Number(season)}|${canonicalClub(row.club)}`, i + 1))
+  );
 }
 const history = sheetRows.map((row) => ({ ...row, valueAdded: valueAdded.get(statsKey(row.season, row.division, row.team)) ?? null }));
 
@@ -82,13 +94,27 @@ const live = buildLiveSeasonRows(liveRows, sheetRows).map((row, i) => {
 const config = JSON.parse(fs.readFileSync(args.config, "utf8"));
 const rows = [...history, ...live];
 const discipline = config.discipline || {};
+// Places climbed in the squad-strength ranking between the first and latest archived
+// season of the manager's current spell (null when there are not two seasons to compare).
+const squadRankGain = (name) => {
+  const career = managerCareer(name, rows);
+  const current = career[career.length - 1];
+  if (!current) return null;
+  const spell = [];
+  for (let i = career.length - 1; i >= 0 && career[i].team === current.team; i -= 1) spell.unshift(career[i]);
+  const ranked = spell
+    .map((row) => strengthRank.get(`${row.season}|${canonicalClub(row.team)}`))
+    .filter((rank) => rank !== undefined);
+  return ranked.length >= 2 ? ranked[0] - ranked[ranked.length - 1] : null;
+};
+
 const scoreFor = (applicant, level) =>
   scoreApplicant({
     manager: applicant.name,
     currentSeason: config.currentSeason,
     rows,
     discipline: discipline[applicant.name],
-    activity: (config.activity || {})[applicant.name],
+    activity: { squadRankGain: squadRankGain(applicant.name), ...((config.activity || {})[applicant.name] || {}) },
     level,
   });
 // Each applicant is scored once per vacancy: the "record at the level" part depends on its division.
@@ -129,7 +155,9 @@ if (args.json) {
         const b = scored.breakdown;
         const verdict = scored.eligibility.eligible ? "" : `  (not eligible: ${scored.eligibility.reasons.join(" ")})`;
         console.log(`  ${i + 1}. ${applicant.display} (${scored.club}, D${scored.division} ${scored.position}): ${scored.total}${verdict}`);
-        console.log(`     current ${b.current} · recent ${b.recent} · honours ${b.honours} · level ${b.level} · stability ${b.stability} · activity ${b.activity}`);
+        const a = scored.facts.activity;
+        console.log(`     current ${b.current} · recent ${b.recent} · honours ${b.honours} · level ${b.level} · stability ${b.stability} · activity ${b.activity}` +
+          ` (competitions ${a.competitions ?? "–"}, market ${a.market ?? "–"}, squad building ${a.squadBuilding ?? "–"}, community ${a.community ?? "–"})`);
       });
     console.log("");
   });
