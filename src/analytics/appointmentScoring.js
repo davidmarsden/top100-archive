@@ -12,13 +12,14 @@
 //   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
-//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (5),
-//                                deals with other Top 100 managers this season (5), squad building:
+//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (4),
+//                                deals with other Top 100 managers this season (4), squad building:
 //                                the club's squad-strength rank gain since the manager arrived (4);
 //                                by role: running Top 100 (3: current owner, administrator or
 //                                competition organiser 3, former owner or administrator 1.5);
-//                                assessed by administrators: community and social activity (3).
-//                                Any part not supplied gets half marks.
+//                                assessed by administrators: community and social activity (3);
+//                                focus: fewer other game worlds (2: up to 3 worlds in all, then
+//                                0.25 less per extra world). Any part not supplied gets half marks.
 //
 // A season a manager took over part-way through never counts against them
 // (rulebook 3.1): it is not a bottom-three finish for E or for eligibility.
@@ -37,16 +38,22 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
   activity: 20,
 });
 
-const ACTIVITY_PARTS = Object.freeze({ competitions: 5, market: 5, squadBuilding: 4, running: 3, community: 3 });
+const ACTIVITY_PARTS = Object.freeze({ competitions: 4, market: 4, squadBuilding: 4, running: 3, community: 3, focus: 2 });
 
-// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, running: 0..3, community: 0..3 }
+// Focus: managing in fewer Soccer Manager game worlds leaves more time for Top 100.
+// Up to 3 worlds (Top 100 included) is full marks, then a quarter point less per extra world.
+const FOCUS_FULL_UP_TO = 3;
+
+// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, running: 0..3, community: 0..3,
+//             gameWorlds: number of Soccer Manager game worlds managed in, Top 100 included }
 const activityPoints = (activity = {}) => ({
-  competitions: num(activity.competitions) === null ? null : Math.min(5, 2.5 * num(activity.competitions)),
-  market: num(activity.topManagerDeals) === null ? null : Math.min(5, 0.5 * num(activity.topManagerDeals)),
+  competitions: num(activity.competitions) === null ? null : Math.min(4, 2 * num(activity.competitions)),
+  market: num(activity.topManagerDeals) === null ? null : Math.min(4, 0.4 * num(activity.topManagerDeals)),
   squadBuilding: num(activity.squadRankGain) === null ? null : clamp(2 + num(activity.squadRankGain) / 10, 0, 4),
   // Roles are known for everyone, so no role means 0, not half marks.
   running: clamp(num(activity.running) ?? 0, 0, 3),
   community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 3),
+  focus: num(activity.gameWorlds) === null ? null : clamp(2 - 0.25 * (num(activity.gameWorlds) - FOCUS_FULL_UP_TO), 0, 2),
 });
 
 const DIVISION_SIZE = 20;

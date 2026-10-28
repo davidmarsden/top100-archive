@@ -10,7 +10,8 @@
 // --config  { currentSeason, vacancies: [{ club, division, context }], applicants: [{ name, display }],
 //             preferences: { name: [club, ...] }, discipline: { name: { sanctions, openSanction, gold } },
 //             activity: { name: { competitions: entries in the last two seasons, topManagerDeals: count,
-//                                 community: 0-4 } } }  (squad building is measured from --stats)
+//                                 running: 0-3, community: 0-3, gameWorlds: Soccer Manager game worlds
+//                                 managed in, Top 100 included } } }  (squad building is measured from --stats)
 //           "name" is the manager's name as the sheet writes it.
 import fs from "node:fs";
 import { allocateVacancies, eligibility, scoreApplicant } from "../src/analytics/appointmentScoring.js";
