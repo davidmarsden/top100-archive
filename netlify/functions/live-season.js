@@ -3,8 +3,12 @@
 // Needs SUPABASE_URL and SUPABASE_ANON_KEY: the public browser credentials,
 // not the service-role key.
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL || '').replace(/\/+$/, '');
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || '';
+// Pasted values often carry spaces or quotes, which would make fetch fail.
+const envValue = (...keys) =>
+  keys.map((key) => (process.env[key] || '').trim().replace(/^['"]|['"]$/g, '').trim()).find(Boolean) || '';
+
+const SUPABASE_URL = envValue('SUPABASE_URL', 'REACT_APP_SUPABASE_URL').replace(/\/+$/, '');
+const SUPABASE_ANON_KEY = envValue('SUPABASE_ANON_KEY', 'REACT_APP_SUPABASE_ANON_KEY');
 
 const headers = (cache) => ({
   'Access-Control-Allow-Origin': '*',
@@ -31,6 +35,7 @@ exports.handler = async () => {
       body: JSON.stringify({ rows, configured: true }),
     };
   } catch (error) {
+    console.error(`live-season: ${error.message}${error.cause ? ` (${error.cause.message || error.cause})` : ''}`);
     return { statusCode: 502, headers: headers('no-store'), body: JSON.stringify({ rows: [], error: error.message }) };
   }
 };
