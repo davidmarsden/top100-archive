@@ -51,9 +51,9 @@ test("never counts a season taken over part-way through against the manager", ()
 test("scores activity from measured data, with half marks for anything missing and none for no role", () => {
   const unassessed = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
   expect(unassessed.breakdown.activity).toBe(8.5);
-  expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, community.");
-  const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, community: 0 } });
-  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, running: 3, community: 3 } });
+  expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, community, focus.");
+  const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, community: 0, gameWorlds: 20 } });
+  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, running: 3, community: 3, gameWorlds: 2 } });
   expect(inactive.breakdown.activity).toBe(0);
   expect(active.breakdown.activity).toBe(20);
 });
@@ -193,4 +193,10 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
     const rows = [{ season: 28, division: 4, position: 18, team: "November", manager: "Nia", valueAdded: 0 }];
     expect(reviewSackedManager({ manager: "Nia", currentSeason: 28, rows }).breakdown.record).toBe(7.5);
   });
+});
+
+test("managing in fewer game worlds scores better for focus", () => {
+  const rows = [{ season: "28", division: "2", position: "10", team: "Club", manager: "Ann", played: "38" }];
+  const focus = (gameWorlds) => scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { gameWorlds } }).facts.activity.focus;
+  expect([2, 3, 4, 9, 11, 15].map(focus)).toEqual([2, 2, 1.8, 0.5, 0, 0]);
 });

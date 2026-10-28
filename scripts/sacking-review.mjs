@@ -9,7 +9,7 @@
 // --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, gold, loginGaps, inactive, misconduct, standing, lastChance, wish }],
 //             supply: { newcomers: [names waiting to join], leavers: [names leaving anyway] },
 //             discipline: { name: { sanctions } },
-//             activity: { name: { competitions, topManagerDeals, running, community, forfeits } } }
+//             activity: { name: { competitions, topManagerDeals, running, community, gameWorlds, forfeits } } }
 //           "name" is the manager's name as the sheet (or the live table) writes it.
 // --history S-T  scores every past bottom-three manager in seasons S to T (activity at half
 //           marks, since it was not measured then) against what happened to them next season.
