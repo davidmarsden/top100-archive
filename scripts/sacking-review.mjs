@@ -6,14 +6,15 @@
 //     [--stats public/data/statsArchive.json] [--json]
 //   node scripts/sacking-review.mjs --sheet full-history.csv --live live.json --stats ... --history 20-27
 //
-// --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, inactive, wish }],
+// --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, inactive, standing, wish }],
+//             supply: { newcomers: [names waiting to join], leavers: [names leaving anyway] },
 //             discipline: { name: { sanctions } },
-//             activity: { name: { competitions, topManagerDeals, community } } }
+//             activity: { name: { competitions, topManagerDeals, running, community } } }
 //           "name" is the manager's name as the sheet (or the live table) writes it.
 // --history S-T  scores every past bottom-three manager in seasons S to T (activity at half
 //           marks, since it was not measured then) against what happened to them next season.
 import fs from "node:fs";
-import { managerCareer, reviewSackedManager, splitManagers } from "../src/analytics/appointmentScoring.js";
+import { applyManagerSupply, managerCareer, reviewSackedManager, splitManagers } from "../src/analytics/appointmentScoring.js";
 import { loadArchive, parseArgs } from "./lib/archiveData.mjs";
 
 const args = parseArgs(process.argv.slice(2));
@@ -50,7 +51,7 @@ if (args.history) {
 }
 
 const config = JSON.parse(fs.readFileSync(args.config, "utf8"));
-const reviews = config.managers.map((entry) => ({
+const scored = config.managers.map((entry) => ({
   display: entry.display || entry.name,
   ...reviewSackedManager({
     manager: entry.name,
@@ -61,11 +62,18 @@ const reviews = config.managers.map((entry) => ({
     options: entry,
   }),
 }));
+const supply = config.supply || {};
+const { places, reviews } = applyManagerSupply(scored, {
+  newcomers: (supply.newcomers || []).length,
+  leavers: (supply.leavers || []).length,
+});
 
 if (args.json) {
-  console.log(JSON.stringify({ currentSeason: config.currentSeason, reviews }, null, 2));
+  console.log(JSON.stringify({ currentSeason: config.currentSeason, supply, breakPlaces: places, reviews }, null, 2));
 } else {
   console.log(`S${config.currentSeason} bottom-three review\n`);
+  console.log(`Newcomers waiting: ${(supply.newcomers || []).join(", ") || "none"}. Leaving anyway: ${(supply.leavers || []).join(", ") || "none"}.`);
+  console.log(`Places for a break from Top 100: ${places}.\n`);
   [...reviews]
     .sort((a, b) => a.division - b.division || a.position - b.position)
     .forEach((review) => {

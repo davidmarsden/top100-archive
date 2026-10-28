@@ -12,10 +12,12 @@
 //   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
-//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (6),
-//                                deals with other Top 100 managers this season (6), squad building:
+//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (5),
+//                                deals with other Top 100 managers this season (5), squad building:
 //                                the club's squad-strength rank gain since the manager arrived (4);
-//                                assessed by administrators: community contribution (4).
+//                                by role: running Top 100 (3: current owner, administrator or
+//                                competition organiser 3, former owner or administrator 1.5);
+//                                assessed by administrators: community and social activity (3).
 //                                Any part not supplied gets half marks.
 //
 // A season a manager took over part-way through never counts against them
@@ -34,14 +36,16 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
   activity: 20,
 });
 
-const ACTIVITY_PARTS = Object.freeze({ competitions: 6, market: 6, squadBuilding: 4, community: 4 });
+const ACTIVITY_PARTS = Object.freeze({ competitions: 5, market: 5, squadBuilding: 4, running: 3, community: 3 });
 
-// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, community: 0..4 }
+// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, running: 0..3, community: 0..3 }
 const activityPoints = (activity = {}) => ({
-  competitions: num(activity.competitions) === null ? null : Math.min(6, 3 * num(activity.competitions)),
-  market: num(activity.topManagerDeals) === null ? null : Math.min(6, 0.6 * num(activity.topManagerDeals)),
+  competitions: num(activity.competitions) === null ? null : Math.min(5, 2.5 * num(activity.competitions)),
+  market: num(activity.topManagerDeals) === null ? null : Math.min(5, 0.5 * num(activity.topManagerDeals)),
   squadBuilding: num(activity.squadRankGain) === null ? null : clamp(2 + num(activity.squadRankGain) / 10, 0, 4),
-  community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 4),
+  // Roles are known for everyone, so no role means 0, not half marks.
+  running: clamp(num(activity.running) ?? 0, 0, 3),
+  community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 3),
 });
 
 const DIVISION_SIZE = 20;
@@ -233,10 +237,12 @@ export const SACKING_WEIGHTS = Object.freeze({ result: 30, record: 20, activity:
 export const SACKING_BANDS = Object.freeze({ reappoint: 55, anotherClub: 40 });
 export const REVIEW_MARGIN = 5;
 
-// options: { tookOverMidSeason, inactive: reason, wish: "stay" | "move" | "break" }
+// options: { tookOverMidSeason, inactive: reason, standing: reason, wish: "stay" | "move" | "break" }
 //   tookOverMidSeason  from the current season's manager assignments (the archive only
 //                      knows completed seasons); always reappointed (3.1)
 //   inactive           e.g. "No login for 10 days": Soccer Manager sacks them anyway
+//   standing           a standing reappointment the administrators have published
+//                      (e.g. Top 100's founder at Genoa)
 //   wish               what the manager asked for, recorded with the decision
 export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {} }) => {
   const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity });
@@ -264,6 +270,9 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
   } else if (tookOverMidSeason) {
     outcome = "reappoint";
     reason = "Took over during the season: always reappointed (3.1).";
+  } else if (options.standing) {
+    outcome = "reappoint";
+    reason = `Standing reappointment: ${options.standing} (3.1).`;
   } else if (total >= SACKING_BANDS.reappoint) {
     outcome = "reappoint";
     reason = "Score in the reappointment band.";
@@ -275,7 +284,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason = "Score below the middle band.";
   }
   const boundary = [SACKING_BANDS.reappoint, SACKING_BANDS.anotherClub].find((line) => Math.abs(total - line) < REVIEW_MARGIN);
-  const vote = !tookOverMidSeason && !options.inactive && boundary !== undefined;
+  const vote = !tookOverMidSeason && !options.inactive && !options.standing && boundary !== undefined;
 
   return {
     manager,
@@ -288,8 +297,34 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason,
     vote,
     wish: options.wish || null,
-    facts: { ...facts, tookOverMidSeason, earlierBottomThree: earlier },
+    facts: { ...facts, tookOverMidSeason, inactive: options.inactive || null, earlierBottomThree: earlier },
     notes: scored.notes,
+  };
+};
+
+// Top 100 keeps 100 managers, so a break is only possible when someone can take
+// the place. newcomers: managers waiting to join; leavers: managers leaving anyway
+// (resigning, leaving Soccer Manager, sacked for inactivity). Breaks go to the
+// lowest scores first; the rest move to "another club", where they keep their club
+// unless an applicant scores higher for it.
+export const applyManagerSupply = (reviews, { newcomers = 0, leavers = 0 } = {}) => {
+  const forced = reviews.filter((review) => review.outcome === "break" && review.facts.inactive).length;
+  const places = Math.max(0, newcomers - leavers - forced);
+  const scoredBreaks = reviews
+    .filter((review) => review.outcome === "break" && !review.facts.inactive)
+    .sort((a, b) => a.total - b.total);
+  const kept = new Set(scoredBreaks.slice(0, places));
+  return {
+    places,
+    reviews: reviews.map((review) =>
+      scoredBreaks.includes(review) && !kept.has(review)
+        ? {
+            ...review,
+            outcome: "anotherClub",
+            reason: `${review.reason} No newcomer is waiting to take the place, and Top 100 keeps 100 managers: another club instead.`,
+          }
+        : review
+    ),
   };
 };
 

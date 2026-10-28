@@ -1,4 +1,4 @@
-import { allocateVacancies, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
+import { allocateVacancies, applyManagerSupply, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
 
 const rows = [
   { season: 25, division: 2, position: 2, team: "Alpha", manager: "Ann" },
@@ -48,12 +48,12 @@ test("never counts a season taken over part-way through against the manager", ()
   expect(latecomer.facts.bottomThreeLastFive).toEqual([]);
 });
 
-test("scores activity from measured data, with half marks for anything missing", () => {
+test("scores activity from measured data, with half marks for anything missing and none for no role", () => {
   const unassessed = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
-  expect(unassessed.breakdown.activity).toBe(10);
+  expect(unassessed.breakdown.activity).toBe(8.5);
   expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, community.");
   const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, community: 0 } });
-  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, community: 4 } });
+  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, running: 3, community: 3 } });
   expect(inactive.breakdown.activity).toBe(0);
   expect(active.breakdown.activity).toBe(20);
 });
@@ -141,6 +141,23 @@ describe("bottom-three review", () => {
     expect(reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history, activity: active, options: { inactive: "No login for 10 days" } }).outcome).toBe("break");
     const close = reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history });
     expect(close.vote).toBe(Math.abs(close.total - 55) < 5 || Math.abs(close.total - 40) < 5);
+  });
+
+  test("a standing reappointment is not scored into another outcome", () => {
+    const lou = reviewSackedManager({ manager: "Lou", currentSeason: 28, rows: history, activity: idle, options: { standing: "Top 100's founder at Genoa" } });
+    expect(lou.outcome).toBe("reappoint");
+    expect(lou.vote).toBe(false);
+  });
+
+  test("breaks only as many as newcomers can replace, lowest scores first", () => {
+    const low = reviewSackedManager({ manager: "Lou", currentSeason: 28, rows: history, activity: idle });
+    const lower = { ...low, manager: "Lower", total: low.total - 5 };
+    const forced = reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history, options: { inactive: "No login for 10 days" } });
+    const none = applyManagerSupply([low, lower, forced], { newcomers: 2, leavers: 1 });
+    expect(none.places).toBe(0);
+    expect(none.reviews.map((review) => review.outcome)).toEqual(["anotherClub", "anotherClub", "break"]);
+    const one = applyManagerSupply([low, lower, forced], { newcomers: 3, leavers: 1 });
+    expect(one.reviews.map((review) => review.outcome)).toEqual(["anotherClub", "break", "break"]);
   });
 
   test("gives a manager new to Top 100 half marks for their record", () => {
