@@ -151,7 +151,11 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
     const max = review("Max");
     expect(max.outcome).toBe("reappoint");
     expect(max.facts.lastChanceNext).toBe(false);
-    expect(review("Ned", { options: { standing: "Founder" } }).facts.lastChanceNext).toBe(false);
+    const exempt = review("Max", { activity: idle });
+    expect(exempt.errors.length).toBeGreaterThan(0);
+    expect(exempt.outcome).toBe("reappoint");
+    expect(exempt.facts.lastChanceNext).toBe(false);
+    expect(review("Ned", { activity: idle, options: { standing: "Founder" } }).facts.lastChanceNext).toBe(false);
     expect(review("Kim", { options: { gold: false } }).outcome).toBe("leave");
     expect(review("Kim", { options: { gold: true } }).outcome).toBe("reappoint");
     expect(review("Max", { options: { loginGaps: 2 } }).outcome).toBe("leave");
