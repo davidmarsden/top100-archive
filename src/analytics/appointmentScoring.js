@@ -232,9 +232,13 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
 //                                         tenure at the club (5), discipline (5)
 export const SACKING_WEIGHTS = Object.freeze({ result: 30, record: 20, activity: 30, conduct: 20 });
 
-// Outcome bands. Scores within REVIEW_MARGIN of a band boundary go to an
-// administrators' vote, as close appointments do (3.2).
-export const SACKING_BANDS = Object.freeze({ reappoint: 55, anotherClub: 40 });
+// The VAR standard (smtop100.blog, 22 August 2025): reappoint unless there is a
+// clear and obvious error. A manager is not reappointed at the club only when the
+// score is below CLEAR_ERROR.score, or the club finished at least
+// CLEAR_ERROR.valueAdded places below where its squad's strength predicted.
+// Scores within REVIEW_MARGIN below the line go to an administrators' vote on
+// whether the error is clear and obvious; without a majority, the manager stays.
+export const CLEAR_ERROR = Object.freeze({ score: 40, valueAdded: -12 });
 export const REVIEW_MARGIN = 5;
 
 // options: { tookOverMidSeason, inactive: reason, standing: reason, wish: "stay" | "move" | "break" }
@@ -273,18 +277,18 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
   } else if (options.standing) {
     outcome = "reappoint";
     reason = `Standing reappointment: ${options.standing} (3.1).`;
-  } else if (total >= SACKING_BANDS.reappoint) {
-    outcome = "reappoint";
-    reason = "Score in the reappointment band.";
-  } else if (total >= SACKING_BANDS.anotherClub) {
+  } else if (num(facts.currentValueAdded) !== null && facts.currentValueAdded <= CLEAR_ERROR.valueAdded) {
     outcome = "anotherClub";
-    reason = "Score in the middle band: the club is offered in the vacancy round, and the manager applies for it or another club.";
+    reason = `Finished ${-facts.currentValueAdded} places below where the squad's strength predicted: a clear and obvious error. The club goes into the vacancy round; the manager may apply for another club.`;
+  } else if (total < CLEAR_ERROR.score) {
+    outcome = "anotherClub";
+    reason = `Score below ${CLEAR_ERROR.score}: a clear and obvious error. The club goes into the vacancy round; the manager may apply for another club.`;
   } else {
-    outcome = "break";
-    reason = "Score below the middle band.";
+    outcome = "reappoint";
+    reason = "No clear and obvious error: reappointed (the VAR standard).";
   }
-  const boundary = [SACKING_BANDS.reappoint, SACKING_BANDS.anotherClub].find((line) => Math.abs(total - line) < REVIEW_MARGIN);
-  const vote = !tookOverMidSeason && !options.inactive && !options.standing && boundary !== undefined;
+  const fixed = tookOverMidSeason || options.inactive || options.standing;
+  const vote = !fixed && outcome === "anotherClub" && total >= CLEAR_ERROR.score - REVIEW_MARGIN && !(facts.currentValueAdded <= CLEAR_ERROR.valueAdded);
 
   return {
     manager,
@@ -304,24 +308,26 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
 
 // Top 100 keeps 100 managers, so a break is only possible when someone can take
 // the place. newcomers: managers waiting to join; leavers: managers leaving anyway
-// (resigning, leaving Soccer Manager, sacked for inactivity). Breaks go to the
-// lowest scores first; the rest move to "another club", where they keep their club
-// unless an applicant scores higher for it.
+// (resigning, leaving Soccer Manager, sacked for inactivity). Of the managers not
+// reappointed (outside a vote), the lowest scores take the places for a break;
+// the rest go to another club.
 export const applyManagerSupply = (reviews, { newcomers = 0, leavers = 0 } = {}) => {
   const forced = reviews.filter((review) => review.outcome === "break" && review.facts.inactive).length;
   const places = Math.max(0, newcomers - leavers - forced);
-  const scoredBreaks = reviews
-    .filter((review) => review.outcome === "break" && !review.facts.inactive)
-    .sort((a, b) => a.total - b.total);
-  const kept = new Set(scoredBreaks.slice(0, places));
+  const breaks = new Set(
+    reviews
+      .filter((review) => review.outcome === "anotherClub" && !review.vote)
+      .sort((a, b) => a.total - b.total)
+      .slice(0, places)
+  );
   return {
     places,
     reviews: reviews.map((review) =>
-      scoredBreaks.includes(review) && !kept.has(review)
+      breaks.has(review)
         ? {
             ...review,
-            outcome: "anotherClub",
-            reason: `${review.reason} No newcomer is waiting to take the place, and Top 100 keeps 100 managers: another club instead.`,
+            outcome: "break",
+            reason: `${review.reason} Among the lowest scores, with a newcomer waiting to take the place: a break from Top 100.`,
           }
         : review
     ),

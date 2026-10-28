@@ -123,9 +123,10 @@ describe("bottom-three review", () => {
     expect(kim.total).toBeGreaterThanOrEqual(60);
   });
 
-  test("suggests a break after repeated bottom-three finishes below the squad's level", () => {
+  test("a clear and obvious error: repeated bottom-three finishes far below the squad's level", () => {
     const lou = reviewSackedManager({ manager: "Lou", currentSeason: 28, rows: history, activity: idle });
-    expect(lou.outcome).toBe("break");
+    expect(lou.outcome).toBe("anotherClub");
+    expect(lou.reason).toContain("15 places below");
     expect(lou.facts.earlierBottomThree).toEqual(["S26 D2 18th Lima", "S27 D2 19th Lima"]);
   });
 
@@ -139,8 +140,18 @@ describe("bottom-three review", () => {
 
   test("an inactive manager is not reappointed, and close scores go to a vote", () => {
     expect(reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history, activity: active, options: { inactive: "No login for 10 days" } }).outcome).toBe("break");
-    const close = reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history });
-    expect(close.vote).toBe(Math.abs(close.total - 55) < 5 || Math.abs(close.total - 40) < 5);
+  });
+
+  test("reappoints unless the error is clear and obvious; just below the line goes to a vote", () => {
+    const middling = reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history, activity: idle });
+    expect(middling.total).toBeGreaterThanOrEqual(40);
+    expect(middling.outcome).toBe("reappoint");
+    const rows = [{ season: 28, division: 4, position: 19, team: "Oscar", manager: "Oz", valueAdded: -6 }];
+    const close = reviewSackedManager({ manager: "Oz", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 6, squadRankGain: 0 } });
+    expect(close.total).toBeGreaterThanOrEqual(35);
+    expect(close.total).toBeLessThan(40);
+    expect(close.outcome).toBe("anotherClub");
+    expect(close.vote).toBe(true);
   });
 
   test("a standing reappointment is not scored into another outcome", () => {
