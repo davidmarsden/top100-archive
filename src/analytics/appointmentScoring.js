@@ -12,10 +12,12 @@
 //   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
-//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (6),
-//                                deals with other Top 100 managers this season (6), squad building:
+//   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (5),
+//                                deals with other Top 100 managers this season (5), squad building:
 //                                the club's squad-strength rank gain since the manager arrived (4);
-//                                assessed by administrators: community contribution (4).
+//                                by role: running Top 100 (3: current owner, administrator or
+//                                competition organiser 3, former owner or administrator 1.5);
+//                                assessed by administrators: community and social activity (3).
 //                                Any part not supplied gets half marks.
 //
 // A season a manager took over part-way through never counts against them
@@ -34,14 +36,16 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
   activity: 20,
 });
 
-const ACTIVITY_PARTS = Object.freeze({ competitions: 6, market: 6, squadBuilding: 4, community: 4 });
+const ACTIVITY_PARTS = Object.freeze({ competitions: 5, market: 5, squadBuilding: 4, running: 3, community: 3 });
 
-// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, community: 0..4 }
+// activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, running: 0..3, community: 0..3 }
 const activityPoints = (activity = {}) => ({
-  competitions: num(activity.competitions) === null ? null : Math.min(6, 3 * num(activity.competitions)),
-  market: num(activity.topManagerDeals) === null ? null : Math.min(6, 0.6 * num(activity.topManagerDeals)),
+  competitions: num(activity.competitions) === null ? null : Math.min(5, 2.5 * num(activity.competitions)),
+  market: num(activity.topManagerDeals) === null ? null : Math.min(5, 0.5 * num(activity.topManagerDeals)),
   squadBuilding: num(activity.squadRankGain) === null ? null : clamp(2 + num(activity.squadRankGain) / 10, 0, 4),
-  community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 4),
+  // Roles are known for everyone, so no role means 0, not half marks.
+  running: clamp(num(activity.running) ?? 0, 0, 3),
+  community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 3),
 });
 
 const DIVISION_SIZE = 20;
@@ -214,6 +218,136 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
     },
     notes,
   };
+};
+
+// Review of a manager who finished in the bottom three (rulebook 3.1). Every
+// manager reviewed finished 18th-20th, so the finish itself tells little:
+// the review asks how the club did against its squad, what the manager's
+// record was before, and how active they are. Score out of 100:
+//   A. Result against squad strength  30  this season's value added (predicted - actual)
+//   B. Track record                   20  last two completed seasons: finishes within the division (10)
+//                                         and value added (5), half marks without either; honours (5)
+//   C. Activity and contribution      30  as F above, scaled from 20 to 30
+//   D. Record and conduct             20  earlier bottom-three finishes in the last five seasons (10),
+//                                         tenure at the club (5), discipline (5)
+export const SACKING_WEIGHTS = Object.freeze({ result: 30, record: 20, activity: 30, conduct: 20 });
+
+// The VAR standard ("S25 Manager Reappointments", smtop100.blog, 22 August 2025):
+// reappoint unless there is a clear and obvious error. Its precedents give the
+// errors (CLEAR_ERROR):
+//   inactive     unresponsive, not managing the team, or removed by Soccer Manager
+//                (Alves, fert dert): never reappointed, nor offered another club (6.3.2)
+//   misconduct   recorded by the administrators (McHugh): as inactive
+//   forfeits     CLEAR_ERROR.forfeits or more forfeits in Top 100 competitions this
+//                season (Alldridge, Little, Trapattoni, Bertonati)
+//   repeat       bottom three the season before too, or on a recorded last chance
+//                (Golden Bear, Azevedo in S25)
+//   collapse     finished CLEAR_ERROR.valueAdded or more places below where the
+//                squad's strength predicted ("one of the worst points totals")
+//   sanction     a sanction this season, such as a transfer ban (Alldridge)
+//   score        a review score below CLEAR_ERROR.score: weak across the board
+// D1 and D2 carry higher expectations: one error is enough there. In D3-D5 it
+// takes two (Murilo, S25: a second relegation alone was "another chance").
+// Where the decision turns on a score within REVIEW_MARGIN of the line, the
+// administrators vote on it; without a majority, the manager stays.
+export const CLEAR_ERROR = Object.freeze({ score: 40, valueAdded: -12, forfeits: 3, higherExpectationsUpTo: 2 });
+export const REVIEW_MARGIN = 5;
+
+// options: { tookOverMidSeason, inactive, misconduct, standing, lastChance, wish }
+//   tookOverMidSeason  from the current season's manager assignments (the archive only
+//                      knows completed seasons); reappointed unless inactive or misconduct
+//   inactive           reason, e.g. "No login for 10 days" or "Unresponsive to WCC requests"
+//   misconduct         reason recorded by the administrators
+//   standing           a standing reappointment the administrators have published
+//                      (e.g. Top 100's founder at Genoa)
+//   lastChance         reason, when an earlier decision said this was a last chance
+//   wish               what the manager asked for, recorded with the decision
+// activity.forfeits: forfeits in Top 100 competitions this season.
+export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {} }) => {
+  const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity });
+  const { facts } = scored;
+  const tookOverMidSeason = Boolean(options.tookOverMidSeason || facts.currentJoinedMidSeason);
+
+  const A = valueAddedScore(facts.currentValueAdded, SACKING_WEIGHTS.result, 1.5);
+  // Judged within the division, so a lower-division manager is not marked down for the
+  // division itself, and a manager new to Top 100 gets half marks rather than none.
+  const earlierSeasons = managerCareer(manager, rows).filter((row) => row.season === currentSeason - 1 || row.season === currentSeason - 2);
+  const finishes = earlierSeasons.map((row) => (DIVISION_SIZE + 1 - row.position) / DIVISION_SIZE);
+  const finishPoints = finishes.length ? (10 * finishes.reduce((sum, v) => sum + v, 0)) / finishes.length : 5;
+  const B = finishPoints + valueAddedScore(facts.averageRecentValueAdded, 5, 0.25) + Math.min(5, scored.breakdown.honours / 3);
+  const C = (scored.breakdown.activity * SACKING_WEIGHTS.activity) / APPOINTMENT_WEIGHTS.activity;
+  const earlier = facts.bottomThreeLastFive.filter((entry) => !entry.startsWith(`S${currentSeason} `));
+  const disciplinePoints = clamp(5 - 2.5 * (num(discipline.sanctions) || 0), 0, 5);
+  const D = Math.max(0, 10 - 5 * earlier.length) + Math.min(5, facts.tenure) + disciplinePoints;
+  const total = round1(A + B + C + D);
+
+  const division = scored.division ?? 5;
+  const previousSeason = `S${currentSeason - 1} `;
+  const forfeits = num(activity.forfeits) || 0;
+  const errors = [];
+  if (forfeits >= CLEAR_ERROR.forfeits) errors.push({ kind: "forfeits", text: `${forfeits} forfeits in Top 100 competitions` });
+  if (earlier.some((entry) => entry.startsWith(previousSeason))) errors.push({ kind: "repeat", text: "bottom three for a second season running" });
+  else if (options.lastChance) errors.push({ kind: "repeat", text: `on a last chance (${options.lastChance})` });
+  if (num(facts.currentValueAdded) !== null && facts.currentValueAdded <= CLEAR_ERROR.valueAdded)
+    errors.push({ kind: "collapse", text: `${-facts.currentValueAdded} places below where the squad's strength predicted` });
+  if ((num(discipline.sanctions) || 0) > 0) errors.push({ kind: "sanction", text: "sanctioned this season" });
+  if (total < CLEAR_ERROR.score) errors.push({ kind: "score", text: `review score below ${CLEAR_ERROR.score}` });
+  const needed = division <= CLEAR_ERROR.higherExpectationsUpTo ? 1 : 2;
+  const list = errors.map((error) => error.text).join("; ");
+
+  let outcome;
+  let reason;
+  if (options.inactive || options.misconduct) {
+    outcome = "leave";
+    reason = `${options.inactive || options.misconduct}: not reappointed, nor offered another club (6.3.2).`;
+  } else if (options.standing) {
+    outcome = "reappoint";
+    reason = `Standing reappointment: ${options.standing} (3.1).`;
+  } else if (tookOverMidSeason) {
+    outcome = "reappoint";
+    reason = "Took over during the season: reappointed (3.1).";
+  } else if (errors.length >= needed) {
+    outcome = "anotherClub";
+    reason = `Clear and obvious error${errors.length > 1 ? "s" : ""}: ${list}${needed === 1 ? " (D1-D2 expectations)" : ""}. The club goes into the vacancy round; the manager may apply for another club.`;
+  } else {
+    outcome = "reappoint";
+    reason = errors.length
+      ? `Reappointed: ${list}, but no clear and obvious error${needed === 2 ? " on its own below D2" : ""}.`
+      : "No clear and obvious error: reappointed.";
+  }
+  // A vote when the decision turns on the score and the score is close to the line.
+  const fixed = Boolean(options.inactive || options.misconduct || options.standing || tookOverMidSeason);
+  const others = errors.filter((error) => error.kind !== "score").length;
+  const vote = !fixed && Math.abs(total - CLEAR_ERROR.score) < REVIEW_MARGIN && others < needed && others + 1 >= needed;
+
+  return {
+    manager,
+    club: scored.club,
+    division: scored.division,
+    position: scored.position,
+    total,
+    breakdown: { result: round1(A), record: round1(B), activity: round1(C), conduct: round1(D) },
+    outcome,
+    reason,
+    vote,
+    wish: options.wish || null,
+    facts: { ...facts, tookOverMidSeason, inactive: options.inactive || options.misconduct || null, earlierBottomThree: earlier, forfeits },
+    errors,
+    notes: scored.notes,
+  };
+};
+
+// The balance of managers after the review: clubs needing a manager (not reappointed,
+// leaving, or leaving anyway) against those who can fill them (newcomers waiting, and
+// the managers not reappointed, who may apply for another club). Top 100 aims for 100
+// managers but does not require it, and D1-D2 vacancies draw existing managers, so this
+// informs the decisions rather than limiting them.
+export const managerSupply = (reviews, { newcomers = 0, leavers = 0 } = {}) => {
+  const notReappointed = reviews.filter((review) => review.outcome === "anotherClub");
+  const leaving = reviews.filter((review) => review.outcome === "leave").length + leavers;
+  const openClubs = notReappointed.length + leaving;
+  const bigClubs = notReappointed.filter((review) => review.division !== null && review.division <= 2).map((review) => review.club);
+  return { openClubs, newcomers, managersAfter: 100 - leaving + newcomers, bigClubs };
 };
 
 // Eligibility of a scored applicant for one vacancy ({ club, division }).

@@ -1,4 +1,4 @@
-import { allocateVacancies, eligibility, finishedSeasonWith, finishScore, scoreApplicant } from "./appointmentScoring";
+import { allocateVacancies, managerSupply, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
 
 const rows = [
   { season: 25, division: 2, position: 2, team: "Alpha", manager: "Ann" },
@@ -48,12 +48,12 @@ test("never counts a season taken over part-way through against the manager", ()
   expect(latecomer.facts.bottomThreeLastFive).toEqual([]);
 });
 
-test("scores activity from measured data, with half marks for anything missing", () => {
+test("scores activity from measured data, with half marks for anything missing and none for no role", () => {
   const unassessed = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
-  expect(unassessed.breakdown.activity).toBe(10);
+  expect(unassessed.breakdown.activity).toBe(8.5);
   expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, community.");
   const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, community: 0 } });
-  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, community: 4 } });
+  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, running: 3, community: 3 } });
   expect(inactive.breakdown.activity).toBe(0);
   expect(active.breakdown.activity).toBe(20);
 });
@@ -102,4 +102,72 @@ test("leaves a season with no value-added data out of the recent average", () =>
   const a = scoreApplicant({ manager: "Eve", currentSeason: 28, rows: known });
   const b = scoreApplicant({ manager: "Eve", currentSeason: 28, rows: missing });
   expect(b.breakdown.recent).toBe(a.breakdown.recent);
+});
+
+describe("bottom-three review: the VAR standard and the S25 precedents", () => {
+  const history = [
+    { season: 26, division: 2, position: 6, team: "Kilo", manager: "Kim", valueAdded: 3 },
+    { season: 27, division: 2, position: 8, team: "Kilo", manager: "Kim", valueAdded: 2 },
+    { season: 28, division: 2, position: 19, team: "Kilo", manager: "Kim", valueAdded: 1 },
+    { season: 27, division: 4, position: 19, team: "Lima", manager: "Lou", valueAdded: -3 },
+    { season: 28, division: 4, position: 20, team: "Lima", manager: "Lou", valueAdded: -2 },
+    { season: 28, division: 2, position: 18, team: "Mike", manager: "Old / Max", valueAdded: -10 },
+    { season: 28, division: 1, position: 20, team: "Nova", manager: "Ned", valueAdded: -15 },
+    { season: 28, division: 4, position: 18, team: "Oscar", manager: "Oz", valueAdded: -15 },
+  ];
+  const active = { competitions: 2, topManagerDeals: 10, squadRankGain: 10, running: 3, community: 3 };
+  const idle = { competitions: 0, topManagerDeals: 0, squadRankGain: -10, community: 0 };
+  const review = (manager, extra = {}) => reviewSackedManager({ manager, currentSeason: 28, rows: history, activity: active, ...extra });
+
+  test("reappoints when there is no clear and obvious error", () => {
+    const kim = review("Kim");
+    expect(kim.outcome).toBe("reappoint");
+    expect(kim.errors).toEqual([]);
+  });
+
+  test("one clear error is enough in D1-D2, where expectations are higher", () => {
+    const ned = review("Ned");
+    expect(ned.errors.map((error) => error.kind)).toEqual(["collapse"]);
+    expect(ned.outcome).toBe("anotherClub");
+  });
+
+  test("below D2 one error is another chance; two are not", () => {
+    expect(review("Oz").outcome).toBe("reappoint");
+    const lou = review("Lou", { activity: { ...active, forfeits: 3 } });
+    expect(lou.errors.map((error) => error.kind)).toEqual(["forfeits", "repeat"]);
+    expect(lou.outcome).toBe("anotherClub");
+    expect(review("Oz", { options: { lastChance: "told so in S27" } }).outcome).toBe("anotherClub");
+  });
+
+  test("inactivity and misconduct mean no club at all, even after a mid-season takeover", () => {
+    expect(review("Max").outcome).toBe("reappoint");
+    expect(review("Max", { options: { inactive: "No login for 10 days" } }).outcome).toBe("leave");
+    expect(review("Kim", { options: { misconduct: "Abuse on the newsfeed" } }).outcome).toBe("leave");
+  });
+
+  test("a standing reappointment stands", () => {
+    expect(review("Ned", { options: { standing: "Top 100's founder at Genoa" } }).outcome).toBe("reappoint");
+  });
+
+  test("a decision that turns on a close score goes to a vote", () => {
+    const rows = [{ ...history[6], valueAdded: -6 }];
+    const below = reviewSackedManager({ manager: "Ned", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 4 } });
+    expect(below.errors.map((error) => error.kind)).toEqual(["score"]);
+    expect(below.total).toBeGreaterThan(35);
+    expect(below.vote).toBe(true);
+    const above = reviewSackedManager({ manager: "Ned", currentSeason: 28, rows, activity: { competitions: 1, topManagerDeals: 4 } });
+    expect(above.outcome).toBe("reappoint");
+    expect(above.vote).toBe(true);
+    expect(review("Kim").vote).toBe(false);
+  });
+
+  test("counts the clubs left needing a manager, without capping decisions", () => {
+    const balance = managerSupply([review("Kim"), review("Ned"), review("Max", { options: { inactive: "Inactive" } })], { newcomers: 2, leavers: 1 });
+    expect(balance).toEqual({ openClubs: 3, newcomers: 2, managersAfter: 100, bigClubs: ["Nova"] });
+  });
+
+  test("gives a manager new to Top 100 half marks for their record", () => {
+    const rows = [{ season: 28, division: 4, position: 18, team: "November", manager: "Nia", valueAdded: 0 }];
+    expect(reviewSackedManager({ manager: "Nia", currentSeason: 28, rows }).breakdown.record).toBe(7.5);
+  });
 });

@@ -52,11 +52,15 @@ export const buildLiveSeasonRows = (liveRows = [], sheetRows = []) => {
   const season = String(liveRows[0].season ?? "");
   if (!season || sheetRows.some((row) => clean(row.season) === season)) return [];
 
+  // The sheet's own spelling of a club ("HAMBURGER SV"), so the live season joins its history.
+  const sheetTeams = new Map(sheetRows.map((row) => [clean(row.team).toLowerCase(), clean(row.team)]));
+  const sheetTeam = (team) => sheetTeams.get(clean(team).toLowerCase()) || clean(team);
+
   return liveRows.map((row) => ({
     season,
     division: String(row.division ?? ""),
     position: String(row.position ?? ""),
-    team: clean(row.team),
+    team: sheetTeam(row.team),
     played: String(row.played ?? ""),
     won: String(row.won ?? ""),
     drawn: String(row.drawn ?? ""),
@@ -66,7 +70,7 @@ export const buildLiveSeasonRows = (liveRows = [], sheetRows = []) => {
     goal_difference: String(row.goal_difference ?? ""),
     points: String(row.points ?? ""),
     start_date: "",
-    manager: resolveManagerName(row.manager, row.team, sheetRows),
+    manager: resolveManagerName(row.manager, sheetTeam(row.team), sheetRows),
     live: true,
     inProgress: !row.season_complete,
     observedAt: row.observed_at || null,
