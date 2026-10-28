@@ -78,7 +78,7 @@ if (args.json) {
     .forEach((review) => {
       const b = review.breakdown;
       const f = review.facts;
-      console.log(`D${review.division} ${review.position} ${review.club}: ${review.display}  ${review.total}  ${OUTCOME_LABELS[review.outcome]}${review.vote ? " (close: admin vote)" : ""}`);
+      console.log(`D${review.division} ${review.position} ${review.club}: ${review.display}  ${review.total}  ${OUTCOME_LABELS[review.outcome]}${review.vote && review.outcome !== "secondChance" ? " (close: admin vote)" : ""}`);
       console.log(`   result ${b.result} · record ${b.record} · activity ${b.activity} · conduct ${b.conduct}` +
         ` | value added ${f.currentValueAdded ?? "–"}, tenure ${f.tenure}, earlier bottom three: ${f.earlierBottomThree.join(", ") || "none"}`);
       console.log(`   ${review.reason}${review.notes.length ? " " + review.notes.join(" ") : ""}`);
