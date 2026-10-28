@@ -24,7 +24,7 @@ if (!args.sheet || !args.live || (!args.config && !args.history)) {
 }
 const { rows, squadRankGain } = loadArchive(args);
 
-const OUTCOME_LABELS = { reappoint: "Reappoint", anotherClub: "Not reappointed: another club", leave: "Not reappointed: no club" };
+const OUTCOME_LABELS = { reappoint: "Reappoint", secondChance: "Admin decision: second chance?", anotherClub: "Not reappointed: another club", leave: "Not reappointed: no club" };
 
 if (args.history) {
   const [from, to] = String(args.history).split("-").map(Number);
@@ -71,7 +71,8 @@ if (args.json) {
   console.log(`S${config.currentSeason} bottom-three review\n`);
   console.log(`Newcomers waiting: ${(supply.newcomers || []).join(", ") || "none"}. Leaving anyway: ${(supply.leavers || []).join(", ") || "none"}.`);
   console.log(`Clubs needing a manager after the review: ${balance.openClubs}` +
-    `${balance.bigClubs.length ? ` (D1-D2: ${balance.bigClubs.join(", ")})` : ""}. Managers in Top 100 next season: ${balance.managersAfter}.\n`);
+    `${balance.bigClubs.length ? ` (D1-D2: ${balance.bigClubs.join(", ")})` : ""}. Managers in Top 100 next season: ${balance.managersAfter}.` +
+    `${balance.undecided.length ? ` Awaiting a second-chance decision: ${balance.undecided.join(", ")}.` : ""}\n`);
   [...reviews]
     .sort((a, b) => a.division - b.division || a.position - b.position)
     .forEach((review) => {

@@ -58,6 +58,12 @@ test("scores activity from measured data, with half marks for anything missing a
   expect(active.breakdown.activity).toBe(20);
 });
 
+test("a Gold membership is required to apply", () => {
+  const ann = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
+  expect(eligibility(ann, { club: "Zeta", division: 1 }, { gold: false }).reasons).toContain("Not a Gold member, which every Top 100 manager must be.");
+  expect(eligibility(ann, { club: "Zeta", division: 1 }, { gold: true }).eligible).toBe(true);
+});
+
 test("applies the eligibility rules and weighs the rest", () => {
   const dee = scoreApplicant({ manager: "Dee", currentSeason: 28, rows });
   // In the bottom three, but that is weighed in the score rather than ruled out.
@@ -126,12 +132,13 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
     expect(kim.facts.lastChanceNext).toBe(false);
   });
 
-  test("one error is a second chance, recorded as a last chance, in any division", () => {
+  test("one error: a second chance is the admin team's decision, not a given", () => {
     const ned = review("Ned");
     expect(ned.errors.map((error) => error.kind)).toEqual(["collapse"]);
-    expect(ned.outcome).toBe("reappoint");
+    expect(ned.outcome).toBe("secondChance");
+    expect(ned.vote).toBe(true);
     expect(ned.facts.lastChanceNext).toBe(true);
-    expect(review("Oz").outcome).toBe("reappoint");
+    expect(review("Oz").outcome).toBe("secondChance");
   });
 
   test("two errors make reappointment a clear and obvious error", () => {
@@ -173,13 +180,13 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
     expect(close.errors.map((error) => error.kind)).toEqual(["collapse", "score"]);
     expect(Math.abs(close.total - 45)).toBeLessThan(5);
     expect(close.vote).toBe(true);
-    expect(review("Ned").vote).toBe(false);
     expect(review("Kim").vote).toBe(false);
   });
 
   test("counts the clubs left needing a manager, without capping decisions", () => {
     const balance = managerSupply([review("Kim"), review("Ned", { activity: idle }), review("Max", { options: { inactive: "Inactive" } })], { newcomers: 2, leavers: 1 });
-    expect(balance).toEqual({ openClubs: 3, newcomers: 2, managersAfter: 100, bigClubs: ["Nova"] });
+    expect(balance).toEqual({ openClubs: 3, newcomers: 2, managersAfter: 100, bigClubs: ["Nova"], undecided: [] });
+    expect(managerSupply([review("Oz")]).undecided).toEqual(["Oscar"]);
   });
 
   test("gives a manager new to Top 100 half marks for their record", () => {

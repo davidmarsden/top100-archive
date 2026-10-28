@@ -8,7 +8,7 @@
 // --live    current-season rows from the live-season function (/.netlify/functions/live-season)
 //           or the public_league_season_rows RPC; predicted_position gives value added
 // --config  { currentSeason, vacancies: [{ club, division, context }], applicants: [{ name, display }],
-//             preferences: { name: [club, ...] }, discipline: { name: { sanctions, openSanction } },
+//             preferences: { name: [club, ...] }, discipline: { name: { sanctions, openSanction, gold } },
 //             activity: { name: { competitions: entries in the last two seasons, topManagerDeals: count,
 //                                 community: 0-4 } } }  (squad building is measured from --stats)
 //           "name" is the manager's name as the sheet writes it.
