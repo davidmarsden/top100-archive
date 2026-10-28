@@ -133,6 +133,8 @@ describe("bottom-three review", () => {
     const max = reviewSackedManager({ manager: "Max", currentSeason: 28, rows: history, activity: idle });
     expect(max.outcome).toBe("reappoint");
     expect(max.vote).toBe(false);
+    const inactive = reviewSackedManager({ manager: "Max", currentSeason: 28, rows: history, options: { inactive: "No login for 10 days" } });
+    expect(inactive.outcome).toBe("break");
   });
 
   test("an inactive manager is not reappointed, and close scores go to a vote", () => {

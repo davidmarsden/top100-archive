@@ -258,12 +258,12 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
 
   let outcome;
   let reason;
-  if (tookOverMidSeason) {
+  if (options.inactive) {
+    outcome = "break";
+    reason = `${options.inactive}: not reappointed, even after taking over during the season (3.1).`;
+  } else if (tookOverMidSeason) {
     outcome = "reappoint";
     reason = "Took over during the season: always reappointed (3.1).";
-  } else if (options.inactive) {
-    outcome = "break";
-    reason = `${options.inactive}.`;
   } else if (total >= SACKING_BANDS.reappoint) {
     outcome = "reappoint";
     reason = "Score in the reappointment band.";
