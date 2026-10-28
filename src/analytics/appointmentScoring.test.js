@@ -148,7 +148,10 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
   });
 
   test("no Gold, irregular logins, inactivity or misconduct: no club at all, even after a mid-season takeover", () => {
-    expect(review("Max").outcome).toBe("reappoint");
+    const max = review("Max");
+    expect(max.outcome).toBe("reappoint");
+    expect(max.facts.lastChanceNext).toBe(false);
+    expect(review("Ned", { options: { standing: "Founder" } }).facts.lastChanceNext).toBe(false);
     expect(review("Kim", { options: { gold: false } }).outcome).toBe("leave");
     expect(review("Kim", { options: { gold: true } }).outcome).toBe("reappoint");
     expect(review("Max", { options: { loginGaps: 2 } }).outcome).toBe("leave");

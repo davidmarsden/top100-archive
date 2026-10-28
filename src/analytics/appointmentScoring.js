@@ -321,6 +321,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
 
   let outcome;
   let reason;
+  let secondChance = false;
   if (barred) {
     outcome = "leave";
     reason = `${barred}: not reappointed, nor offered another club (3.1).`;
@@ -335,6 +336,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason = `Reappointing would be a clear and obvious error: ${list}. The club goes into the vacancy round; the manager may apply for another club.`;
   } else if (errors.length) {
     outcome = "reappoint";
+    secondChance = true;
     reason = `Second chance: ${list}. Reappointed, and on a last chance next season.`;
   } else {
     outcome = "reappoint";
@@ -356,7 +358,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason,
     vote,
     wish: options.wish || null,
-    facts: { ...facts, tookOverMidSeason, barred, loginGaps, scoreLine, lastChanceNext: outcome === "reappoint" && errors.length > 0, earlierBottomThree: earlier, forfeits },
+    facts: { ...facts, tookOverMidSeason, barred, loginGaps, scoreLine, lastChanceNext: secondChance, earlierBottomThree: earlier, forfeits },
     errors,
     notes: scored.notes,
   };
