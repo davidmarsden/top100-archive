@@ -7,25 +7,33 @@
 // (same shape, valueAdded = predicted - actual position).
 //
 // Score out of 100:
-//   A. Current season      25  finish (15) + result against squad strength (10)
-//   B. Last two seasons    20  finishes (12) + average value added (8)
-//   C. Honours             20  D1 titles 6, other titles 3, promotions 2, capped
-//   D. Top-flight record   15  D1 seasons (9) + top-half D1 finishes (6)
-//   E. Stability, conduct  20  tenure (5) + bottom-three record (10) + discipline (5)
+//   A. Current season        20  finish (12) + result against squad strength (8)
+//   B. Last two seasons      15  finishes (9) + average value added (6)
+//   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
+//   D. Top-flight record     10  D1 seasons (6) + top-half D1 finishes (4)
+//   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
+//   F. Activity, contribution 20 competitions (8) + transfer market (6) + community (6),
+//                                entered by administrators; half marks when not yet assessed
+//
+// A season a manager took over part-way through never counts against them
+// (rulebook 3.1): it is not a bottom-three finish for E or for eligibility.
 //
 // Eligibility (any failure rules an applicant out for that vacancy):
-//   - not in the bottom three of their division this season (rule 2, auto-sack);
+//   - not in the bottom three of their division this season, unless they took the club over during it;
 //   - at least a second season at their current club (archive recruitment threshold);
 //   - no open sanction (transfer ban or upheld breach), entered by administrators;
 //   - realism: at most two divisions' step up, unless they have managed in D1.
 
 export const APPOINTMENT_WEIGHTS = Object.freeze({
-  current: 25,
-  recent: 20,
-  honours: 20,
-  topFlight: 15,
+  current: 20,
+  recent: 15,
+  honours: 15,
+  topFlight: 10,
   stability: 20,
+  activity: 20,
 });
+
+const ACTIVITY_PARTS = Object.freeze({ competitions: 8, market: 6, community: 6 });
 
 const DIVISION_SIZE = 20;
 const MAX_STEP_UP_WITHOUT_D1 = 2;
@@ -70,10 +78,27 @@ export const finishScore = (division, position) => {
 const valueAddedScore = (valueAdded, max, perPoint) =>
   valueAdded === null ? max / 2 : clamp(max / 2 + valueAdded * perPoint, 0, max);
 
+// Took the club over part-way through the season: someone else is listed
+// before them for the club, or they started the season at another club.
+const joinedMidSeason = (row, manager, rows) =>
+  splitManagers(row.manager).length > 1 ||
+  rows.some(
+    (other) =>
+      other !== row &&
+      num(other.season) === num(row.season) &&
+      splitManagers(other.manager).slice(0, -1).some((name) => normalise(name) === normalise(manager))
+  );
+
 export const managerCareer = (manager, rows = []) =>
   rows
     .filter((row) => finishedSeasonWith(row, manager))
-    .map((row) => ({ ...row, season: num(row.season), division: num(row.division), position: num(row.position) }))
+    .map((row) => ({
+      ...row,
+      season: num(row.season),
+      division: num(row.division),
+      position: num(row.position),
+      joinedMidSeason: joinedMidSeason(row, manager, rows),
+    }))
     .sort((a, b) => a.season - b.season);
 
 // Division a club played in the following season, from the archive itself.
@@ -83,7 +108,7 @@ const nextDivisionLookup = (rows) => {
   return (row) => map.get(`${row.season + 1}|${row.team}`) ?? null;
 };
 
-export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {} }) => {
+export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {} }) => {
   const career = managerCareer(manager, rows);
   const current = career.find((row) => row.season === currentSeason) || null;
   const completed = career.filter((row) => row.season < currentSeason);
@@ -93,7 +118,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   // A. Current season.
   const currentFinish = current ? finishScore(current.division, current.position) : 0;
   const currentValueAdded = current ? num(current.valueAdded) : null;
-  const A = current ? 15 * currentFinish + valueAddedScore(currentValueAdded, 10, 0.5) : 0;
+  const A = current ? 12 * currentFinish + valueAddedScore(currentValueAdded, 8, 0.4) : 0;
   if (!current) notes.push("No current-season club found.");
 
   // B. Last two completed seasons.
@@ -105,7 +130,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   const averageRecentValueAdded = recentValueAdded.length
     ? recentValueAdded.reduce((sum, v) => sum + v, 0) / recentValueAdded.length
     : null;
-  const B = 12 * (0.6 * seasonFinish(last) + 0.4 * seasonFinish(previous)) + valueAddedScore(averageRecentValueAdded, 8, 0.4);
+  const B = 9 * (0.6 * seasonFinish(last) + 0.4 * seasonFinish(previous)) + valueAddedScore(averageRecentValueAdded, 6, 0.3);
 
   // C. Honours: titles and promotions in completed seasons.
   const d1Titles = completed.filter((row) => row.division === 1 && row.position === 1).length;
@@ -123,7 +148,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   // D. Top-flight record.
   const d1Rows = career.filter((row) => row.division === 1);
   const d1TopHalf = d1Rows.filter((row) => row.position <= 10).length;
-  const D = Math.min(9, 1.5 * d1Rows.length) + Math.min(6, 2 * d1TopHalf);
+  const D = Math.min(6, 1.5 * d1Rows.length) + Math.min(4, 2 * d1TopHalf);
 
   // E. Stability and conduct.
   let tenure = 0;
@@ -131,11 +156,20 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
     for (let i = career.length - 1; i >= 0 && career[i].team === current.team; i -= 1) tenure += 1;
   }
   const recentWindow = career.filter((row) => row.season >= currentSeason - 5);
-  const bottomThree = recentWindow.filter((row) => row.position >= DIVISION_SIZE - 2);
+  const bottomThree = recentWindow.filter((row) => row.position >= DIVISION_SIZE - 2 && !row.joinedMidSeason);
+  const midSeasonBottomThree = recentWindow.filter((row) => row.position >= DIVISION_SIZE - 2 && row.joinedMidSeason);
   const disciplinePoints = clamp(5 - 2.5 * (num(discipline.sanctions) || 0), 0, 5);
   const E = Math.min(5, tenure) + Math.max(0, 10 - 3 * bottomThree.length) + disciplinePoints;
 
-  const total = round1(A + B + C + D + E);
+  // F. Activity and contribution, assessed by administrators (0..max for each part).
+  const assessed = Object.keys(ACTIVITY_PARTS).filter((part) => num(activity[part]) !== null);
+  const F = Object.entries(ACTIVITY_PARTS).reduce(
+    (sum, [part, max]) => sum + (num(activity[part]) === null ? max / 2 : clamp(num(activity[part]), 0, max)),
+    0
+  );
+  if (assessed.length < Object.keys(ACTIVITY_PARTS).length) notes.push("Activity and contribution not fully assessed: half marks used.");
+
+  const total = round1(A + B + C + D + E + F);
 
   return {
     manager,
@@ -143,7 +177,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
     division: current?.division ?? null,
     position: current?.position ?? null,
     total,
-    breakdown: { current: round1(A), recent: round1(B), honours: round1(C), topFlight: round1(D), stability: round1(E) },
+    breakdown: { current: round1(A), recent: round1(B), honours: round1(C), topFlight: round1(D), stability: round1(E), activity: round1(F) },
     facts: {
       seasons: career.length,
       firstSeason: career[0]?.season ?? null,
@@ -157,6 +191,9 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
       d1TopHalf,
       tenure,
       bottomThreeLastFive: bottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
+      midSeasonBottomThree: midSeasonBottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
+      currentJoinedMidSeason: Boolean(current?.joinedMidSeason),
+      activityAssessed: assessed.length === Object.keys(ACTIVITY_PARTS).length,
       sanctions: num(discipline.sanctions) || 0,
     },
     notes,
@@ -166,8 +203,8 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
 // Eligibility of a scored applicant for one vacancy ({ club, division }).
 export const eligibility = (scored, vacancy, discipline = {}) => {
   const reasons = [];
-  if (scored.position !== null && scored.position >= DIVISION_SIZE - 2) {
-    reasons.push("In the bottom three this season (subject to the automatic sacking rule).");
+  if (scored.position !== null && scored.position >= DIVISION_SIZE - 2 && !scored.facts.currentJoinedMidSeason) {
+    reasons.push("In the bottom three this season (subject to the sacking rule).");
   }
   if (scored.facts.tenure < 2) reasons.push("Less than a second season at the current club.");
   if (discipline.openSanction) reasons.push(`Open sanction: ${discipline.openSanction}.`);

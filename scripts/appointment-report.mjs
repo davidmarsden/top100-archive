@@ -8,7 +8,8 @@
 // --live    current-season rows from the live-season function (/.netlify/functions/live-season)
 //           or the public_league_season_rows RPC; predicted_position gives value added
 // --config  { currentSeason, vacancies: [{ club, division, context }], applicants: [{ name, display }],
-//             preferences: { name: [club, ...] }, discipline: { name: { sanctions, openSanction } } }
+//             preferences: { name: [club, ...] }, discipline: { name: { sanctions, openSanction } },
+//             activity: { name: { competitions: 0-8, market: 0-6, community: 0-6 } } }
 //           "name" is the manager's name as the sheet writes it.
 import fs from "node:fs";
 import { allocateVacancies, eligibility, scoreApplicant } from "../src/analytics/appointmentScoring.js";
@@ -82,7 +83,7 @@ const config = JSON.parse(fs.readFileSync(args.config, "utf8"));
 const rows = [...history, ...live];
 const discipline = config.discipline || {};
 const scored = config.applicants.map((applicant) => ({
-  ...scoreApplicant({ manager: applicant.name, currentSeason: config.currentSeason, rows, discipline: discipline[applicant.name] }),
+  ...scoreApplicant({ manager: applicant.name, currentSeason: config.currentSeason, rows, discipline: discipline[applicant.name], activity: (config.activity || {})[applicant.name] }),
   display: applicant.display || applicant.name,
 }));
 scored.sort((a, b) => b.total - a.total);
@@ -104,7 +105,7 @@ if (args.json) {
   result.ranking.forEach((applicant, i) => {
     const b = applicant.breakdown;
     console.log(`${i + 1}. ${applicant.display} (${applicant.club}, D${applicant.division} ${applicant.position}): ${applicant.total}`);
-    console.log(`   current ${b.current} · recent ${b.recent} · honours ${b.honours} · top flight ${b.topFlight} · stability ${b.stability}`);
+    console.log(`   current ${b.current} · recent ${b.recent} · honours ${b.honours} · top flight ${b.topFlight} · stability ${b.stability} · activity ${b.activity}`);
     Object.entries(applicant.eligibility).forEach(([club, verdict]) => {
       if (!verdict.eligible) console.log(`   not eligible for ${club}: ${verdict.reasons.join(" ")}`);
     });

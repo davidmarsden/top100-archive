@@ -33,10 +33,36 @@ test("scores honours from the archive, including promotions seen in the next sea
   expect(ann.total).toBeLessThanOrEqual(100);
 });
 
+test("never counts a season taken over part-way through against the manager", () => {
+  const history = [
+    { season: 27, division: 1, position: 13, team: "City", manager: "Al / Rim" },
+    { season: 27, division: 1, position: 20, team: "Cruz", manager: "Al" },
+    { season: 28, division: 2, position: 19, team: "Cruz", manager: "Al" },
+    { season: 28, division: 2, position: 18, team: "Bee", manager: "Old / New" },
+  ];
+  const al = scoreApplicant({ manager: "Al", currentSeason: 28, rows: history });
+  expect(al.facts.bottomThreeLastFive).toEqual(["S28 D2 19th Cruz"]);
+  expect(al.facts.midSeasonBottomThree).toEqual(["S27 D1 20th Cruz"]);
+  const latecomer = scoreApplicant({ manager: "New", currentSeason: 28, rows: history });
+  expect(latecomer.facts.currentJoinedMidSeason).toBe(true);
+  expect(eligibility(latecomer, { club: "Zeta", division: 2 }).reasons).not.toContain(
+    "In the bottom three this season (subject to the sacking rule)."
+  );
+});
+
+test("scores activity and contribution from administrators' assessment", () => {
+  const unassessed = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
+  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 8, market: 6, community: 6 } });
+  expect(unassessed.breakdown.activity).toBe(10);
+  expect(active.breakdown.activity).toBe(20);
+  expect(active.total - unassessed.total).toBeCloseTo(10, 5);
+  expect(unassessed.notes).toContain("Activity and contribution not fully assessed: half marks used.");
+});
+
 test("applies the eligibility rules", () => {
   const dee = scoreApplicant({ manager: "Dee", currentSeason: 28, rows });
   expect(eligibility(dee, { club: "Zeta", division: 1 }).reasons).toContain(
-    "In the bottom three this season (subject to the automatic sacking rule)."
+    "In the bottom three this season (subject to the sacking rule)."
   );
   const bob = scoreApplicant({ manager: "Bob", currentSeason: 28, rows });
   expect(eligibility(bob, { club: "Zeta", division: 1 }).eligible).toBe(false);
