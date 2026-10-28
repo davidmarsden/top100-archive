@@ -123,46 +123,55 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
     const kim = review("Kim");
     expect(kim.outcome).toBe("reappoint");
     expect(kim.errors).toEqual([]);
+    expect(kim.facts.lastChanceNext).toBe(false);
   });
 
-  test("one clear error is enough in D1-D2, where expectations are higher", () => {
+  test("one error is a second chance, recorded as a last chance, in any division", () => {
     const ned = review("Ned");
     expect(ned.errors.map((error) => error.kind)).toEqual(["collapse"]);
-    expect(ned.outcome).toBe("anotherClub");
+    expect(ned.outcome).toBe("reappoint");
+    expect(ned.facts.lastChanceNext).toBe(true);
+    expect(review("Oz").outcome).toBe("reappoint");
   });
 
-  test("below D2 one error is another chance; two are not", () => {
-    expect(review("Oz").outcome).toBe("reappoint");
+  test("two errors make reappointment a clear and obvious error", () => {
     const lou = review("Lou", { activity: { ...active, forfeits: 3 } });
     expect(lou.errors.map((error) => error.kind)).toEqual(["forfeits", "repeat"]);
     expect(lou.outcome).toBe("anotherClub");
     expect(review("Oz", { options: { lastChance: "told so in S27" } }).outcome).toBe("anotherClub");
+    expect(review("Ned", { activity: idle }).outcome).toBe("anotherClub");
   });
 
-  test("inactivity and misconduct mean no club at all, even after a mid-season takeover", () => {
+  test("the score line is higher in D1-D2", () => {
+    expect(review("Ned").facts.scoreLine).toBe(45);
+    expect(review("Oz").facts.scoreLine).toBe(40);
+  });
+
+  test("no Gold, irregular logins, inactivity or misconduct: no club at all, even after a mid-season takeover", () => {
     expect(review("Max").outcome).toBe("reappoint");
+    expect(review("Kim", { options: { gold: false } }).outcome).toBe("leave");
+    expect(review("Kim", { options: { gold: true } }).outcome).toBe("reappoint");
+    expect(review("Max", { options: { loginGaps: 2 } }).outcome).toBe("leave");
+    expect(review("Kim", { options: { loginGaps: 1 } }).outcome).toBe("reappoint");
     expect(review("Max", { options: { inactive: "No login for 10 days" } }).outcome).toBe("leave");
     expect(review("Kim", { options: { misconduct: "Abuse on the newsfeed" } }).outcome).toBe("leave");
   });
 
   test("a standing reappointment stands", () => {
-    expect(review("Ned", { options: { standing: "Top 100's founder at Genoa" } }).outcome).toBe("reappoint");
+    expect(review("Ned", { activity: idle, options: { standing: "Top 100's founder at Genoa" } }).outcome).toBe("reappoint");
   });
 
   test("a decision that turns on a close score goes to a vote", () => {
-    const rows = [{ ...history[6], valueAdded: -6 }];
-    const below = reviewSackedManager({ manager: "Ned", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 4 } });
-    expect(below.errors.map((error) => error.kind)).toEqual(["score"]);
-    expect(below.total).toBeGreaterThan(35);
-    expect(below.vote).toBe(true);
-    const above = reviewSackedManager({ manager: "Ned", currentSeason: 28, rows, activity: { competitions: 1, topManagerDeals: 4 } });
-    expect(above.outcome).toBe("reappoint");
-    expect(above.vote).toBe(true);
+    const close = review("Ned", { activity: { competitions: 2, topManagerDeals: 8, community: 2 } });
+    expect(close.errors.map((error) => error.kind)).toEqual(["collapse", "score"]);
+    expect(Math.abs(close.total - 45)).toBeLessThan(5);
+    expect(close.vote).toBe(true);
+    expect(review("Ned").vote).toBe(false);
     expect(review("Kim").vote).toBe(false);
   });
 
   test("counts the clubs left needing a manager, without capping decisions", () => {
-    const balance = managerSupply([review("Kim"), review("Ned"), review("Max", { options: { inactive: "Inactive" } })], { newcomers: 2, leavers: 1 });
+    const balance = managerSupply([review("Kim"), review("Ned", { activity: idle }), review("Max", { options: { inactive: "Inactive" } })], { newcomers: 2, leavers: 1 });
     expect(balance).toEqual({ openClubs: 3, newcomers: 2, managersAfter: 100, bigClubs: ["Nova"] });
   });
 

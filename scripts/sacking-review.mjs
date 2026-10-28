@@ -6,7 +6,7 @@
 //     [--stats public/data/statsArchive.json] [--json]
 //   node scripts/sacking-review.mjs --sheet full-history.csv --live live.json --stats ... --history 20-27
 //
-// --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, inactive, misconduct, standing, lastChance, wish }],
+// --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, gold, loginGaps, inactive, misconduct, standing, lastChance, wish }],
 //             supply: { newcomers: [names waiting to join], leavers: [names leaving anyway] },
 //             discipline: { name: { sanctions } },
 //             activity: { name: { competitions, topManagerDeals, running, community, forfeits } } }
