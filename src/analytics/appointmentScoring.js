@@ -10,7 +10,7 @@
 //   A. Current season        20  finish (12) + result against squad strength (8)
 //   B. Last two seasons      15  finishes (9) + average value added (6)
 //   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
-//   D. Top-flight record     10  D1 seasons (6) + top-half D1 finishes (4)
+//   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
 //   F. Activity, contribution 20 competitions (8) + transfer market (6) + community (6),
 //                                entered by administrators; half marks when not yet assessed
@@ -18,17 +18,15 @@
 // A season a manager took over part-way through never counts against them
 // (rulebook 3.1): it is not a bottom-three finish for E or for eligibility.
 //
-// Eligibility (any failure rules an applicant out for that vacancy):
-//   - not in the bottom three of their division this season, unless they took the club over during it;
+// Eligibility (any failure rules an applicant out):
 //   - at least a second season at their current club (archive recruitment threshold);
-//   - no open sanction (transfer ban or upheld breach), entered by administrators;
-//   - realism: at most two divisions' step up, unless they have managed in D1.
-
+//   - no open sanction (transfer ban or upheld breach), entered by administrators.
+// A bottom-three finish and a big step up are weighed in the score (E and D), not ruled out.
 export const APPOINTMENT_WEIGHTS = Object.freeze({
   current: 20,
   recent: 15,
   honours: 15,
-  topFlight: 10,
+  level: 10,
   stability: 20,
   activity: 20,
 });
@@ -36,7 +34,6 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
 const ACTIVITY_PARTS = Object.freeze({ competitions: 8, market: 6, community: 6 });
 
 const DIVISION_SIZE = 20;
-const MAX_STEP_UP_WITHOUT_D1 = 2;
 
 const num = (value) => {
   const n = Number(value);
@@ -108,7 +105,8 @@ const nextDivisionLookup = (rows) => {
   return (row) => map.get(`${row.season + 1}|${row.team}`) ?? null;
 };
 
-export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {} }) => {
+// level: the vacancy's division (D is scored against it); 1 when scoring without a vacancy.
+export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, level = 1 }) => {
   const career = managerCareer(manager, rows);
   const current = career.find((row) => row.season === currentSeason) || null;
   const completed = career.filter((row) => row.season < currentSeason);
@@ -145,10 +143,12 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   }).length;
   const C = Math.min(APPOINTMENT_WEIGHTS.honours, 6 * d1Titles + 3 * otherTitles + 2 * promotions);
 
-  // D. Top-flight record.
+  // D. Record at the vacancy's level: seasons in its division or above, and top-half finishes there.
   const d1Rows = career.filter((row) => row.division === 1);
   const d1TopHalf = d1Rows.filter((row) => row.position <= 10).length;
-  const D = Math.min(6, 1.5 * d1Rows.length) + Math.min(4, 2 * d1TopHalf);
+  const levelRows = career.filter((row) => row.division <= level);
+  const levelTopHalf = levelRows.filter((row) => row.position <= 10).length;
+  const D = Math.min(6, 1.5 * levelRows.length) + Math.min(4, 2 * levelTopHalf);
 
   // E. Stability and conduct.
   let tenure = 0;
@@ -177,7 +177,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
     division: current?.division ?? null,
     position: current?.position ?? null,
     total,
-    breakdown: { current: round1(A), recent: round1(B), honours: round1(C), topFlight: round1(D), stability: round1(E), activity: round1(F) },
+    breakdown: { current: round1(A), recent: round1(B), honours: round1(C), level: round1(D), stability: round1(E), activity: round1(F) },
     facts: {
       seasons: career.length,
       firstSeason: career[0]?.season ?? null,
@@ -189,6 +189,9 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
       relegations,
       d1Seasons: d1Rows.length,
       d1TopHalf,
+      level,
+      seasonsAtLevel: levelRows.length,
+      topHalfAtLevel: levelTopHalf,
       tenure,
       bottomThreeLastFive: bottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
       midSeasonBottomThree: midSeasonBottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
@@ -203,44 +206,45 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
 // Eligibility of a scored applicant for one vacancy ({ club, division }).
 export const eligibility = (scored, vacancy, discipline = {}) => {
   const reasons = [];
-  if (scored.position !== null && scored.position >= DIVISION_SIZE - 2 && !scored.facts.currentJoinedMidSeason) {
-    reasons.push("In the bottom three this season (subject to the sacking rule).");
-  }
   if (scored.facts.tenure < 2) reasons.push("Less than a second season at the current club.");
   if (discipline.openSanction) reasons.push(`Open sanction: ${discipline.openSanction}.`);
   if (scored.club && scored.club === vacancy.club) reasons.push("Already manages this club.");
-  const stepUp = (scored.division ?? 5) - vacancy.division;
-  if (stepUp > MAX_STEP_UP_WITHOUT_D1 && scored.facts.d1Seasons === 0) {
-    reasons.push(`A ${stepUp}-division step up with no Division 1 experience.`);
-  }
   return { eligible: reasons.length === 0, reasons };
 };
 
-// Highest score chooses first; each takes their most-preferred club still open
-// for which they are eligible. Without stated preferences, an applicant is
-// assumed to rank the vacancies in the order given (stature order).
-export const allocateVacancies = (scoredApplicants, vacancies, preferences = {}, disciplineByManager = {}) => {
-  const order = [...scoredApplicants].sort(
-    (a, b) => b.total - a.total || b.breakdown.current - a.breakdown.current || b.facts.seasons - a.facts.seasons
-  );
+// scoresByManager: { manager: { [club]: scored applicant for that vacancy } }.
+// Each round, every unplaced applicant points at their most-preferred club that
+// is still open and for which they are eligible; the highest score among those
+// pairs is appointed. Without stated preferences, an applicant is assumed to
+// rank the vacancies in the order given (stature order).
+export const allocateVacancies = (scoresByManager, vacancies, preferences = {}, disciplineByManager = {}) => {
   const open = new Set(vacancies.map((vacancy) => vacancy.club));
+  const waiting = new Set(Object.keys(scoresByManager));
   const appointments = [];
-  const unplaced = [];
 
-  order.forEach((applicant) => {
-    const ranked = (preferences[applicant.manager] || vacancies.map((vacancy) => vacancy.club))
+  const choiceFor = (manager) =>
+    (preferences[manager] || vacancies.map((vacancy) => vacancy.club))
       .map((club) => vacancies.find((vacancy) => vacancy.club === club))
-      .filter(Boolean);
-    const choice = ranked.find(
-      (vacancy) => open.has(vacancy.club) && eligibility(applicant, vacancy, disciplineByManager[applicant.manager]).eligible
-    );
-    if (choice) {
-      open.delete(choice.club);
-      appointments.push({ club: choice.club, manager: applicant.manager, score: applicant.total, vacates: applicant.club });
-    } else {
-      unplaced.push(applicant.manager);
-    }
-  });
+      .find(
+        (vacancy) =>
+          vacancy &&
+          open.has(vacancy.club) &&
+          scoresByManager[manager][vacancy.club] &&
+          eligibility(scoresByManager[manager][vacancy.club], vacancy, disciplineByManager[manager]).eligible
+      );
 
-  return { appointments, unfilled: [...open], unplaced };
+  for (;;) {
+    const bids = [...waiting]
+      .map((manager) => ({ manager, vacancy: choiceFor(manager) }))
+      .filter((bid) => bid.vacancy)
+      .map((bid) => ({ ...bid, scored: scoresByManager[bid.manager][bid.vacancy.club] }))
+      .sort((a, b) => b.scored.total - a.scored.total || b.scored.breakdown.current - a.scored.breakdown.current);
+    if (!bids.length) break;
+    const best = bids[0];
+    open.delete(best.vacancy.club);
+    waiting.delete(best.manager);
+    appointments.push({ club: best.vacancy.club, manager: best.manager, score: best.scored.total, vacates: best.scored.club });
+  }
+
+  return { appointments, unfilled: [...open], unplaced: [...waiting] };
 };

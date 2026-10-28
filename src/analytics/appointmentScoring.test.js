@@ -45,9 +45,7 @@ test("never counts a season taken over part-way through against the manager", ()
   expect(al.facts.midSeasonBottomThree).toEqual(["S27 D1 20th Cruz"]);
   const latecomer = scoreApplicant({ manager: "New", currentSeason: 28, rows: history });
   expect(latecomer.facts.currentJoinedMidSeason).toBe(true);
-  expect(eligibility(latecomer, { club: "Zeta", division: 2 }).reasons).not.toContain(
-    "In the bottom three this season (subject to the sacking rule)."
-  );
+  expect(latecomer.facts.bottomThreeLastFive).toEqual([]);
 });
 
 test("scores activity and contribution from administrators' assessment", () => {
@@ -59,25 +57,37 @@ test("scores activity and contribution from administrators' assessment", () => {
   expect(unassessed.notes).toContain("Activity and contribution not fully assessed: half marks used.");
 });
 
-test("applies the eligibility rules", () => {
+test("applies the eligibility rules and weighs the rest", () => {
   const dee = scoreApplicant({ manager: "Dee", currentSeason: 28, rows });
-  expect(eligibility(dee, { club: "Zeta", division: 1 }).reasons).toContain(
-    "In the bottom three this season (subject to the sacking rule)."
-  );
+  // In the bottom three, but that is weighed in the score rather than ruled out.
+  expect(eligibility(dee, { club: "Zeta", division: 1 }).eligible).toBe(true);
+  expect(dee.facts.bottomThreeLastFive).toEqual(["S28 D2 19th Gamma"]);
+  const newcomer = scoreApplicant({ manager: "Cy", currentSeason: 28, rows: [...rows, { season: 28, division: 3, position: 5, team: "Delta", manager: "Cy" }] });
+  expect(eligibility(newcomer, { club: "Zeta", division: 1 }).reasons).toEqual(["Less than a second season at the current club."]);
   const bob = scoreApplicant({ manager: "Bob", currentSeason: 28, rows });
-  expect(eligibility(bob, { club: "Zeta", division: 1 }).eligible).toBe(false);
-  expect(eligibility(bob, { club: "Zeta", division: 2 }).eligible).toBe(true);
+  expect(eligibility(bob, { club: "Zeta", division: 1 }).eligible).toBe(true);
   expect(eligibility(bob, { club: "Zeta", division: 2 }, { openSanction: "transfer ban" }).eligible).toBe(false);
+  // A step up is weighed: Bob has no seasons in D1 or D2, but has them in D3.
+  expect(bob.breakdown.level).toBe(0);
+  expect(scoreApplicant({ manager: "Bob", currentSeason: 28, rows, level: 3 }).breakdown.level).toBeGreaterThan(0);
 });
 
-test("allocates by score and preference, skipping ineligible clubs", () => {
-  const scored = ["Ann", "Bob", "Dee"].map((manager) => scoreApplicant({ manager, currentSeason: 28, rows }));
+test("allocates the highest score for each applicant's preferred club", () => {
   const vacancies = [
     { club: "Zeta", division: 1 },
     { club: "Eta", division: 2 },
   ];
-  const result = allocateVacancies(scored, vacancies, { Ann: ["Eta", "Zeta"] });
-  expect(result.appointments).toEqual([expect.objectContaining({ club: "Eta", manager: "Ann", vacates: "Alpha" })]);
-  expect(result.unfilled).toEqual(["Zeta"]);
-  expect(result.unplaced).toEqual(["Bob", "Dee"]);
+  const scoresByManager = Object.fromEntries(
+    ["Ann", "Bob", "Dee"].map((manager) => [
+      manager,
+      Object.fromEntries(vacancies.map((v) => [v.club, scoreApplicant({ manager, currentSeason: 28, rows, level: v.division })])),
+    ])
+  );
+  const result = allocateVacancies(scoresByManager, vacancies, { Ann: ["Eta", "Zeta"] });
+  expect(result.appointments).toEqual([
+    expect.objectContaining({ club: "Eta", manager: "Ann", vacates: "Alpha" }),
+    expect.objectContaining({ club: "Zeta", manager: "Bob", vacates: "Beta" }),
+  ]);
+  expect(result.unfilled).toEqual([]);
+  expect(result.unplaced).toEqual(["Dee"]);
 });

@@ -82,18 +82,36 @@ const live = buildLiveSeasonRows(liveRows, sheetRows).map((row, i) => {
 const config = JSON.parse(fs.readFileSync(args.config, "utf8"));
 const rows = [...history, ...live];
 const discipline = config.discipline || {};
-const scored = config.applicants.map((applicant) => ({
-  ...scoreApplicant({ manager: applicant.name, currentSeason: config.currentSeason, rows, discipline: discipline[applicant.name], activity: (config.activity || {})[applicant.name] }),
-  display: applicant.display || applicant.name,
-}));
-scored.sort((a, b) => b.total - a.total);
-const allocation = allocateVacancies(scored, config.vacancies, config.preferences || {}, discipline);
+const scoreFor = (applicant, level) =>
+  scoreApplicant({
+    manager: applicant.name,
+    currentSeason: config.currentSeason,
+    rows,
+    discipline: discipline[applicant.name],
+    activity: (config.activity || {})[applicant.name],
+    level,
+  });
+// Each applicant is scored once per vacancy: the "record at the level" part depends on its division.
+const scoresByManager = Object.fromEntries(
+  config.applicants.map((applicant) => [
+    applicant.name,
+    Object.fromEntries(config.vacancies.map((vacancy) => [vacancy.club, scoreFor(applicant, vacancy.division)])),
+  ])
+);
+const display = Object.fromEntries(config.applicants.map((applicant) => [applicant.name, applicant.display || applicant.name]));
+const allocation = allocateVacancies(scoresByManager, config.vacancies, config.preferences || {}, discipline);
 const result = {
   currentSeason: config.currentSeason,
   vacancies: config.vacancies,
-  ranking: scored.map((applicant) => ({
-    ...applicant,
-    eligibility: Object.fromEntries(config.vacancies.map((vacancy) => [vacancy.club, eligibility(applicant, vacancy, discipline[applicant.manager])])),
+  applicants: config.applicants.map((applicant) => ({
+    manager: applicant.name,
+    display: display[applicant.name],
+    byVacancy: Object.fromEntries(
+      config.vacancies.map((vacancy) => {
+        const scored = scoresByManager[applicant.name][vacancy.club];
+        return [vacancy.club, { ...scored, eligibility: eligibility(scored, vacancy, discipline[applicant.name]) }];
+      })
+    ),
   })),
   allocation,
 };
@@ -102,15 +120,22 @@ if (args.json) {
   console.log(JSON.stringify(result, null, 2));
 } else {
   console.log(`S${config.currentSeason} appointments\n`);
-  result.ranking.forEach((applicant, i) => {
-    const b = applicant.breakdown;
-    console.log(`${i + 1}. ${applicant.display} (${applicant.club}, D${applicant.division} ${applicant.position}): ${applicant.total}`);
-    console.log(`   current ${b.current} · recent ${b.recent} · honours ${b.honours} · top flight ${b.topFlight} · stability ${b.stability} · activity ${b.activity}`);
-    Object.entries(applicant.eligibility).forEach(([club, verdict]) => {
-      if (!verdict.eligible) console.log(`   not eligible for ${club}: ${verdict.reasons.join(" ")}`);
-    });
+  config.vacancies.forEach((vacancy) => {
+    console.log(`${vacancy.club} (D${vacancy.division} next season)`);
+    result.applicants
+      .map((applicant) => ({ applicant, scored: applicant.byVacancy[vacancy.club] }))
+      .sort((a, b) => b.scored.total - a.scored.total)
+      .forEach(({ applicant, scored }, i) => {
+        const b = scored.breakdown;
+        const verdict = scored.eligibility.eligible ? "" : `  (not eligible: ${scored.eligibility.reasons.join(" ")})`;
+        console.log(`  ${i + 1}. ${applicant.display} (${scored.club}, D${scored.division} ${scored.position}): ${scored.total}${verdict}`);
+        console.log(`     current ${b.current} · recent ${b.recent} · honours ${b.honours} · level ${b.level} · stability ${b.stability} · activity ${b.activity}`);
+      });
+    console.log("");
   });
-  console.log("\nAllocation (highest score chooses first):");
-  allocation.appointments.forEach((appointment) => console.log(`  ${appointment.club}: ${appointment.manager} (${appointment.score}), vacating ${appointment.vacates}`));
+  console.log("Allocation (each round: the highest score for an applicant's most-preferred open club):");
+  allocation.appointments.forEach((appointment) =>
+    console.log(`  ${appointment.club}: ${display[appointment.manager]} (${appointment.score}), vacating ${appointment.vacates}`)
+  );
   if (allocation.unfilled.length) console.log(`  Unfilled: ${allocation.unfilled.join(", ")}`);
 }
