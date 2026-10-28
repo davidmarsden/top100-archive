@@ -6,7 +6,7 @@
 //     [--stats public/data/statsArchive.json] [--json]
 //   node scripts/sacking-review.mjs --sheet full-history.csv --live live.json --stats ... --history 20-27
 //
-// --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, inactive, misconduct, standing, lastChance, wish }],
+// --config  { currentSeason, managers: [{ name, display, tookOverMidSeason, gold, loginGaps, inactive, misconduct, standing, lastChance, wish }],
 //             supply: { newcomers: [names waiting to join], leavers: [names leaving anyway] },
 //             discipline: { name: { sanctions } },
 //             activity: { name: { competitions, topManagerDeals, running, community, forfeits } } }
@@ -24,7 +24,7 @@ if (!args.sheet || !args.live || (!args.config && !args.history)) {
 }
 const { rows, squadRankGain } = loadArchive(args);
 
-const OUTCOME_LABELS = { reappoint: "Reappoint", anotherClub: "Not reappointed: another club", leave: "Not reappointed: no club" };
+const OUTCOME_LABELS = { reappoint: "Reappoint", secondChance: "Admin decision: second chance?", anotherClub: "Not reappointed: another club", leave: "Not reappointed: no club" };
 
 if (args.history) {
   const [from, to] = String(args.history).split("-").map(Number);
@@ -71,13 +71,14 @@ if (args.json) {
   console.log(`S${config.currentSeason} bottom-three review\n`);
   console.log(`Newcomers waiting: ${(supply.newcomers || []).join(", ") || "none"}. Leaving anyway: ${(supply.leavers || []).join(", ") || "none"}.`);
   console.log(`Clubs needing a manager after the review: ${balance.openClubs}` +
-    `${balance.bigClubs.length ? ` (D1-D2: ${balance.bigClubs.join(", ")})` : ""}. Managers in Top 100 next season: ${balance.managersAfter}.\n`);
+    `${balance.bigClubs.length ? ` (D1-D2: ${balance.bigClubs.join(", ")})` : ""}. Managers in Top 100 next season: ${balance.managersAfter}.` +
+    `${balance.undecided.length ? ` Awaiting a second-chance decision: ${balance.undecided.join(", ")}.` : ""}\n`);
   [...reviews]
     .sort((a, b) => a.division - b.division || a.position - b.position)
     .forEach((review) => {
       const b = review.breakdown;
       const f = review.facts;
-      console.log(`D${review.division} ${review.position} ${review.club}: ${review.display}  ${review.total}  ${OUTCOME_LABELS[review.outcome]}${review.vote ? " (close: admin vote)" : ""}`);
+      console.log(`D${review.division} ${review.position} ${review.club}: ${review.display}  ${review.total}  ${OUTCOME_LABELS[review.outcome]}${review.vote && review.outcome !== "secondChance" ? " (close: admin vote)" : ""}`);
       console.log(`   result ${b.result} · record ${b.record} · activity ${b.activity} · conduct ${b.conduct}` +
         ` | value added ${f.currentValueAdded ?? "–"}, tenure ${f.tenure}, earlier bottom three: ${f.earlierBottomThree.join(", ") || "none"}`);
       console.log(`   ${review.reason}${review.notes.length ? " " + review.notes.join(" ") : ""}`);

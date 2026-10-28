@@ -25,7 +25,8 @@
 //
 // Eligibility (any failure rules an applicant out):
 //   - at least a second season at their current club (archive recruitment threshold);
-//   - no open sanction (transfer ban or upheld breach), entered by administrators.
+//   - no open sanction (transfer ban or upheld breach), entered by administrators;
+//   - a Gold member (discipline.gold === false rules them out; unknown counts as Gold).
 // A bottom-three finish and a big step up are weighed in the score (E and D), not ruled out.
 export const APPOINTMENT_WEIGHTS = Object.freeze({
   current: 20,
@@ -233,29 +234,46 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
 export const SACKING_WEIGHTS = Object.freeze({ result: 30, record: 20, activity: 30, conduct: 20 });
 
 // The VAR standard ("S25 Manager Reappointments", smtop100.blog, 22 August 2025):
-// reappoint unless there is a clear and obvious error. Its precedents give the
-// errors (CLEAR_ERROR):
-//   inactive     unresponsive, not managing the team, or removed by Soccer Manager
-//                (Alves, fert dert): never reappointed, nor offered another club (6.3.2)
-//   misconduct   recorded by the administrators (McHugh): as inactive
+// reappoint unless reappointing would be a clear and obvious error. The manager gets the
+// benefit of the doubt; a second chance is the administrators' decision, not a given.
+//
+// Never reappointed, nor offered another club (6.3.2):
+//   gold         not a Gold member: required to manage in Top 100, as for new managers
+//   inactive     unresponsive, not managing the team, removed by Soccer Manager, or
+//                irregular logins: CLEAR_ERROR.loginGaps or more spells of 7 days without
+//                logging in during the season (Alves, fert dert)
+//   misconduct   recorded by the administrators (McHugh)
+//
+// Otherwise the S25 precedents give the errors. CLEAR_ERROR.errors of them make
+// reappointment a clear and obvious error. With one, the administrators decide whether to
+// give a second chance, recorded as a last chance (Murilo, Golden Bear and Azevedo in S25);
+// it takes a majority:
 //   forfeits     CLEAR_ERROR.forfeits or more forfeits in Top 100 competitions this
 //                season (Alldridge, Little, Trapattoni, Bertonati)
 //   repeat       bottom three the season before too, or on a recorded last chance
-//                (Golden Bear, Azevedo in S25)
 //   collapse     finished CLEAR_ERROR.valueAdded or more places below where the
 //                squad's strength predicted ("one of the worst points totals")
 //   sanction     a sanction this season, such as a transfer ban (Alldridge)
-//   score        a review score below CLEAR_ERROR.score: weak across the board
-// D1 and D2 carry higher expectations: one error is enough there. In D3-D5 it
-// takes two (Murilo, S25: a second relegation alone was "another chance").
-// Where the decision turns on a score within REVIEW_MARGIN of the line, the
-// administrators vote on it; without a majority, the manager stays.
-export const CLEAR_ERROR = Object.freeze({ score: 40, valueAdded: -12, forfeits: 3, higherExpectationsUpTo: 2 });
+//   score        a review score below the line: CLEAR_ERROR.score, or
+//                CLEAR_ERROR.higherScore in D1-D2, where expectations are higher
+// Where reappointment would turn on a score within REVIEW_MARGIN of the line, the
+// administrators vote on it too.
+export const CLEAR_ERROR = Object.freeze({
+  errors: 2,
+  score: 40,
+  higherScore: 45,
+  higherExpectationsUpTo: 2,
+  valueAdded: -12,
+  forfeits: 3,
+  loginGaps: 2,
+});
 export const REVIEW_MARGIN = 5;
 
-// options: { tookOverMidSeason, inactive, misconduct, standing, lastChance, wish }
+// options: { tookOverMidSeason, gold, loginGaps, inactive, misconduct, standing, lastChance, wish }
 //   tookOverMidSeason  from the current season's manager assignments (the archive only
-//                      knows completed seasons); reappointed unless inactive or misconduct
+//                      knows completed seasons); reappointed unless never reappointed (above)
+//   gold               false when the manager is not a Gold member (unknown counts as Gold)
+//   loginGaps          spells of 7 days or more without logging in this season
 //   inactive           reason, e.g. "No login for 10 days" or "Unresponsive to WCC requests"
 //   misconduct         reason recorded by the administrators
 //   standing           a standing reappointment the administrators have published
@@ -282,6 +300,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
   const total = round1(A + B + C + D);
 
   const division = scored.division ?? 5;
+  const scoreLine = division <= CLEAR_ERROR.higherExpectationsUpTo ? CLEAR_ERROR.higherScore : CLEAR_ERROR.score;
   const previousSeason = `S${currentSeason - 1} `;
   const forfeits = num(activity.forfeits) || 0;
   const errors = [];
@@ -291,34 +310,44 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
   if (num(facts.currentValueAdded) !== null && facts.currentValueAdded <= CLEAR_ERROR.valueAdded)
     errors.push({ kind: "collapse", text: `${-facts.currentValueAdded} places below where the squad's strength predicted` });
   if ((num(discipline.sanctions) || 0) > 0) errors.push({ kind: "sanction", text: "sanctioned this season" });
-  if (total < CLEAR_ERROR.score) errors.push({ kind: "score", text: `review score below ${CLEAR_ERROR.score}` });
-  const needed = division <= CLEAR_ERROR.higherExpectationsUpTo ? 1 : 2;
+  if (total < scoreLine) errors.push({ kind: "score", text: `review score below ${scoreLine}` });
   const list = errors.map((error) => error.text).join("; ");
+
+  const loginGaps = num(options.loginGaps) || 0;
+  const barred =
+    (options.gold === false && "Not a Gold member, which every Top 100 manager must be") ||
+    options.inactive ||
+    (loginGaps >= CLEAR_ERROR.loginGaps && `Irregular logins: ${loginGaps} spells of 7 days without logging in this season`) ||
+    options.misconduct ||
+    null;
 
   let outcome;
   let reason;
-  if (options.inactive || options.misconduct) {
+  let secondChance = false;
+  if (barred) {
     outcome = "leave";
-    reason = `${options.inactive || options.misconduct}: not reappointed, nor offered another club (6.3.2).`;
+    reason = `${barred}: not reappointed, nor offered another club (3.1).`;
   } else if (options.standing) {
     outcome = "reappoint";
     reason = `Standing reappointment: ${options.standing} (3.1).`;
   } else if (tookOverMidSeason) {
     outcome = "reappoint";
     reason = "Took over during the season: reappointed (3.1).";
-  } else if (errors.length >= needed) {
+  } else if (errors.length >= CLEAR_ERROR.errors) {
     outcome = "anotherClub";
-    reason = `Clear and obvious error${errors.length > 1 ? "s" : ""}: ${list}${needed === 1 ? " (D1-D2 expectations)" : ""}. The club goes into the vacancy round; the manager may apply for another club.`;
+    reason = `Reappointing would be a clear and obvious error: ${list}. The club goes into the vacancy round; the manager may apply for another club.`;
+  } else if (errors.length) {
+    outcome = "secondChance";
+    secondChance = true;
+    reason = `One error: ${list}. The admin team decides whether to give a second chance (a majority is needed); if given, the manager is on a last chance next season.`;
   } else {
     outcome = "reappoint";
-    reason = errors.length
-      ? `Reappointed: ${list}, but no clear and obvious error${needed === 2 ? " on its own below D2" : ""}.`
-      : "No clear and obvious error: reappointed.";
+    reason = "No clear and obvious error: reappointed.";
   }
   // A vote when the decision turns on the score and the score is close to the line.
-  const fixed = Boolean(options.inactive || options.misconduct || options.standing || tookOverMidSeason);
+  const fixed = Boolean(barred || options.standing || tookOverMidSeason);
   const others = errors.filter((error) => error.kind !== "score").length;
-  const vote = !fixed && Math.abs(total - CLEAR_ERROR.score) < REVIEW_MARGIN && others < needed && others + 1 >= needed;
+  const vote = outcome === "secondChance" || (!fixed && Math.abs(total - scoreLine) < REVIEW_MARGIN && others === CLEAR_ERROR.errors - 1);
 
   return {
     manager,
@@ -331,7 +360,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason,
     vote,
     wish: options.wish || null,
-    facts: { ...facts, tookOverMidSeason, inactive: options.inactive || options.misconduct || null, earlierBottomThree: earlier, forfeits },
+    facts: { ...facts, tookOverMidSeason, barred, loginGaps, scoreLine, lastChanceNext: secondChance, earlierBottomThree: earlier, forfeits },
     errors,
     notes: scored.notes,
   };
@@ -347,7 +376,8 @@ export const managerSupply = (reviews, { newcomers = 0, leavers = 0 } = {}) => {
   const leaving = reviews.filter((review) => review.outcome === "leave").length + leavers;
   const openClubs = notReappointed.length + leaving;
   const bigClubs = notReappointed.filter((review) => review.division !== null && review.division <= 2).map((review) => review.club);
-  return { openClubs, newcomers, managersAfter: 100 - leaving + newcomers, bigClubs };
+  const undecided = reviews.filter((review) => review.outcome === "secondChance").map((review) => review.club);
+  return { openClubs, newcomers, managersAfter: 100 - leaving + newcomers, bigClubs, undecided };
 };
 
 // Eligibility of a scored applicant for one vacancy ({ club, division }).
@@ -355,6 +385,7 @@ export const eligibility = (scored, vacancy, discipline = {}) => {
   const reasons = [];
   if (scored.facts.tenure < 2) reasons.push("Less than a second season at the current club.");
   if (discipline.openSanction) reasons.push(`Open sanction: ${discipline.openSanction}.`);
+  if (discipline.gold === false) reasons.push("Not a Gold member, which every Top 100 manager must be.");
   if (scored.club && scored.club === vacancy.club) reasons.push("Already manages this club.");
   return { eligible: reasons.length === 0, reasons };
 };
