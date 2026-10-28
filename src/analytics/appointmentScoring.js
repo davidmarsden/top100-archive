@@ -216,6 +216,83 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   };
 };
 
+// Review of a manager who finished in the bottom three (rulebook 3.1). Every
+// manager reviewed finished 18th-20th, so the finish itself tells little:
+// the review asks how the club did against its squad, what the manager's
+// record was before, and how active they are. Score out of 100:
+//   A. Result against squad strength  30  this season's value added (predicted - actual)
+//   B. Track record                   20  last two completed seasons: finishes within the division (10)
+//                                         and value added (5), half marks without either; honours (5)
+//   C. Activity and contribution      30  as F above, scaled from 20 to 30
+//   D. Record and conduct             20  earlier bottom-three finishes in the last five seasons (10),
+//                                         tenure at the club (5), discipline (5)
+export const SACKING_WEIGHTS = Object.freeze({ result: 30, record: 20, activity: 30, conduct: 20 });
+
+// Outcome bands. Scores within REVIEW_MARGIN of a band boundary go to an
+// administrators' vote, as close appointments do (3.2).
+export const SACKING_BANDS = Object.freeze({ reappoint: 55, anotherClub: 40 });
+export const REVIEW_MARGIN = 5;
+
+// options: { tookOverMidSeason, inactive: reason, wish: "stay" | "move" | "break" }
+//   tookOverMidSeason  from the current season's manager assignments (the archive only
+//                      knows completed seasons); always reappointed (3.1)
+//   inactive           e.g. "No login for 10 days": Soccer Manager sacks them anyway
+//   wish               what the manager asked for, recorded with the decision
+export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {} }) => {
+  const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity });
+  const { facts } = scored;
+  const tookOverMidSeason = Boolean(options.tookOverMidSeason || facts.currentJoinedMidSeason);
+
+  const A = valueAddedScore(facts.currentValueAdded, SACKING_WEIGHTS.result, 1.5);
+  // Judged within the division, so a lower-division manager is not marked down for the
+  // division itself, and a manager new to Top 100 gets half marks rather than none.
+  const earlierSeasons = managerCareer(manager, rows).filter((row) => row.season === currentSeason - 1 || row.season === currentSeason - 2);
+  const finishes = earlierSeasons.map((row) => (DIVISION_SIZE + 1 - row.position) / DIVISION_SIZE);
+  const finishPoints = finishes.length ? (10 * finishes.reduce((sum, v) => sum + v, 0)) / finishes.length : 5;
+  const B = finishPoints + valueAddedScore(facts.averageRecentValueAdded, 5, 0.25) + Math.min(5, scored.breakdown.honours / 3);
+  const C = (scored.breakdown.activity * SACKING_WEIGHTS.activity) / APPOINTMENT_WEIGHTS.activity;
+  const earlier = facts.bottomThreeLastFive.filter((entry) => !entry.startsWith(`S${currentSeason} `));
+  const disciplinePoints = clamp(5 - 2.5 * (num(discipline.sanctions) || 0), 0, 5);
+  const D = Math.max(0, 10 - 5 * earlier.length) + Math.min(5, facts.tenure) + disciplinePoints;
+  const total = round1(A + B + C + D);
+
+  let outcome;
+  let reason;
+  if (tookOverMidSeason) {
+    outcome = "reappoint";
+    reason = "Took over during the season: always reappointed (3.1).";
+  } else if (options.inactive) {
+    outcome = "break";
+    reason = `${options.inactive}.`;
+  } else if (total >= SACKING_BANDS.reappoint) {
+    outcome = "reappoint";
+    reason = "Score in the reappointment band.";
+  } else if (total >= SACKING_BANDS.anotherClub) {
+    outcome = "anotherClub";
+    reason = "Score in the middle band: the club is offered in the vacancy round, and the manager applies for it or another club.";
+  } else {
+    outcome = "break";
+    reason = "Score below the middle band.";
+  }
+  const boundary = [SACKING_BANDS.reappoint, SACKING_BANDS.anotherClub].find((line) => Math.abs(total - line) < REVIEW_MARGIN);
+  const vote = !tookOverMidSeason && !options.inactive && boundary !== undefined;
+
+  return {
+    manager,
+    club: scored.club,
+    division: scored.division,
+    position: scored.position,
+    total,
+    breakdown: { result: round1(A), record: round1(B), activity: round1(C), conduct: round1(D) },
+    outcome,
+    reason,
+    vote,
+    wish: options.wish || null,
+    facts: { ...facts, tookOverMidSeason, earlierBottomThree: earlier },
+    notes: scored.notes,
+  };
+};
+
 // Eligibility of a scored applicant for one vacancy ({ club, division }).
 export const eligibility = (scored, vacancy, discipline = {}) => {
   const reasons = [];

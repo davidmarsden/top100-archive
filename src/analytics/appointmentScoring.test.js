@@ -1,4 +1,4 @@
-import { allocateVacancies, eligibility, finishedSeasonWith, finishScore, scoreApplicant } from "./appointmentScoring";
+import { allocateVacancies, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
 
 const rows = [
   { season: 25, division: 2, position: 2, team: "Alpha", manager: "Ann" },
@@ -102,4 +102,47 @@ test("leaves a season with no value-added data out of the recent average", () =>
   const a = scoreApplicant({ manager: "Eve", currentSeason: 28, rows: known });
   const b = scoreApplicant({ manager: "Eve", currentSeason: 28, rows: missing });
   expect(b.breakdown.recent).toBe(a.breakdown.recent);
+});
+
+describe("bottom-three review", () => {
+  const history = [
+    { season: 26, division: 2, position: 6, team: "Kilo", manager: "Kim", valueAdded: 3 },
+    { season: 27, division: 2, position: 8, team: "Kilo", manager: "Kim", valueAdded: 2 },
+    { season: 28, division: 2, position: 19, team: "Kilo", manager: "Kim", valueAdded: 1 },
+    { season: 26, division: 2, position: 18, team: "Lima", manager: "Lou", valueAdded: -6 },
+    { season: 27, division: 2, position: 19, team: "Lima", manager: "Lou", valueAdded: -8 },
+    { season: 28, division: 2, position: 20, team: "Lima", manager: "Lou", valueAdded: -15 },
+    { season: 28, division: 2, position: 18, team: "Mike", manager: "Old / Max", valueAdded: -10 },
+  ];
+  const active = { competitions: 2, topManagerDeals: 10, squadRankGain: 10, community: 3 };
+  const idle = { competitions: 0, topManagerDeals: 0, squadRankGain: -10, community: 0 };
+
+  test("reappoints a manager who did well against a weak squad and is active", () => {
+    const kim = reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history, activity: active });
+    expect(kim.outcome).toBe("reappoint");
+    expect(kim.total).toBeGreaterThanOrEqual(60);
+  });
+
+  test("suggests a break after repeated bottom-three finishes below the squad's level", () => {
+    const lou = reviewSackedManager({ manager: "Lou", currentSeason: 28, rows: history, activity: idle });
+    expect(lou.outcome).toBe("break");
+    expect(lou.facts.earlierBottomThree).toEqual(["S26 D2 18th Lima", "S27 D2 19th Lima"]);
+  });
+
+  test("always reappoints a manager who took over during the season", () => {
+    const max = reviewSackedManager({ manager: "Max", currentSeason: 28, rows: history, activity: idle });
+    expect(max.outcome).toBe("reappoint");
+    expect(max.vote).toBe(false);
+  });
+
+  test("an inactive manager is not reappointed, and close scores go to a vote", () => {
+    expect(reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history, activity: active, options: { inactive: "No login for 10 days" } }).outcome).toBe("break");
+    const close = reviewSackedManager({ manager: "Kim", currentSeason: 28, rows: history });
+    expect(close.vote).toBe(Math.abs(close.total - 55) < 5 || Math.abs(close.total - 40) < 5);
+  });
+
+  test("gives a manager new to Top 100 half marks for their record", () => {
+    const rows = [{ season: 28, division: 4, position: 18, team: "November", manager: "Nia", valueAdded: 0 }];
+    expect(reviewSackedManager({ manager: "Nia", currentSeason: 28, rows }).breakdown.record).toBe(7.5);
+  });
 });

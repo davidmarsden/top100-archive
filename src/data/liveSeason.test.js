@@ -36,3 +36,11 @@ test("exports rows in the Full History column layout", () => {
   expect(csv.split("\n")[0]).toBe("Season,Div,Pos,,Team,P,W,D,L,GF,GA,GD,Pts,,Start date,,Manager");
   expect(csv.split("\n")[1]).toBe("28,1,20,,Juventus,38,2,6,30,20,92,-72,12,,,,Mcgregor");
 });
+
+test("uses the sheet's spelling of a club so the live season joins its history", () => {
+  const rows = buildLiveSeasonRows(
+    [{ season: 28, division: 1, position: 19, team: "Hamburger SV", manager: "David Marsden", season_complete: false }],
+    [{ season: "27", division: "1", position: "12", team: "HAMBURGER SV", manager: "Marsden" }]
+  );
+  expect(rows[0]).toMatchObject({ team: "HAMBURGER SV", manager: "Marsden" });
+});
