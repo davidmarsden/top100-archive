@@ -9,3 +9,7 @@
   # restricted in Google Cloud to the required API and approved HTTP referrers.
   # SUPABASE_URL is the public project URL (also in README.md); only the scan omits it.
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,REACT_APP_GOOGLE_API_KEY,REACT_APP_SHEET_ID,REACT_APP_WINNERS_SHEET_ID,REACT_APP_WINNERS_CLUBS_RANGE,REACT_APP_WINNERS_MANAGERS_RANGE"
+
+[functions]
+  # esbuild bundles appointment-scores.mjs with the shared scoring code in src/.
+  node_bundler = "esbuild"
