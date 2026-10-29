@@ -34,7 +34,9 @@ const SearchTab = ({
     <div className="space-y-4">
       <div className="grid gap-4">
         {filtered.map((team, index) => {
-          const tags = getTeamTags(
+          // The live season: titles, promotions, cups and sackings count once all 38 games are
+          // played, so a row still in progress shows its position but no outcome tags or icons.
+          const tags = team.inProgress ? [] : getTeamTags(
             team.position,
             team.division,
             team.team,
@@ -42,13 +44,14 @@ const SearchTab = ({
             playoffWinnersSet
           );
 
-          const badge = getPositionBadge(
+          const positionBadge = getPositionBadge(
             team.position,
             team.division,
             team.team,
             team.season,
             playoffWinnersSet
           );
+          const badge = team.inProgress ? { ...positionBadge, icon: null } : positionBadge;
 
           const rowClass = getRowStyling(team.position, team.division);
 
