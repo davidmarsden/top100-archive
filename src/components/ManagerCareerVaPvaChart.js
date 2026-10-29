@@ -95,13 +95,13 @@ const ManagerCareerVaPvaChart = ({ summary }) => {
               tickFormatter={(value) => chartData.find((row) => row.x === value)?.seasonLabel || ""}
             />
             <YAxis tickFormatter={(value) => Number(value).toFixed(1)} />
-            <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="4 4" label={{ value: "Expectation", position: "right", fontSize: 11, fill: "#6b7280" }} />
+            <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "Expectation", position: "right", fontSize: 11, fill: "#a9b8d0" }} />
             <Tooltip content={<TooltipContent />} />
             <Line
               type="linear"
               dataKey="pva"
               name="PVA"
-              stroke="#7c3aed"
+              stroke="#a78bfa"
               strokeWidth={3}
               dot={{ r: 4 }}
               connectNulls
