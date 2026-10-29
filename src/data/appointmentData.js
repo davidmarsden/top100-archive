@@ -4,7 +4,7 @@
 // appointment-scores Netlify function, which the Top 100 admin appointments page calls.
 import { allocateVacancies, eligibility, managerCareer, managerSupply, reviewSackedManager, scoreApplicant } from "../analytics/appointmentScoring.js";
 import { CLUB_ALIASES } from "./clubAliases.js";
-import { buildLiveSeasonRows } from "./liveSeason.js";
+import { buildLiveSeasonRows, resolveManagerName } from "./liveSeason.js";
 
 // Sheet rows from a table whose first row is the header (Season, Div, Pos, Team, Pts, Manager...).
 export const parseSheetTable = (table = []) => {
@@ -73,11 +73,14 @@ export const buildArchive = ({ sheetRows = [], statsRows = [], liveRows = [] }) 
     return ranked.length >= 2 ? ranked[0] - ranked[ranked.length - 1] : null;
   };
 
-  // The archive's name for a manager: the sheet's short name for the club they manage now
-  // when the live season knows it ("Mister TRX" -> "TRX"), otherwise the name as given.
+  // The archive's name for a manager ("Mister TRX" -> "TRX"): the live season's resolved
+  // name for their club while it is live, otherwise resolved against the sheet (once the
+  // sheet has the season, the live rows are dropped), otherwise the name as given.
   const archiveName = ({ name, club }) => {
     const live = club ? liveSeason.find((row) => sameClub(row.team, club)) : null;
-    return live?.manager || name;
+    if (live?.manager) return live.manager;
+    const sheetTeam = club ? sheetRows.find((row) => sameClub(row.team, club))?.team : null;
+    return name ? resolveManagerName(name, sheetTeam || club || "", sheetRows) : name;
   };
 
   return { rows, sheetRows, liveSeason, squadRankGain, archiveName };
