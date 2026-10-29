@@ -270,12 +270,12 @@ const SuccessEvidencePanel = ({ archiveRows = [], statsRows = [], honours = {} }
               <XAxis dataKey="band" />
               <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
               <Tooltip formatter={(value) => pct(value)} />
-              <Line type="monotone" dataKey="title" name="Title" stroke="#7c3aed" strokeWidth={3} dot />
-              <Line type="monotone" dataKey="top4" name="D1 Top 4" stroke="#2563eb" strokeWidth={2} dot />
-              <Line type="monotone" dataKey="top10" name="D1 Top 10" stroke="#16a34a" strokeWidth={2} dot />
-              <Line type="monotone" dataKey="promoted" name="Promoted" stroke="#0d9488" strokeWidth={2} dot />
-              <Line type="monotone" dataKey="danger" name="Bottom 4" stroke="#dc2626" strokeWidth={2} dot />
-              <Line type="monotone" dataKey="sacked" name="Bottom 3" stroke="#991b1b" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="title" name="Title" stroke="#a78bfa" strokeWidth={3} dot />
+              <Line type="monotone" dataKey="top4" name="D1 Top 4" stroke="#60a5fa" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="top10" name="D1 Top 10" stroke="#4ade80" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="promoted" name="Promoted" stroke="#2dd4bf" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="danger" name="Bottom 4" stroke="#f87171" strokeWidth={2} dot />
+              <Line type="monotone" dataKey="sacked" name="Bottom 3" stroke="#fca5a5" strokeWidth={2} dot />
             </LineChart>
           </ResponsiveContainer>
         </div>

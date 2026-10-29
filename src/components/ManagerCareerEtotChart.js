@@ -95,7 +95,7 @@ const CustomDot = ({ cx, cy, payload }) => {
         cy={cy}
         r={hasClubChange ? 5 : 4}
         fill="#ffffff"
-        stroke={hasClubChange ? "#7c3aed" : "#2563eb"}
+        stroke={hasClubChange ? "#a78bfa" : "#60a5fa"}
         strokeWidth={hasClubChange ? 3 : 2}
       />
       {badge && (
@@ -252,10 +252,10 @@ const ManagerCareerEtotChart = ({ summary }) => {
                 <ReferenceLine
                   key={`spell-${row.x}-${row.club}`}
                   x={row.x}
-                  stroke="#7c3aed"
+                  stroke="#a78bfa"
                   strokeDasharray="5 5"
                   strokeOpacity={0.6}
-                  label={{ value: row.club, position: "top", fontSize: 11, fill: "#6d28d9" }}
+                  label={{ value: row.club, position: "top", fontSize: 11, fill: "#c4b5fd" }}
                 />
               ))}
 
