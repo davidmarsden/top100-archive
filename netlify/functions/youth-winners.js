@@ -166,8 +166,40 @@ function clubTokens(name) {
     .filter(Boolean);
 }
 
-// The sheet's spelling of a club when exactly one sheet club matches.
+// Known club spellings (the archive's own alias list): "inter milan" is
+// Internazionale, "milan" is AC Milan. Bundled by esbuild with the function.
+const { CLUB_ALIASES } = require('../../src/data/clubAliases.js');
+
+function aliasKeys(name) {
+  const plain = String(name || '')
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(YOUTH_SUFFIX, ' ');
+  const words = plain.replace(/[^a-z0-9]+/g, ' ').trim();
+  const withoutCodes = words.replace(/\b(fc|cf|afc|sc|sk|jk|kv|ud|ec|bc|cfc|hsc|sv|club)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  return [...new Set([words, withoutCodes, clubTokens(name).join(' ')].filter(Boolean))];
+}
+
+function knownClub(name) {
+  for (const key of aliasKeys(name)) {
+    const canonical = CLUB_ALIASES.get(key);
+    if (canonical) return canonical;
+  }
+  return null;
+}
+
+// The sheet's spelling of a club. A club the alias list knows only matches a
+// sheet club with the same canonical name, never a fuzzy one, so "Inter Milan
+// Youth" can't be credited to AC Milan. Unknown clubs match on core name
+// tokens when exactly one sheet club fits; otherwise the app name is kept.
 function sheetClubName(appName, sheetNames) {
+  const known = knownClub(appName);
+  if (known) {
+    const knownKey = clubTokens(known).join(' ');
+    const matches = sheetNames.filter((name) => knownClub(name) === known || clubTokens(name).join(' ') === knownKey);
+    return matches.length === 1 ? matches[0] : appName;
+  }
+
   const tokens = clubTokens(appName);
   if (!tokens.length) return appName;
   const key = tokens.join(' ');
