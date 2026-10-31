@@ -148,9 +148,80 @@ function honourRows(honours) {
     .filter((row) => row.team_name);
 }
 
+// Youth sides in the Tournaments app carry suffixes ("Espanyol Academy",
+// "Leicester Youth", "Club Brugge NXT") and short names ("Bayern"), while the
+// sheet uses the club's full name ("RCD Espanyol"). Compare on the core tokens.
+const YOUTH_SUFFIX = /\b(academy|youth|youths|nxt|molodizhka|u\d{2}|juniors?|primavera|reserves|b team|ii)\b/g;
+const CLUB_NOISE = /\b(fc|cf|afc|sc|sk|ac|as|rcd|cd|ud|sv|club|calcio|cp|ssc|hsc|cfc)\b/g;
+
+function clubTokens(name) {
+  return String(name || '')
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(YOUTH_SUFFIX, ' ')
+    .replace(CLUB_NOISE, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+// Known club spellings (the archive's own alias list): "inter milan" is
+// Internazionale, "milan" is AC Milan. Bundled by esbuild with the function.
+const { CLUB_ALIASES } = require('../../src/data/clubAliases.js');
+
+function aliasKeys(name) {
+  const plain = String(name || '')
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(YOUTH_SUFFIX, ' ');
+  const words = plain.replace(/[^a-z0-9]+/g, ' ').trim();
+  const withoutCodes = words.replace(/\b(fc|cf|afc|sc|sk|jk|kv|ud|ec|bc|cfc|hsc|sv|club)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  return [...new Set([words, withoutCodes, clubTokens(name).join(' ')].filter(Boolean))];
+}
+
+function knownClub(name) {
+  for (const key of aliasKeys(name)) {
+    const canonical = CLUB_ALIASES.get(key);
+    if (canonical) return canonical;
+  }
+  return null;
+}
+
+// The sheet's spelling of a club. A club the alias list knows only matches a
+// sheet club with the same canonical name, never a fuzzy one, so "Inter Milan
+// Youth" can't be credited to AC Milan. Unknown clubs match on core name
+// tokens when exactly one sheet club fits; otherwise the app name is kept.
+function sheetClubName(appName, sheetNames) {
+  const known = knownClub(appName);
+  if (known) {
+    const knownKey = clubTokens(known).join(' ');
+    const matches = sheetNames.filter((name) => knownClub(name) === known || clubTokens(name).join(' ') === knownKey);
+    return matches.length === 1 ? matches[0] : appName;
+  }
+
+  const tokens = clubTokens(appName);
+  if (!tokens.length) return appName;
+  const key = tokens.join(' ');
+  const matches = sheetNames.filter((name) => {
+    const other = clubTokens(name);
+    if (!other.length) return false;
+    if (other.join(' ') === key) return true;
+    const [short, long] = tokens.length <= other.length ? [tokens, other] : [other, tokens];
+    return short.every((token) => long.includes(token));
+  });
+  const exact = matches.filter((name) => clubTokens(name).join(' ') === key);
+  if (exact.length === 1) return exact[0];
+  return matches.length === 1 ? matches[0] : appName;
+}
+
 function mergeRows(sheetRows, appRows) {
   const seen = new Set(sheetRows.map((row) => row.id));
-  return [...sheetRows, ...appRows.filter((row) => !seen.has(row.id))]
+  const sheetNames = [...new Set(sheetRows.map((row) => row.team_name).filter(Boolean))];
+  const added = appRows
+    .filter((row) => !seen.has(row.id))
+    .map((row) => ({ ...row, app_team_name: row.team_name, team_name: sheetClubName(row.team_name, sheetNames) }));
+  return [...sheetRows, ...added]
     .sort((a, b) => b.season_number - a.season_number || a.competition.localeCompare(b.competition));
 }
 
@@ -208,7 +279,7 @@ async function fetchRange(range) {
   }
 }
 
-exports._test = { honourRows, mergeRows };
+exports._test = { honourRows, mergeRows, sheetClubName };
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: successHeaders, body: '' };
