@@ -36,6 +36,7 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
             <a href={`${MAIN_SITE_URL}regen/`} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Top 100 Regen</a>
             <a href={`${MAIN_SITE_URL}about/`} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">About</a>
             <a href={`${MAIN_SITE_URL}explore/`} className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">Explore</a>
+            <a href="https://manager.smtop100.blog/chat" className="rounded-2xl border border-slate-300/80 px-4 py-2.5 text-sm font-bold text-slate-200 no-underline transition hover:border-white hover:text-white">💬 Chat</a>
           </nav>
           <a href="https://manager.smtop100.blog/" className="rounded-2xl border border-[#10B981] bg-[#10B981] px-4 py-2.5 text-sm font-black text-[#0B1F3B] no-underline transition hover:bg-[#34D399]">Manager sign-in</a>
         </div>
