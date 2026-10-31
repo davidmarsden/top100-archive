@@ -200,3 +200,12 @@ test("managing in fewer game worlds scores better for focus", () => {
   const focus = (gameWorlds) => scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { gameWorlds } }).facts.activity.focus;
   expect([2, 3, 4, 9, 11, 15].map(focus)).toEqual([2, 2, 1.8, 0.5, 0, 0]);
 });
+
+test("takes forfeits this season off an applicant's stability, beyond the disciplinary points", () => {
+  const clean = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
+  const twoForfeits = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, discipline: { forfeits: 2 } });
+  expect(twoForfeits.breakdown.stability).toBe(Math.max(0, clean.breakdown.stability - 5));
+  expect(twoForfeits.facts.forfeits).toBe(2);
+  const many = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, discipline: { forfeits: 20 } });
+  expect(many.breakdown.stability).toBe(0);
+});

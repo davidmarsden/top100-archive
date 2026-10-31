@@ -38,6 +38,9 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
   activity: 20,
 });
 
+// Points off an applicant's stability and conduct score for each forfeit this season.
+export const FORFEIT_PENALTY = 2.5;
+
 const ACTIVITY_PARTS = Object.freeze({ competitions: 4, market: 4, squadBuilding: 4, running: 3, community: 3, focus: 2 });
 
 // Focus: managing in fewer Soccer Manager game worlds leaves more time for Top 100.
@@ -183,7 +186,11 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
   const bottomThree = recentWindow.filter((row) => row.position >= DIVISION_SIZE - 2 && !row.joinedMidSeason);
   const midSeasonBottomThree = recentWindow.filter((row) => row.position >= DIVISION_SIZE - 2 && row.joinedMidSeason);
   const disciplinePoints = clamp(5 - 2.5 * (num(discipline.sanctions) || 0), 0, 5);
-  const E = Math.min(5, tenure) + Math.max(0, 10 - 3 * bottomThree.length) + disciplinePoints;
+  // Applicants are held to a higher standard than reviews: every forfeit in a Top 100 competition
+  // this season costs FORFEIT_PENALTY, beyond the disciplinary points if need be.
+  const forfeits = num(discipline.forfeits) || 0;
+  const E = Math.max(0, Math.min(5, tenure) + Math.max(0, 10 - 3 * bottomThree.length) + disciplinePoints - FORFEIT_PENALTY * forfeits);
+  if (forfeits) notes.push(`${forfeits} forfeit${forfeits === 1 ? "" : "s"} this season: ${FORFEIT_PENALTY * forfeits} off stability and conduct.`);
 
   // F. Activity and contribution: measured where possible, community assessed by administrators.
   const activityParts = activityPoints(activity);
@@ -223,6 +230,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
       currentJoinedMidSeason: Boolean(current?.joinedMidSeason),
       activity: Object.fromEntries(Object.entries(activityParts).map(([part, points]) => [part, points === null ? null : round1(points)])),
       sanctions: num(discipline.sanctions) || 0,
+      forfeits,
     },
     notes,
   };
