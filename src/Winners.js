@@ -1,12 +1,7 @@
 // src/Winners.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Trophy, Users, Loader, AlertCircle } from 'lucide-react';
-
-// ENV
-const SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
-const CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
-const MANAGERS_RANGE = process.env.REACT_APP_WINNERS_MANAGERS_RANGE || 'Managers!A:Z';
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
+import { loadHonoursTables } from './data/honoursSource';
 
 // Normalize a header to a key
 const norm = (s) => String(s || '').trim().toLowerCase();
@@ -42,37 +37,19 @@ const Winners = ({ sharedSearch, onSharedSearchChange }) => {
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-
-  const fetchRange = useCallback(async (range) => {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-      SHEET_ID
-    )}/values/${encodeURIComponent(range)}?key=${encodeURIComponent(API_KEY)}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      let details = '';
-      try {
-        const j = await res.json();
-        details = j?.error?.message ? ` - ${j.error.message}` : '';
-      } catch {}
-      throw new Error(`API Error: ${res.status}${details}`);
-    }
-    return res.json();
-  }, []);
+  const [source, setSource] = useState(null);
 
   useEffect(() => {
     const load = async () => {
-      if (!SHEET_ID || !API_KEY) {
-        setErr('Missing REACT_APP_WINNERS_SHEET_ID or REACT_APP_GOOGLE_API_KEY');
-        return;
-      }
       setLoading(true);
       setErr('');
       try {
-        // Fetch both tabs in parallel
-        const [clubsJson, managersJson] = await Promise.all([
-          fetchRange(CLUBS_RANGE),
-          fetchRange(MANAGERS_RANGE),
-        ]);
+        // Game competitions from Soccer Manager Sync; Youth Cup and Shield (and any
+        // season Sync hasn't read) from the winners sheet.
+        const tables = await loadHonoursTables();
+        const clubsJson = { values: tables.clubs };
+        const managersJson = { values: tables.managers };
+        setSource({ gameSeasons: tables.gameSeasons, gameError: tables.gameError });
 
         // Convert to objects
         const clubRows = sheetToObjects(clubsJson.values);
@@ -110,7 +87,7 @@ const Winners = ({ sharedSearch, onSharedSearchChange }) => {
       }
     };
     load();
-  }, [fetchRange]);
+  }, []);
 
   const allSeasons = useMemo(() => {
     const src = kind === 'club' ? clubs : managers;
@@ -232,6 +209,14 @@ const Winners = ({ sharedSearch, onSharedSearchChange }) => {
           )}
         </div>
       </div>
+
+      {source && (
+        <p className="text-xs text-gray-500 px-1">
+          {source.gameSeasons.length
+            ? `League, cup and SMFA honours from Soccer Manager (S${source.gameSeasons[source.gameSeasons.length - 1]}–S${source.gameSeasons[0]}); Youth Cup and Shield from the Top 100 winners list.`
+            : 'Honours from the Top 100 winners list.'}
+        </p>
+      )}
 
       {/* Data state */}
       {loading && (

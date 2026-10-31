@@ -1,40 +1,10 @@
 import React, { useEffect, useState } from "react";
 import ManagerAnalyticsTab from "./ManagerAnalyticsTab";
 import SuccessEvidencePanel from "./SuccessEvidencePanel";
+import { loadHonoursTables, valuesToObjects } from "../data/honoursSource";
 
 const PUBLIC_ARCHIVE_URL = "/data/statsArchive.json";
-const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
-const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || "Clubs!A:Z";
-const WINNERS_MANAGERS_RANGE = process.env.REACT_APP_WINNERS_MANAGERS_RANGE || "Managers!A:Z";
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-
 const normaliseArchiveRows = (value) => (Array.isArray(value?.rows) ? value.rows : []);
-
-const sheetToObjects = (values) => {
-  if (!Array.isArray(values) || !values.length) return [];
-  const [headers, ...rows] = values;
-  const keys = headers.map((header) => String(header || "").trim().toLowerCase());
-
-  return rows
-    .filter((row) => row && row.length)
-    .map((row) => {
-      const object = {};
-      keys.forEach((key, index) => {
-        object[key] = String(row[index] ?? "").trim();
-      });
-      return object;
-    });
-};
-
-const fetchSheetRange = async (range) => {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-    WINNERS_SHEET_ID
-  )}/values/${encodeURIComponent(range)}?key=${encodeURIComponent(API_KEY)}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Honours range failed (${response.status})`);
-  const parsed = await response.json();
-  return sheetToObjects(parsed.values || []);
-};
 
 const ManagerAnalyticsRoute = ({ archiveRows = [] }) => {
   const [statsRows, setStatsRows] = useState([]);
@@ -61,16 +31,13 @@ const ManagerAnalyticsRoute = ({ archiveRows = [] }) => {
         let clubHonours = [];
         let managerHonours = [];
 
-        if (WINNERS_SHEET_ID && API_KEY) {
-          try {
-            [clubHonours, managerHonours] = await Promise.all([
-              fetchSheetRange(WINNERS_CLUBS_RANGE),
-              fetchSheetRange(WINNERS_MANAGERS_RANGE),
-            ]);
-          } catch {
-            clubHonours = [];
-            managerHonours = [];
-          }
+        try {
+          const tables = await loadHonoursTables();
+          clubHonours = valuesToObjects(tables.clubs);
+          managerHonours = valuesToObjects(tables.managers);
+        } catch {
+          clubHonours = [];
+          managerHonours = [];
         }
 
         if (!cancelled) {

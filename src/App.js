@@ -1,5 +1,6 @@
 // src/App.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { loadHonoursTables } from "./data/honoursSource";
 
 import Charts from "./Charts";
 import ManagerProfilesTab from "./components/ManagerProfilesTab";
@@ -429,10 +430,6 @@ const buildMostClubsManaged = () => {
   const SHEET_ID = process.env.REACT_APP_SHEET_ID;
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
   const SHEET_RANGE = "Full History!A:R";
-  const WINNERS_SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
-  const WINNERS_CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || "Clubs!A:Z";
-  const WINNERS_MANAGERS_RANGE =
-  process.env.REACT_APP_WINNERS_MANAGERS_RANGE || "Managers!A:Z";
 
   /* =========================
      Load main league data
@@ -522,17 +519,10 @@ setDataLoaded(true);
      Load playoff winners
      ========================= */
   const loadWinners = useCallback(async () => {
-    if (!WINNERS_SHEET_ID || !API_KEY) return;
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        WINNERS_SHEET_ID
-      )}/values/${encodeURIComponent(WINNERS_CLUBS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
-
-      const res = await fetch(url);
-      if (!res.ok) return;
-      const json = await res.json();
-      const values = json?.values || [];
-      if (!values.length) return;
+      // Game competitions from Soccer Manager Sync over the winners sheet.
+      const { clubs: values } = await loadHonoursTables();
+      if (!values?.length) return;
 
       const [headers, ...rows] = values;
       const hNorm = headers.map((h) => String(h || "").trim().toLowerCase());
@@ -559,21 +549,10 @@ setDataLoaded(true);
         }
       }
       setPlayoffWinnersSet(set);
-
-const managersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-  WINNERS_SHEET_ID
-)}/values/${encodeURIComponent(WINNERS_MANAGERS_RANGE)}?key=${encodeURIComponent(API_KEY)}`;
-
-const managersRes = await fetch(managersUrl);
-if (managersRes.ok) {
-  
-  
-}
-
     } catch {
       // fail-soft
     }
-  }, [WINNERS_SHEET_ID, WINNERS_CLUBS_RANGE, WINNERS_MANAGERS_RANGE, API_KEY]);
+  }, []);
 
   // kick off loads
   useEffect(() => {
