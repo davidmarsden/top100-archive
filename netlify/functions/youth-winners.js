@@ -148,9 +148,48 @@ function honourRows(honours) {
     .filter((row) => row.team_name);
 }
 
+// Youth sides in the Tournaments app carry suffixes ("Espanyol Academy",
+// "Leicester Youth", "Club Brugge NXT") and short names ("Bayern"), while the
+// sheet uses the club's full name ("RCD Espanyol"). Compare on the core tokens.
+const YOUTH_SUFFIX = /\b(academy|youth|youths|nxt|molodizhka|u\d{2}|juniors?|primavera|reserves|b team|ii)\b/g;
+const CLUB_NOISE = /\b(fc|cf|afc|sc|sk|ac|as|rcd|cd|ud|sv|club|calcio|cp|ssc|hsc|cfc)\b/g;
+
+function clubTokens(name) {
+  return String(name || '')
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(YOUTH_SUFFIX, ' ')
+    .replace(CLUB_NOISE, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+// The sheet's spelling of a club when exactly one sheet club matches.
+function sheetClubName(appName, sheetNames) {
+  const tokens = clubTokens(appName);
+  if (!tokens.length) return appName;
+  const key = tokens.join(' ');
+  const matches = sheetNames.filter((name) => {
+    const other = clubTokens(name);
+    if (!other.length) return false;
+    if (other.join(' ') === key) return true;
+    const [short, long] = tokens.length <= other.length ? [tokens, other] : [other, tokens];
+    return short.every((token) => long.includes(token));
+  });
+  const exact = matches.filter((name) => clubTokens(name).join(' ') === key);
+  if (exact.length === 1) return exact[0];
+  return matches.length === 1 ? matches[0] : appName;
+}
+
 function mergeRows(sheetRows, appRows) {
   const seen = new Set(sheetRows.map((row) => row.id));
-  return [...sheetRows, ...appRows.filter((row) => !seen.has(row.id))]
+  const sheetNames = [...new Set(sheetRows.map((row) => row.team_name).filter(Boolean))];
+  const added = appRows
+    .filter((row) => !seen.has(row.id))
+    .map((row) => ({ ...row, app_team_name: row.team_name, team_name: sheetClubName(row.team_name, sheetNames) }));
+  return [...sheetRows, ...added]
     .sort((a, b) => b.season_number - a.season_number || a.competition.localeCompare(b.competition));
 }
 
@@ -208,7 +247,7 @@ async function fetchRange(range) {
   }
 }
 
-exports._test = { honourRows, mergeRows };
+exports._test = { honourRows, mergeRows, sheetClubName };
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: successHeaders, body: '' };
