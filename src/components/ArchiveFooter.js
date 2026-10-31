@@ -17,6 +17,7 @@ const ArchiveFooter = () => (
           <a href={`${MAIN_SITE_URL}regen/`} className="text-slate-300 no-underline hover:text-white">Top 100 Regen</a>
           <a href={`${MAIN_SITE_URL}about/`} className="text-slate-300 no-underline hover:text-white">About</a>
           <a href={`${MAIN_SITE_URL}explore/`} className="text-slate-300 no-underline hover:text-white">Explore</a>
+          <a href="https://manager.smtop100.blog/chat" className="text-slate-300 no-underline hover:text-white">Chat</a>
           <a href={`${MAIN_SITE_URL}support/`} className="text-slate-300 no-underline hover:text-white">Support</a>
           <a href={`${MAIN_SITE_URL}subscribe/`} className="text-slate-300 no-underline hover:text-white">Subscribe</a>
           <a href="https://manager.smtop100.blog/" className="text-slate-300 no-underline hover:text-white">Manager portal</a>
