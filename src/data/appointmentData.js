@@ -88,18 +88,27 @@ export const buildArchive = ({ sheetRows = [], statsRows = [], liveRows = [] }) 
 
 const keyed = (list, archiveName) => Object.fromEntries(list.map((entry) => [entry.key ?? entry.name, archiveName(entry)]));
 
-// config: { currentSeason, vacancies: [{ club, division }], applicants: [{ key, name, club, display }],
+// config: { currentSeason, vacancies: [{ club, division }], applicants: [{ key, name, club, display, seasonClub? }],
 //           preferences: { key: [club, ...] }, discipline: { key: {...} }, activity: { key: {...} } }
 // Results are keyed by each applicant's key (or name).
 export const scoreVacancies = (archive, config) => {
   const { rows, squadRankGain, archiveName } = archive;
   const names = keyed(config.applicants, archiveName);
   const discipline = config.discipline || {};
+  // An applicant with seasonClub (a vacancy's outgoing manager, scored for comparison) who has no
+  // current-season row of their own, having left during the season, is credited with that club's
+  // season so far, including any caretaker's games.
+  const rowsByKey = Object.fromEntries(config.applicants.map((entry) => {
+    const key = entry.key ?? entry.name;
+    if (!entry.seasonClub || managerCareer(names[key], rows).some((row) => row.season === config.currentSeason)) return [key, rows];
+    const clubRow = rows.find((row) => Number(row.season) === config.currentSeason && sameClub(row.team, entry.seasonClub));
+    return [key, clubRow ? [...rows, { ...clubRow, manager: names[key] }] : rows];
+  }));
   const scoreFor = (key, level) =>
     scoreApplicant({
       manager: names[key],
       currentSeason: config.currentSeason,
-      rows,
+      rows: rowsByKey[key],
       discipline: discipline[key],
       activity: { squadRankGain: squadRankGain(names[key]), ...((config.activity || {})[key] || {}) },
       level,
