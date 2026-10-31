@@ -3,6 +3,14 @@ const CLUBS_RANGE = process.env.REACT_APP_WINNERS_CLUBS_RANGE || 'Clubs!A:Z';
 const MANAGERS_RANGE = process.env.REACT_APP_WINNERS_MANAGERS_RANGE || 'Managers!A:Z';
 const SERVER_API_KEY = process.env.WINNERS_SERVER_GOOGLE_API_KEY || '';
 
+// Archived tournaments in the Tournaments app (Supabase RPC
+// public_tournament_honours) fill in seasons the sheet does not have yet.
+// Same public credentials as live-season.js; the sheet always wins.
+const envValue = (...keys) =>
+  keys.map((key) => (process.env[key] || '').trim().replace(/^['"]|['"]$/g, '').trim()).find(Boolean) || '';
+const SUPABASE_URL = envValue('SUPABASE_URL', 'REACT_APP_SUPABASE_URL').replace(/\/+$/, '');
+const SUPABASE_ANON_KEY = envValue('SUPABASE_ANON_KEY', 'REACT_APP_SUPABASE_ANON_KEY');
+
 const baseHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -105,6 +113,47 @@ function youthRows(clubRows, managerRows) {
   }).sort((a, b) => b.season_number - a.season_number || a.competition.localeCompare(b.competition));
 }
 
+async function fetchTournamentHonours() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/public_tournament_honours`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}`);
+  return res.json();
+}
+
+// Winner honours from archived Youth tournaments, in the same shape as youthRows.
+function honourRows(honours) {
+  return (Array.isArray(honours) ? honours : [])
+    .filter((row) => Number(row.position) === 1 && /youth/i.test(`${row.honour} ${row.tournament_name}`) && Number(row.season_number))
+    .map((row) => {
+      const shield = /shield/i.test(row.honour);
+      const label = shield ? 'Youth Shield' : 'Youth Cup';
+      const season = String(row.season_number);
+      return {
+        id: `${season}-${shield ? 'youth-shield' : 'youth-cup'}`,
+        season,
+        season_number: Number(season),
+        tournament_id: row.tournament_id,
+        tournament_name: `S${season} ${label}`,
+        honour: `${label} Winner`,
+        competition: label,
+        team_name: String(row.team_name || '').trim(),
+        manager_name: String(row.manager_name || '').trim(),
+        source: 'tournaments',
+      };
+    })
+    .filter((row) => row.team_name);
+}
+
+function mergeRows(sheetRows, appRows) {
+  const seen = new Set(sheetRows.map((row) => row.id));
+  return [...sheetRows, ...appRows.filter((row) => !seen.has(row.id))]
+    .sort((a, b) => b.season_number - a.season_number || a.competition.localeCompare(b.competition));
+}
+
 function splitRange(range) {
   const [sheetName, cellRange = 'A:Z'] = String(range || '').split('!');
   return { sheetName: sheetName || 'Sheet1', cellRange };
@@ -159,17 +208,23 @@ async function fetchRange(range) {
   }
 }
 
+exports._test = { honourRows, mergeRows };
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: successHeaders, body: '' };
   if (event.httpMethod !== 'GET') return response(405, { error: 'Method not allowed' });
   if (!SHEET_ID) return response(500, { error: 'Archive winners spreadsheet is not configured.' });
 
   try {
-    const [clubsValues, managersValues] = await Promise.all([
+    const [clubsValues, managersValues, honours] = await Promise.all([
       fetchRange(CLUBS_RANGE),
       fetchRange(MANAGERS_RANGE),
+      fetchTournamentHonours().catch((error) => {
+        console.error(`youth-winners: tournament honours unavailable (${error.message})`);
+        return [];
+      }),
     ]);
-    const rows = youthRows(sheetToObjects(clubsValues), sheetToObjects(managersValues));
+    const rows = mergeRows(youthRows(sheetToObjects(clubsValues), sheetToObjects(managersValues)), honourRows(honours));
     return response(200, { source: 'top100-archive', count: rows.length, rows });
   } catch (error) {
     return response(502, { error: error.message || 'Could not load archive winners.' });
