@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { loadHonoursTables } from "./data/honoursSource";
 
 import Charts from "./Charts";
@@ -17,6 +17,36 @@ import ArchiveControls from "./components/ArchiveControls";
 import ManagerAnalyticsRoute from "./components/ManagerAnalyticsRoute";
 import LiveSeasonBanner from "./components/LiveSeasonBanner";
 import { buildLiveSeasonRows } from "./data/liveSeason";
+import { getArchiveWorld, worldQuery } from "./config/world";
+import { tabsForWorld } from "./config/archiveTabs";
+
+// Chosen once per page load: switching world reloads the page (?world=regen).
+const WORLD = getArchiveWorld();
+
+// League history rows from Sync (netlify/functions/league-history.js) in the
+// Full History sheet's shape: Top 100 Regen's whole history, live season included.
+// The live season counts as settled only once every club has played 38.
+export const historyRowsFromSync = (rows = []) => {
+  const liveRows = rows.filter((row) => row.is_live);
+  const liveComplete = liveRows.length > 0 && liveRows.every((row) => Number(row.played) >= 38);
+  return rows.map((row) => ({
+    season: String(row.season ?? ""),
+    division: String(row.division ?? ""),
+    position: String(row.position ?? ""),
+    team: String(row.team ?? "").trim(),
+    played: String(row.played ?? ""),
+    won: String(row.won ?? ""),
+    drawn: String(row.drawn ?? ""),
+    lost: String(row.lost ?? ""),
+    goals_for: String(row.goals_for ?? ""),
+    goals_against: String(row.goals_against ?? ""),
+    goal_difference: String(row.goal_difference ?? ""),
+    points: String(row.points ?? ""),
+    start_date: "",
+    manager: String(row.manager ?? "").trim(),
+    ...(row.is_live ? { live: true, inProgress: !liveComplete } : {}),
+  }));
+};
 
 /* =========================
    Helpers & Status Logic
@@ -419,7 +449,8 @@ const buildMostClubsManaged = () => {
   useEffect(() => {
     const apply = () => {
       const h = window.location.hash.replace("#", "");
-      if (h) setActiveTab(h);
+      // A Top 100-only tab named in a Regen link falls back to Search.
+      if (h) setActiveTab(tabsForWorld(WORLD).some((tab) => tab.id === h) || h === "import" ? h : "search");
     };
     apply();
     window.addEventListener("hashchange", apply);
@@ -437,6 +468,22 @@ const buildMostClubsManaged = () => {
   const loadFromGoogleSheets = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!WORLD.sheet) {
+      try {
+        const response = await fetch(`/.netlify/functions/league-history?${worldQuery(WORLD)}`);
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || `league history ${response.status}`);
+        const rows = historyRowsFromSync(Array.isArray(body.rows) ? body.rows : []);
+        if (!rows.length) throw new Error(`No ${WORLD.name} seasons yet: run Sync everything in that world.`);
+        setSheetPositionData(rows);
+        setDataLoaded(true);
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
         SHEET_ID
@@ -562,8 +609,10 @@ setDataLoaded(true);
 
   // Current season, live from Soccer Manager Sync, until it is in the sheet.
   useEffect(() => {
+    // Top 100 Regen's live season is already in its league history.
+    if (!WORLD.sheet) return undefined;
     let live = true;
-    fetch("/.netlify/functions/live-season")
+    fetch(`/.netlify/functions/live-season?${worldQuery(WORLD)}`)
       .then((res) => (res.ok ? res.json() : { rows: [] }))
       .then((body) => {
         if (live) setLiveSeasonRows(Array.isArray(body.rows) ? body.rows : []);
@@ -593,6 +642,20 @@ setDataLoaded(true);
         .sort((a, b) => b.localeCompare(a)),
     [allPositionData]
   );
+
+  // Top 100 Regen opens on its newest season (by number: "9" sorts after "11" as
+  // text); Top 100 keeps S25 as before. A season that isn't there falls back too.
+  const regenSeasonChosen = useRef(false);
+  useEffect(() => {
+    if (!availableSeasons.length) return;
+    const newest = String(Math.max(...availableSeasons.map(Number).filter(Number.isFinite)));
+    if (!WORLD.sheet && !regenSeasonChosen.current) {
+      regenSeasonChosen.current = true;
+      setSelectedSeason(newest);
+    } else if (!availableSeasons.includes(selectedSeason)) {
+      setSelectedSeason(newest);
+    }
+  }, [availableSeasons, selectedSeason]);
 
   const availableDivisions = useMemo(
     () =>
@@ -857,12 +920,13 @@ setDataLoaded(true);
       <div className="min-h-screen bg-gray-50">
         {/* Hero Header */}
         <ArchiveHeroHeader
+  world={WORLD}
   loading={loading}
   error={error}
   dataLoaded={dataLoaded}
 />
       {/* Navigation */}
-<ArchiveNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+<ArchiveNavigation activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabsForWorld(WORLD)} />
 
 {/* Main Content */}
 <div className="max-w-7xl mx-auto px-6 py-8">

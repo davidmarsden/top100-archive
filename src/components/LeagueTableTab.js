@@ -1,4 +1,5 @@
 import React from "react";
+import { getArchiveWorld } from "../config/world";
 import { SortAsc, Target, Trophy, Users } from "lucide-react";
 
 const LegendSwatch = ({ color, label }) => (
@@ -41,7 +42,7 @@ const LeagueTableTab = ({
               Season {selectedSeason} - Division {selectedDivision}
             </h3>
             <p className="text-blue-200">Complete League Table ({tableData.length} teams)</p>
-            <p className="text-xs text-blue-300 mt-1">Soccer Manager Worlds Top 100 Elite Community</p>
+            <p className="text-xs text-blue-300 mt-1">Soccer Manager Worlds {getArchiveWorld().name} Elite Community</p>
           </div>
 
           <div className="flex gap-2 flex-wrap">

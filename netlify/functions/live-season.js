@@ -10,13 +10,22 @@ const envValue = (...keys) =>
 const SUPABASE_URL = envValue('SUPABASE_URL', 'REACT_APP_SUPABASE_URL').replace(/\/+$/, '');
 const SUPABASE_ANON_KEY = envValue('SUPABASE_ANON_KEY', 'REACT_APP_SUPABASE_ANON_KEY');
 
+// ?world=regen reads Top 100 Regen; anything else is Top 100.
+const WORLDS = new Set(['top-100', 'regen']);
+const worldSlug = (event) => {
+  const world = String(event?.queryStringParameters?.world || '').trim();
+  return WORLDS.has(world) ? world : 'top-100';
+};
+
 const headers = (cache) => ({
   'Access-Control-Allow-Origin': '*',
   'Content-Type': 'application/json; charset=utf-8',
   'Cache-Control': cache,
+  // The CDN keeps one cached copy per world.
+  'Netlify-Vary': 'query=world',
 });
 
-exports.handler = async () => {
+exports.handler = async (event) => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return { statusCode: 200, headers: headers('no-store'), body: JSON.stringify({ rows: [], configured: false }) };
   }
@@ -25,7 +34,7 @@ exports.handler = async () => {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/public_league_season_rows`, {
       method: 'POST',
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_world_slug: 'top-100' }),
+      body: JSON.stringify({ p_world_slug: worldSlug(event) }),
     });
     if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const rows = await res.json();

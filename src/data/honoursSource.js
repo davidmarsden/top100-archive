@@ -2,7 +2,9 @@
 // Game competitions come from Soccer Manager Sync for every season it has read;
 // the winners sheet supplies the Youth Cup and Shield and any season Sync hasn't
 // read. If Sync can't be reached, the sheet is used as it is.
+// Top 100 Regen has no winners sheet: its honours all come from Sync.
 import { gameHonoursSeasons, mergeHonoursWide } from "./gameHonours";
+import { getArchiveWorld, worldQuery } from "../config/world";
 
 const SHEET_ID = process.env.REACT_APP_WINNERS_SHEET_ID;
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
@@ -26,8 +28,8 @@ const fetchSheetValues = async (range) => {
   return json.values || [];
 };
 
-const fetchGameHonours = async () => {
-  const res = await fetch(GAME_HONOURS_URL, { headers: { Accept: "application/json" } });
+const fetchGameHonours = async (world) => {
+  const res = await fetch(`${GAME_HONOURS_URL}?${worldQuery(world)}`, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`game honours ${res.status}`);
   const json = await res.json();
   return Array.isArray(json?.rows) ? json.rows : [];
@@ -38,17 +40,19 @@ let cached = null;
 // { clubs, managers, gameSeasons, sheetError, gameError }
 export const loadHonoursTables = () => {
   if (!cached) {
+    const world = getArchiveWorld();
     cached = (async () => {
       const [clubsResult, managersResult, gameResult] = await Promise.allSettled([
-        fetchSheetValues(CLUBS_RANGE),
-        fetchSheetValues(MANAGERS_RANGE),
-        fetchGameHonours(),
+        world.sheet ? fetchSheetValues(CLUBS_RANGE) : [],
+        world.sheet ? fetchSheetValues(MANAGERS_RANGE) : [],
+        fetchGameHonours(world),
       ]);
       const game = gameResult.status === "fulfilled" ? gameResult.value : [];
       const sheetClubs = clubsResult.status === "fulfilled" ? clubsResult.value : [];
       const sheetManagers = managersResult.status === "fulfilled" ? managersResult.value : [];
       const sheetError = [clubsResult, managersResult].find((r) => r.status === "rejected")?.reason?.message || null;
       if (sheetError && !game.length) throw new Error(sheetError);
+      if (!world.sheet && gameResult.status === "rejected") throw new Error(gameResult.reason?.message || "honours unavailable");
       return {
         clubs: mergeHonoursWide(sheetClubs, game, "club"),
         managers: mergeHonoursWide(sheetManagers, game, "manager"),

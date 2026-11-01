@@ -13,3 +13,8 @@ export const PUBLIC_ARCHIVE_TABS = [
 export const ADMIN_ARCHIVE_TABS = [
   { id: "import", label: "Import Stats", icon: "Database", color: "pink", type: "tab" },
 ];
+
+// Malcolm's stats archive, Manager Analytics and Legends cover Top 100 only.
+const TOP_100_ONLY = new Set(["manager-analytics", "legends", "stats-archive"]);
+export const tabsForWorld = (world) =>
+  world?.sheet === false ? PUBLIC_ARCHIVE_TABS.filter((tab) => !TOP_100_ONLY.has(tab.id)) : PUBLIC_ARCHIVE_TABS;
