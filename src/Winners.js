@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Trophy, Users, Loader, AlertCircle } from 'lucide-react';
 import { loadHonoursTables } from './data/honoursSource';
+import { getArchiveWorld } from './config/world';
 
 // Normalize a header to a key
 const norm = (s) => String(s || '').trim().toLowerCase();
@@ -212,7 +213,11 @@ const Winners = ({ sharedSearch, onSharedSearchChange }) => {
 
       {source && (
         <p className="text-xs text-gray-500 px-1">
-          {source.gameSeasons.length
+          {!getArchiveWorld().sheet
+            ? (source.gameSeasons.length
+              ? `Honours from Soccer Manager's Game World History (S${source.gameSeasons[source.gameSeasons.length - 1]}–S${source.gameSeasons[0]}).`
+              : 'No honours yet: run Sync everything in this world to read them.')
+            : source.gameSeasons.length
             ? `League, cup and SMFA honours from Soccer Manager (S${source.gameSeasons[source.gameSeasons.length - 1]}–S${source.gameSeasons[0]}); Youth Cup and Shield from the Top 100 winners list.`
             : 'Honours from the Top 100 winners list.'}
         </p>

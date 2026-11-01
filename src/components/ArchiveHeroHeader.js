@@ -1,9 +1,28 @@
 import React from "react";
 import { AlertCircle, Database, Loader } from "lucide-react";
+import { ARCHIVE_WORLDS, archiveWorldHref } from "../config/world";
 
 const MAIN_SITE_URL = "https://smtop100.blog/";
 
-const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
+// Switching world reloads the page in the other world, on the same tab.
+const WorldSwitch = ({ world }) => (
+  <div role="group" aria-label="Game world" className="mt-8 inline-flex rounded-2xl border border-white/20 bg-white/5 p-1">
+    {ARCHIVE_WORLDS.map((option) => {
+      const base = "rounded-xl px-4 py-2 text-sm font-black no-underline transition";
+      return option.slug === world.slug ? (
+        <span key={option.slug} aria-current="page" className={`${base} bg-[#10B981] text-[#0B1F3B]`}>
+          {option.name}
+        </span>
+      ) : (
+        <a key={option.slug} href={archiveWorldHref(option.slug)} className={`${base} text-slate-200 hover:text-white`}>
+          {option.name}
+        </a>
+      );
+    })}
+  </div>
+);
+
+const ArchiveHeroHeader = ({ world = ARCHIVE_WORLDS[0], loading, error, dataLoaded }) => (
   <header className="relative overflow-hidden bg-[#0B1F3B] text-white border-b border-white/10">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(16,185,129,0.18),transparent_34%)]" />
 
@@ -25,7 +44,7 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
           </a>
 
           <div className="text-left lg:text-right">
-            <div className="text-xs font-black uppercase tracking-[0.18em] text-[#10B981]">Top 100</div>
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-[#10B981]">{world.name}</div>
             <div className="text-xl font-black">Stats &amp; History</div>
           </div>
         </div>
@@ -45,15 +64,17 @@ const ArchiveHeroHeader = ({ loading, error, dataLoaded }) => (
 
     <div className="relative max-w-7xl mx-auto px-6 py-12 md:py-16">
       <div className="max-w-4xl">
-        <div className="text-sm font-black uppercase tracking-[0.18em] text-[#10B981]">Top 100 · Stats &amp; History</div>
+        <div className="text-sm font-black uppercase tracking-[0.18em] text-[#10B981]">{world.name} · Stats &amp; History</div>
         <h1 className="mt-4 text-4xl md:text-6xl font-black tracking-tight leading-[0.98] text-white">
           Every season. Every manager. <span className="text-[#10B981]">The story in numbers.</span>
         </h1>
         <p className="mt-6 text-lg md:text-xl leading-relaxed text-slate-300 max-w-3xl">
-          League tables, careers, honours, records and historical trends from across the Top 100 game world.
+          League tables, careers, honours, records and historical trends from across the {world.name} game world.
         </p>
 
-        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold">
+        <WorldSwitch world={world} />
+
+        <div className="mt-4 flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold">
           {loading ? (
             <>
               <Loader className="w-4 h-4 animate-spin text-[#10B981]" />
