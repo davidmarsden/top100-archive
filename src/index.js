@@ -5,6 +5,7 @@ import App from './App';
 import PublicHistoricalStatsArchive from './PublicHistoricalStatsArchive';
 import ArchiveNavigation from './components/ArchiveNavigation';
 import LegacyAppPublicNavBridge from './LegacyAppPublicNavBridge';
+import { getArchiveWorld } from './config/world';
 
 const getHashRoute = () => window.location.hash.replace('#', '');
 
@@ -17,7 +18,8 @@ const RootRouter = () => {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  if (route === 'stats-archive') {
+  // Malcolm's stats archive is Top 100 only; a Regen link opens the archive app instead.
+  if (route === 'stats-archive' && getArchiveWorld().sheet) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="bg-white border-b border-gray-200">

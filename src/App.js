@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { loadHonoursTables } from "./data/honoursSource";
 
 import Charts from "./Charts";
@@ -25,8 +25,11 @@ const WORLD = getArchiveWorld();
 
 // League history rows from Sync (netlify/functions/league-history.js) in the
 // Full History sheet's shape: Top 100 Regen's whole history, live season included.
-const historyRowsFromSync = (rows = []) =>
-  rows.map((row) => ({
+// The live season counts as settled only once every club has played 38.
+export const historyRowsFromSync = (rows = []) => {
+  const liveRows = rows.filter((row) => row.is_live);
+  const liveComplete = liveRows.length > 0 && liveRows.every((row) => Number(row.played) >= 38);
+  return rows.map((row) => ({
     season: String(row.season ?? ""),
     division: String(row.division ?? ""),
     position: String(row.position ?? ""),
@@ -41,8 +44,9 @@ const historyRowsFromSync = (rows = []) =>
     points: String(row.points ?? ""),
     start_date: "",
     manager: String(row.manager ?? "").trim(),
-    ...(row.is_live ? { live: true, inProgress: Number(row.played) < 38 } : {}),
+    ...(row.is_live ? { live: true, inProgress: !liveComplete } : {}),
   }));
+};
 
 /* =========================
    Helpers & Status Logic
@@ -639,9 +643,18 @@ setDataLoaded(true);
     [allPositionData]
   );
 
-  // Top 100 Regen starts at its own newest season (Top 100 keeps S25 as before).
+  // Top 100 Regen opens on its newest season (by number: "9" sorts after "11" as
+  // text); Top 100 keeps S25 as before. A season that isn't there falls back too.
+  const regenSeasonChosen = useRef(false);
   useEffect(() => {
-    if (availableSeasons.length && !availableSeasons.includes(selectedSeason)) setSelectedSeason(availableSeasons[0]);
+    if (!availableSeasons.length) return;
+    const newest = String(Math.max(...availableSeasons.map(Number).filter(Number.isFinite)));
+    if (!WORLD.sheet && !regenSeasonChosen.current) {
+      regenSeasonChosen.current = true;
+      setSelectedSeason(newest);
+    } else if (!availableSeasons.includes(selectedSeason)) {
+      setSelectedSeason(newest);
+    }
   }, [availableSeasons, selectedSeason]);
 
   const availableDivisions = useMemo(
