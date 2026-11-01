@@ -40,7 +40,7 @@ exports.handler = async (event) => {
     const rows = await res.json();
     return {
       statusCode: 200,
-      headers: headers('public, max-age=300, s-maxage=900, stale-while-revalidate=86400'),
+      headers: headers('public, max-age=60, s-maxage=300, stale-while-revalidate=300'),
       body: JSON.stringify({ rows, configured: true }),
     };
   } catch (error) {

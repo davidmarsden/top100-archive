@@ -41,7 +41,9 @@ exports.handler = async (event) => {
     const rows = await res.json();
     return {
       statusCode: 200,
-      headers: headers('public, max-age=300, s-maxage=900, stale-while-revalidate=86400'),
+      // Sync data changes when a sync runs: a stale copy is served for at most
+      // five minutes past the five-minute cache, not a day.
+      headers: headers('public, max-age=60, s-maxage=300, stale-while-revalidate=300'),
       body: JSON.stringify({ rows, configured: true }),
     };
   } catch (error) {
