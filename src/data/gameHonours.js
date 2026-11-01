@@ -4,6 +4,8 @@
 // the SMFA cups. The sheet keeps the competitions the game doesn't run (the
 // Youth Cup and Shield), and seasons Sync hasn't read yet.
 //
+import { CLUB_ALIASES } from "./clubAliases";
+
 // The output keeps the sheet's wide layout (a Season column, then one column per
 // competition), so every reader of the sheet works unchanged.
 
@@ -22,9 +24,28 @@ const ALIASES = { munchen: "munich", munchenn: "munich", koln: "cologne", koeln:
 const clubTokens = (value) => plainTokens(value).map((t) => ALIASES[t] || t).filter((t) => !CLUB_NOISE.has(t));
 const managerTokens = (value) => plainTokens(value).filter((t) => t.length > 1);
 
+// The archive's alias list knows many clubs ("inter milan" is Internazionale,
+// "milan" is AC Milan). Tried on the name as written and without club codes.
+const knownClub = (value) => {
+  const words = plainTokens(value);
+  const keys = [words.join(" "), words.filter((t) => !CLUB_NOISE.has(t)).join(" ")];
+  for (const key of keys) {
+    const canonical = key && CLUB_ALIASES.get(key);
+    if (canonical) return canonical;
+  }
+  return null;
+};
+
 // Same name when one name's tokens are all inside the other's (the sheet uses
 // short names: "Beddows" for "Sir Stephen Beddows (God)", "Bayern Munich" for
-// "Bayern München").
+// "Bayern München"). Two clubs the alias list knows are the same only if they
+// are the same club there, so "Inter Milan" never keeps a sheet's "AC Milan".
+const sameClub = (a, b) => {
+  const x = knownClub(a), y = knownClub(b);
+  if (x && y) return x === y;
+  return sameName(clubTokens)(a, b);
+};
+
 const sameName = (tokenize) => (a, b) => {
   const x = tokenize(a), y = tokenize(b);
   if (!x.length || !y.length) return false;
@@ -38,7 +59,7 @@ const sameName = (tokenize) => (a, b) => {
 export const sheetSpelling = (gameName, sameSlot, sheetNames, kind) => {
   const name = clean(gameName);
   if (!name) return "";
-  const match = sameName(kind === "club" ? clubTokens : managerTokens);
+  const match = kind === "club" ? sameClub : sameName(managerTokens);
   if (sameSlot && match(name, sameSlot)) return clean(sameSlot);
   const candidates = [...new Set(sheetNames.map(clean).filter(Boolean))].filter((sheet) => match(name, sheet));
   return candidates.length === 1 ? candidates[0] : name;

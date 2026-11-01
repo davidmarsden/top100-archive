@@ -69,3 +69,13 @@ test("helpers", () => {
   expect(isGameCompetition("Youth Cup")).toBe(false);
   expect(gameHonoursSeasons(game)).toEqual([28, 27, 26]);
 });
+
+test("a known different club is never kept as a spelling variant (Inter Milan is not AC Milan)", () => {
+  expect(sheetSpelling("Inter Milan", "AC Milan", ["AC Milan"], "club")).toBe("Inter Milan");
+  expect(sheetSpelling("Inter Milan", "", ["AC Milan", "Internazionale"], "club")).toBe("Internazionale");
+  expect(sheetSpelling("Milan", "AC Milan", [], "club")).toBe("AC Milan");
+  expect(sheetSpelling("Bayern München", "Bayern Munich", [], "club")).toBe("Bayern Munich");
+  const sheet = [["Season", "Top 100 Cup"], ["30", "AC Milan"]];
+  const merged = mergeHonoursWide(sheet, [{ season_num: 30, competition: "Top 100 Cup", club_name: "Inter Milan", manager_name: "X" }], "club");
+  expect(merged[1][1]).toBe("Inter Milan");
+});
