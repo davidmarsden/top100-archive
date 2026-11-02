@@ -61,7 +61,10 @@ export const sheetSpelling = (gameName, sameSlot, sheetNames, kind) => {
   if (!name) return "";
   const match = kind === "club" ? sameClub : sameName(managerTokens);
   if (sameSlot && match(name, sameSlot)) return clean(sameSlot);
-  const candidates = [...new Set(sheetNames.map(clean).filter(Boolean))].filter((sheet) => match(name, sheet));
+  // A manager written with an initial ("Tom L") only counts in the same slot: on
+  // name alone it would claim any "Tom ..." (Tom Lee is not Tom L).
+  const hasInitial = (value) => kind === "manager" && plainTokens(value).some((token) => token.length === 1);
+  const candidates = [...new Set(sheetNames.map(clean).filter(Boolean))].filter((sheet) => !hasInitial(sheet) && match(name, sheet));
   return candidates.length === 1 ? candidates[0] : name;
 };
 

@@ -23,6 +23,8 @@ const splitManagers = (value) =>
 // Use the sheet name when it is unambiguous: first the club's own manager in
 // the latest sheet season, then any recent sheet manager whose name is made of
 // tokens of the live name. Otherwise keep the live name.
+// A sheet name with an initial ("Tom L") only counts by club: on name alone it
+// would claim any "Tom ..." (Tom Lee is not Tom L).
 export const resolveManagerName = (liveName, team, sheetRows = []) => {
   const live = clean(liveName);
   if (!live) return "";
@@ -43,7 +45,8 @@ export const resolveManagerName = (liveName, team, sheetRows = []) => {
   const recent = new Set(
     sheetRows.filter((row) => Number(row.season) >= latest - 2).flatMap((row) => splitManagers(row.manager))
   );
-  const candidates = [...recent].filter(matches);
+  const hasInitial = (name) => tokens(name).some((token) => token.length === 1);
+  const candidates = [...recent].filter((name) => !hasInitial(name) && matches(name));
   return candidates.length === 1 ? candidates[0] : live;
 };
 
