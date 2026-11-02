@@ -79,3 +79,8 @@ test("a known different club is never kept as a spelling variant (Inter Milan is
   const merged = mergeHonoursWide(sheet, [{ season_num: 30, competition: "Top 100 Cup", club_name: "Inter Milan", manager_name: "X" }], "club");
   expect(merged[1][1]).toBe("Inter Milan");
 });
+
+test("a sheet manager with an initial is only kept in the same slot", () => {
+  expect(sheetSpelling("Tom Lee", "", ["Tom L", "Hussain Saif"], "manager")).toBe("Tom Lee");
+  expect(sheetSpelling("Tom Lee", "Tom L", ["Tom L"], "manager")).toBe("Tom L");
+});

@@ -44,3 +44,14 @@ test("uses the sheet's spelling of a club so the live season joins its history",
   );
   expect(rows[0]).toMatchObject({ team: "HAMBURGER SV", manager: "Marsden" });
 });
+
+test("a sheet name with an initial is not matched to a different manager by name alone", () => {
+  const sheet = [
+    { season: "27", division: "3", position: "5", team: "Burnley", manager: "Tom L" },
+    { season: "27", division: "2", position: "9", team: "FC Schalke 04", manager: "Hussain Saif" },
+  ];
+  // Tom Lee took over Schalke: not Tom L, who managed Burnley.
+  expect(resolveManagerName("Tom Lee", "FC Schalke 04", sheet)).toBe("Tom Lee");
+  // The club's own manager still keeps the sheet's short name.
+  expect(resolveManagerName("Tom Lxxx", "Burnley", sheet)).toBe("Tom L");
+});
