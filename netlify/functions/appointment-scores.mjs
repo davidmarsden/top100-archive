@@ -3,7 +3,10 @@
 // same archive as Stats & History: the Full History sheet, the stats archive and
 // the live season. POST { mode: "vacancies" | "review", ...config } with the config
 // described in src/data/appointmentData.js. It only computes from public data.
-import { buildArchive, parseSheetTable, reviewBottomThree, scoreVacancies } from "../../src/data/appointmentData.js";
+// GET ?mode=profiles[&manager=&club=] returns every current manager's appointment profile
+// (approximate level, trajectory, strengths and weaknesses), for the archive's manager
+// profiles and the Manager Portal; it is public and cached.
+import { buildArchive, managerProfiles, parseSheetTable, reviewBottomThree, scoreVacancies } from "../../src/data/appointmentData.js";
 
 const clean = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "").trim();
 const SHEET_ID = clean(process.env.REACT_APP_SHEET_ID) || "17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w";
@@ -51,8 +54,9 @@ export const handler = async (event) => {
     "Cache-Control": "no-store",
     Vary: "Origin",
   };
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
-  if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ error: "POST only" }) };
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: { ...headers, "Access-Control-Allow-Methods": "GET, POST, OPTIONS" }, body: "" };
+  if (event.httpMethod === "GET") return profilesResponse(event.queryStringParameters || {});
+  if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ error: "GET or POST only" }) };
 
   let config;
   try {
@@ -77,5 +81,30 @@ export const handler = async (event) => {
   } catch (error) {
     console.error(`appointment-scores: ${error.message}`);
     return { statusCode: error.status || 502, headers, body: JSON.stringify({ error: error.message }) };
+  }
+};
+
+// Public appointment profiles: from public records only, so any site may read them.
+const profilesResponse = async (query) => {
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "public, max-age=900",
+  };
+  if (query.mode !== "profiles") return { statusCode: 400, headers, body: JSON.stringify({ error: 'GET supports mode=profiles only' }) };
+  try {
+    const archive = await loadArchive();
+    const latest = Math.max(...archive.rows.map((row) => Number(row.season)).filter(Number.isFinite));
+    const requested = Number(query.season);
+    const currentSeason = Number.isInteger(requested) && requested > 0 && requested <= latest ? requested : latest;
+    let profiles = managerProfiles(archive, { currentSeason });
+    if (query.manager || query.club) {
+      const name = archive.archiveName({ name: String(query.manager || "").slice(0, 120), club: String(query.club || "").slice(0, 120) || undefined });
+      profiles = profiles.filter((profile) => profile.manager === name);
+    }
+    return { statusCode: 200, headers, body: JSON.stringify({ currentSeason, profiles }) };
+  } catch (error) {
+    console.error(`appointment-scores profiles: ${error.message}`);
+    return { statusCode: 502, headers: { ...headers, "Cache-Control": "no-store" }, body: JSON.stringify({ error: "Profiles are unavailable right now." }) };
   }
 };

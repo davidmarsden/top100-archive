@@ -1,4 +1,4 @@
-import { buildArchive, scoreVacancies } from "./appointmentData";
+import { buildArchive, levelBand, managerProfiles, scoreVacancies } from "./appointmentData";
 
 const sheet = [
   { season: "27", division: "1", position: "5", team: "Genoa", points: "50", manager: "TRX" },
@@ -40,4 +40,34 @@ test("an outgoing manager scored for comparison is credited with their club's se
   expect(withClub.breakdown.current).toBeGreaterThan(0);
   expect(withClub.position).toBe(10);
   expect(scored.allocation.appointments).toEqual([]);
+});
+
+test("appointment profiles rank current managers on the public parts of the score", () => {
+  const history = [
+    { season: "25", division: "1", position: "1", team: "Genoa", points: "80", manager: "TRX" },
+    { season: "26", division: "1", position: "2", team: "Genoa", points: "75", manager: "TRX" },
+    { season: "27", division: "1", position: "1", team: "Genoa", points: "82", manager: "TRX" },
+    { season: "26", division: "4", position: "15", team: "Lecce", points: "30", manager: "Nia" },
+    { season: "27", division: "4", position: "18", team: "Lecce", points: "25", manager: "Nia" },
+  ];
+  const liveRows = [
+    { season: 28, division: 1, position: 2, team: "Genoa", manager: "TRX" },
+    { season: 28, division: 4, position: 19, team: "Lecce", manager: "Nia" },
+    { season: 28, division: 5, position: 10, team: "Pisa", manager: "Newbie" },
+  ];
+  const profiles = managerProfiles(buildArchive({ sheetRows: history, liveRows }), { currentSeason: 28 });
+  const by = Object.fromEntries(profiles.map((profile) => [profile.manager, profile]));
+  expect(Object.keys(by).sort()).toEqual(["Newbie", "Nia", "TRX"]);
+  expect(by.TRX.outOf).toBe(80);
+  expect(by.TRX.percentile).toBe(100);
+  expect(by.TRX.level).toBe("Top 10%");
+  expect(by.TRX.strengths.length).toBe(2);
+  expect(by.TRX.strengths.every((label) => by.TRX.parts.find((part) => part.label === label).percentile >= 65)).toBe(true);
+  expect(by.Nia.weaknesses.length).toBeGreaterThan(0);
+  expect(by.Nia.score).toBeLessThan(by.TRX.score);
+  expect(by.Newbie.trajectory).toBe("new");
+  expect(["rising", "steady", "falling"]).toContain(by.TRX.trajectory);
+  expect(by.TRX.parts.map((part) => part.part)).toEqual(["current", "recent", "honours", "level", "stability"]);
+  expect(levelBand(50)).toBe("Above average");
+  expect(levelBand(10)).toBe("Bottom 25%");
 });

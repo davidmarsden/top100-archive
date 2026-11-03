@@ -163,3 +163,66 @@ export const reviewBottomThree = (archive, config) => {
   const balance = managerSupply(reviews, { newcomers: (supply.newcomers || []).length, leavers: (supply.leavers || []).length });
   return { currentSeason: config.currentSeason, supply, balance, reviews };
 };
+
+// Appointment profiles for every manager in the current season: an approximate level, trajectory,
+// strengths and weaknesses from the parts of the appointment score (3.2) that come from public
+// records only. Activity (partly assessed by the administrators) and discipline are left out, so
+// the profile is out of 80: this season 20, recent seasons 15, honours 15, level 10, stability 20.
+export const PROFILE_PARTS = Object.freeze([
+  ["current", "This season", 20],
+  ["recent", "Recent seasons", 15],
+  ["honours", "Honours", 15],
+  ["level", "Level", 10],
+  ["stability", "Stability", 20],
+]);
+
+const round1 = (value) => Math.round(value * 10) / 10;
+const publicScore = (scored) => PROFILE_PARTS.reduce((sum, [part]) => sum + (scored.breakdown[part] || 0), 0);
+// Share of the others below this value, ties counted half (0-100).
+const percentileOf = (value, values) => {
+  if (values.length <= 1) return 50;
+  const below = values.filter((other) => other < value).length;
+  const equal = values.filter((other) => other === value).length - 1;
+  return Math.round((100 * (below + equal / 2)) / (values.length - 1));
+};
+export const levelBand = (percentile) =>
+  percentile >= 90 ? "Top 10%" : percentile >= 75 ? "Top 25%" : percentile >= 50 ? "Above average" : percentile >= 25 ? "Below average" : "Bottom 25%";
+
+export const managerProfiles = (archive, { currentSeason }) => {
+  const { rows, squadRankGain } = archive;
+  const current = rows.filter((row) => Number(row.season) === currentSeason && row.manager);
+  const seen = new Set();
+  const scored = current
+    .filter((row) => !seen.has(row.manager) && seen.add(row.manager))
+    .map((row) => {
+      const now = scoreApplicant({ manager: row.manager, currentSeason, rows, activity: { squadRankGain: squadRankGain(row.manager) } });
+      const before = managerCareer(row.manager, rows).some((r) => Number(r.season) === currentSeason - 1)
+        ? scoreApplicant({ manager: row.manager, currentSeason: currentSeason - 1, rows })
+        : null;
+      return { row, now, total: round1(publicScore(now)), previous: before ? round1(publicScore(before)) : null };
+    });
+  const totals = scored.map((entry) => entry.total);
+  const partValues = Object.fromEntries(PROFILE_PARTS.map(([part]) => [part, scored.map((entry) => entry.now.breakdown[part] || 0)]));
+  return scored.map(({ row, now, total, previous }) => {
+    const percentile = percentileOf(total, totals);
+    const parts = PROFILE_PARTS.map(([part, label, max]) => ({
+      part, label, max, score: now.breakdown[part] || 0, percentile: percentileOf(now.breakdown[part] || 0, partValues[part]),
+    }));
+    const change = previous === null ? null : round1(total - previous);
+    return {
+      manager: row.manager,
+      club: row.team,
+      division: Number(row.division),
+      position: Number(row.position),
+      score: total,
+      outOf: 80,
+      percentile,
+      level: levelBand(percentile),
+      trajectory: change === null ? "new" : change >= 5 ? "rising" : change <= -5 ? "falling" : "steady",
+      change,
+      strengths: parts.filter((p) => p.percentile >= 65).sort((a, b) => b.percentile - a.percentile).slice(0, 2).map((p) => p.label),
+      weaknesses: parts.filter((p) => p.percentile <= 35).sort((a, b) => a.percentile - b.percentile).slice(0, 2).map((p) => p.label),
+      parts,
+    };
+  });
+};
