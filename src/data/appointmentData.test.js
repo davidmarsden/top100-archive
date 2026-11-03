@@ -59,6 +59,8 @@ test("appointment profiles rank current managers on the public parts of the scor
   const by = Object.fromEntries(profiles.map((profile) => [profile.manager, profile]));
   expect(Object.keys(by).sort()).toEqual(["Newbie", "Nia", "TRX"]);
   expect(by.TRX.outOf).toBe(80);
+  expect(by.TRX.rank).toBe(1);
+  expect(profiles.map((profile) => profile.rank).sort()).toEqual([1, 2, 3]);
   expect(by.TRX.percentile).toBe(100);
   expect(by.TRX.level).toBe("Top 10%");
   expect(by.TRX.strengths.length).toBe(2);

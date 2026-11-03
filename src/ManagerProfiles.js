@@ -166,7 +166,13 @@ const TRAJECTORY = {
 };
 const roughly = (percentile) => Math.max(5, Math.min(95, Math.round(percentile / 10) * 10));
 
-export const AppointmentProfile = ({ profile }) => {
+const ordinalRank = (n) => {
+  const v = Number(n) % 100;
+  const s = ["th", "st", "nd", "rd"];
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+};
+
+export const AppointmentProfile = ({ profile, managers }) => {
   if (!profile) return null;
   const [trajectory, trajectoryColour] = TRAJECTORY[profile.trajectory] || TRAJECTORY.steady;
   return (
@@ -180,6 +186,7 @@ export const AppointmentProfile = ({ profile }) => {
       </div>
       <div className="flex flex-wrap gap-2">
         <StatPill label="Level" value={profile.level} color="bg-purple-50 text-purple-800 border-purple-200" />
+        {profile.rank && <StatPill label="Ranking" value={`${ordinalRank(profile.rank)}${managers ? ` of ${managers}` : ""}`} color="bg-teal-50 text-teal-800 border-teal-200" />}
         <StatPill label="Trajectory" value={trajectory} color={trajectoryColour} />
         {profile.strengths.length > 0 && <StatPill label="Strengths" value={profile.strengths.join(", ")} color="bg-emerald-50 text-emerald-800 border-emerald-200" />}
         {profile.weaknesses.length > 0 && <StatPill label="To work on" value={profile.weaknesses.join(", ")} color="bg-amber-50 text-amber-800 border-amber-200" />}
@@ -230,11 +237,12 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
   const [selectedManager, setSelectedManager] = useState("");
   // Appointment profiles of this season's managers, from the appointment-scores function.
   const [profiles, setProfiles] = useState(null);
+  const [managerCount, setManagerCount] = useState(0);
   useEffect(() => {
     let active = true;
     fetch("/.netlify/functions/appointment-scores?mode=profiles")
       .then((response) => (response.ok ? response.json() : null))
-      .then((data) => { if (active && data?.profiles) setProfiles(data.profiles); })
+      .then((data) => { if (active && data?.profiles) { setProfiles(data.profiles); setManagerCount(data.managers || data.profiles.length); } })
       .catch(() => {});
     return () => { active = false; };
   }, []);
@@ -436,7 +444,7 @@ const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
           />
         </div>
 
-        <AppointmentProfile profile={profileFor(name, rows)} />
+        <AppointmentProfile profile={profileFor(name, rows)} managers={managerCount} />
 
         {managerPrediction && (
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">

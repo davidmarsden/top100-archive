@@ -4,6 +4,7 @@ import { loadHonoursTables } from "./data/honoursSource";
 
 import Charts from "./Charts";
 import ManagerProfilesTab from "./components/ManagerProfilesTab";
+import ManagerRankingsTab from "./components/ManagerRankingsTab";
 import Winners from "./Winners";
 import HistoryChartModal from "./components/HistoryChartModal";
 import ArchiveNavigation from "./components/ArchiveNavigation";
@@ -1015,6 +1016,7 @@ setDataLoaded(true);
           ) : (
             <DataPlaceholder />
           ))}
+      {activeTab === "manager-rankings" && <ManagerRankingsTab />}
       {activeTab === "honours" && <Winners />}
       {activeTab === "import" && <StatsImporter />}
 {activeTab === "manager-analytics" &&
