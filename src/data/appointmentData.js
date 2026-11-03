@@ -176,6 +176,7 @@ export const PROFILE_PARTS = Object.freeze([
   ["stability", "Stability", 20],
 ]);
 
+const NOT_TO_WORK_ON = new Set(["level", "honours"]);
 const round1 = (value) => Math.round(value * 10) / 10;
 const publicScore = (scored) => PROFILE_PARTS.reduce((sum, [part]) => sum + (scored.breakdown[part] || 0), 0);
 // Share of the others below this value, ties counted half (0-100).
@@ -229,7 +230,8 @@ export const managerProfiles = (archive, { currentSeason }) => {
       trajectory: change === null ? "new" : change >= 5 ? "rising" : change <= -5 ? "falling" : "steady",
       change,
       strengths: parts.filter((p) => p.percentile >= 65).sort((a, b) => b.percentile - a.percentile).slice(0, 2).map((p) => p.label),
-      weaknesses: parts.filter((p) => p.percentile <= 35).sort((a, b) => a.percentile - b.percentile).slice(0, 2).map((p) => p.label),
+      // Level and honours take time and chances to earn, so they're never listed as something to work on.
+      weaknesses: parts.filter((p) => p.percentile <= 35 && !NOT_TO_WORK_ON.has(p.part)).sort((a, b) => a.percentile - b.percentile).slice(0, 2).map((p) => p.label),
       parts,
     };
   });
