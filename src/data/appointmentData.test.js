@@ -71,3 +71,27 @@ test("appointment profiles rank current managers on the public parts of the scor
   expect(levelBand(50)).toBe("Above average");
   expect(levelBand(10)).toBe("Bottom 25%");
 });
+
+test("appointment profiles use the club's current manager and last season's records as they stood", () => {
+  const history = [
+    { season: "26", division: "2", position: "3", team: "Genoa", points: "70", manager: "TRX" },
+    { season: "27", division: "2", position: "1", team: "Genoa", points: "80", manager: "TRX" },
+    { season: "27", division: "3", position: "5", team: "Pisa", points: "60", manager: "Kai" },
+  ];
+  const season28 = (genoaDivision) => [
+    { season: "28", division: genoaDivision, position: "4", team: "Genoa", points: "60", manager: "TRX" },
+    { season: "28", division: "3", position: "8", team: "Pisa", points: "50", manager: "Old / Kai" },
+  ];
+  const profilesWith = (division) => Object.fromEntries(
+    managerProfiles(buildArchive({ sheetRows: [...history, ...season28(division)], liveRows: [] }), { currentSeason: 28 })
+      .map((profile) => [profile.manager, profile]));
+  const promoted = profilesWith("1");
+  const stayed = profilesWith("2");
+  // A shared entry is the last-named manager's, with their record.
+  expect(Object.keys(promoted).sort()).toEqual(["Kai", "TRX"]);
+  expect(promoted.Kai.trajectory).not.toBe("new");
+  // Last season's baseline doesn't move with this season's division.
+  expect(round(promoted.TRX.score - promoted.TRX.change)).toBe(round(stayed.TRX.score - stayed.TRX.change));
+});
+
+const round = (value) => Math.round(value * 10) / 10;

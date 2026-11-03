@@ -6,7 +6,7 @@
 // GET ?mode=profiles[&manager=&club=] returns every current manager's appointment profile
 // (approximate level, trajectory, strengths and weaknesses), for the archive's manager
 // profiles and the Manager Portal; it is public and cached.
-import { buildArchive, managerProfiles, parseSheetTable, reviewBottomThree, scoreVacancies } from "../../src/data/appointmentData.js";
+import { buildArchive, managerProfiles, parseSheetTable, reviewBottomThree, sameClub, scoreVacancies } from "../../src/data/appointmentData.js";
 
 const clean = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "").trim();
 const SHEET_ID = clean(process.env.REACT_APP_SHEET_ID) || "17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w";
@@ -98,9 +98,14 @@ const profilesResponse = async (query) => {
     const requested = Number(query.season);
     const currentSeason = Number.isInteger(requested) && requested > 0 && requested <= latest ? requested : latest;
     let profiles = managerProfiles(archive, { currentSeason });
-    if (query.manager || query.club) {
-      const name = archive.archiveName({ name: String(query.manager || "").slice(0, 120), club: String(query.club || "").slice(0, 120) || undefined });
+    const manager = String(query.manager || "").slice(0, 120);
+    const club = String(query.club || "").slice(0, 120);
+    if (manager) {
+      const name = archive.archiveName({ name: manager, club: club || undefined });
       profiles = profiles.filter((profile) => profile.manager === name);
+    } else if (club) {
+      // A club on its own: whoever manages it in the chosen season.
+      profiles = profiles.filter((profile) => sameClub(profile.club, club));
     }
     return { statusCode: 200, headers, body: JSON.stringify({ currentSeason, profiles }) };
   } catch (error) {

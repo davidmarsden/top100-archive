@@ -2,7 +2,7 @@
 // 3.2), built from the "Full History" sheet, the stats archive (value added and
 // squad strength) and the live season. Shared by the report scripts and the
 // appointment-scores Netlify function, which the Top 100 admin appointments page calls.
-import { allocateVacancies, eligibility, managerCareer, managerSupply, reviewSackedManager, scoreApplicant } from "../analytics/appointmentScoring.js";
+import { allocateVacancies, eligibility, managerCareer, managerSupply, reviewSackedManager, scoreApplicant, splitManagers } from "../analytics/appointmentScoring.js";
 import { CLUB_ALIASES } from "./clubAliases.js";
 import { buildLiveSeasonRows, resolveManagerName } from "./liveSeason.js";
 
@@ -190,14 +190,20 @@ export const levelBand = (percentile) =>
 
 export const managerProfiles = (archive, { currentSeason }) => {
   const { rows, squadRankGain } = archive;
-  const current = rows.filter((row) => Number(row.season) === currentSeason && row.manager);
+  // The manager who holds each club now: the last name of a shared "A / B" entry.
+  const current = rows
+    .filter((row) => Number(row.season) === currentSeason && row.manager)
+    .map((row) => ({ ...row, manager: splitManagers(row.manager).pop() }))
+    .filter((row) => row.manager);
+  // Last season's score from the records as they stood then, so this season can't shape it.
+  const earlierRows = rows.filter((row) => Number(row.season) <= currentSeason - 1);
   const seen = new Set();
   const scored = current
     .filter((row) => !seen.has(row.manager) && seen.add(row.manager))
     .map((row) => {
       const now = scoreApplicant({ manager: row.manager, currentSeason, rows, activity: { squadRankGain: squadRankGain(row.manager) } });
-      const before = managerCareer(row.manager, rows).some((r) => Number(r.season) === currentSeason - 1)
-        ? scoreApplicant({ manager: row.manager, currentSeason: currentSeason - 1, rows })
+      const before = managerCareer(row.manager, earlierRows).some((r) => Number(r.season) === currentSeason - 1)
+        ? scoreApplicant({ manager: row.manager, currentSeason: currentSeason - 1, rows: earlierRows })
         : null;
       return { row, now, total: round1(publicScore(now)), previous: before ? round1(publicScore(before)) : null };
     });
