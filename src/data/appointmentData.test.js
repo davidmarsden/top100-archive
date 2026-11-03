@@ -66,6 +66,7 @@ test("appointment profiles rank current managers on the public parts of the scor
   expect(by.TRX.strengths.length).toBe(2);
   expect(by.TRX.strengths.every((label) => by.TRX.parts.find((part) => part.label === label).percentile >= 65)).toBe(true);
   expect(by.Nia.weaknesses.length).toBeGreaterThan(0);
+  expect(profiles.every((profile) => !profile.weaknesses.includes("Level") && !profile.weaknesses.includes("Honours"))).toBe(true);
   expect(by.Nia.score).toBeLessThan(by.TRX.score);
   expect(by.Newbie.trajectory).toBe("new");
   expect(["rising", "steady", "falling"]).toContain(by.TRX.trajectory);
