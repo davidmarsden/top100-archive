@@ -295,6 +295,8 @@ export const REVIEW_MARGIN = 5;
 //                      (e.g. Top 100's founder at Genoa)
 //   lastChance         reason, when an earlier decision said this was a last chance
 //   wish               what the manager asked for, recorded with the decision
+//   routine            a routine review (Divisions 3-5): reappointed unless barred, with the
+//                      score and any errors returned for context only
 // activity.forfeits: forfeits in Top 100 competitions this season.
 export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {} }) => {
   const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity });
@@ -348,6 +350,11 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
   } else if (tookOverMidSeason) {
     outcome = "reappoint";
     reason = "Took over during the season: reappointed (3.1).";
+  } else if (options.routine) {
+    outcome = "reappoint";
+    reason = errors.length
+      ? `Routine review: reappointed (3.1). For context, a full review would find: ${list}.`
+      : "Routine review: reappointed (3.1).";
   } else if (errors.length >= CLEAR_ERROR.errors) {
     outcome = "anotherClub";
     reason = `Reappointing would be a clear and obvious error: ${list}. The club goes into the vacancy round; the manager may apply for another club.`;
@@ -360,7 +367,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason = "No clear and obvious error: reappointed.";
   }
   // A vote when the decision turns on the score and the score is close to the line.
-  const fixed = Boolean(barred || options.standing || tookOverMidSeason);
+  const fixed = Boolean(barred || options.standing || tookOverMidSeason || options.routine);
   const others = errors.filter((error) => error.kind !== "score").length;
   const vote = outcome === "secondChance" || (!fixed && Math.abs(total - scoreLine) < REVIEW_MARGIN && others === CLEAR_ERROR.errors - 1);
 
@@ -375,7 +382,7 @@ export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipl
     reason,
     vote,
     wish: options.wish || null,
-    facts: { ...facts, tookOverMidSeason, barred, loginGaps, scoreLine, lastChanceNext: secondChance, earlierBottomThree: earlier, forfeits },
+    facts: { ...facts, tookOverMidSeason, routine: Boolean(options.routine), barred, loginGaps, scoreLine, lastChanceNext: secondChance, earlierBottomThree: earlier, forfeits },
     errors,
     notes: scored.notes,
   };

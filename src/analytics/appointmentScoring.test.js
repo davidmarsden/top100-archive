@@ -125,6 +125,23 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
   const idle = { competitions: 0, topManagerDeals: 0, squadRankGain: -10, community: 0 };
   const review = (manager, extra = {}) => reviewSackedManager({ manager, currentSeason: 28, rows: history, activity: active, ...extra });
 
+  test("a routine review is reappointed, with the score and errors kept for context", () => {
+    const full = review("Oz", { activity: idle });
+    const routine = review("Oz", { activity: idle, options: { routine: true } });
+    expect(full.outcome).not.toBe("reappoint");
+    expect(routine.total).toBe(full.total);
+    expect(routine.errors).toEqual(full.errors);
+    expect(routine.outcome).toBe("reappoint");
+    expect(routine.vote).toBe(false);
+    expect(routine.facts.routine).toBe(true);
+    expect(routine.reason).toMatch(/^Routine review: reappointed \(3\.1\)\. For context/);
+    expect(managerSupply([routine]).openClubs).toBe(0);
+  });
+
+  test("a routine review is still barred by the hard rules", () => {
+    expect(review("Oz", { options: { routine: true, gold: false } }).outcome).toBe("leave");
+  });
+
   test("reappoints when there is no clear and obvious error", () => {
     const kim = review("Kim");
     expect(kim.outcome).toBe("reappoint");

@@ -1,5 +1,5 @@
 // src/ManagerProfiles.js
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Users, Search as SearchIcon } from "lucide-react";
 import { buildManagerPrediction } from "./utils/managerPredictor";
 
@@ -156,6 +156,49 @@ const isOutcomeManager = (row, name) =>
 /* ------------------------------
    Main component
 ------------------------------ */
+// Appointment profile (rulebook 3.2): where the manager stands among this season's managers on the
+// parts of the appointment score that come from public records, and which way they're heading.
+const TRAJECTORY = {
+  rising: ["↗ Rising", "bg-emerald-50 text-emerald-800 border-emerald-200"],
+  steady: ["→ Steady", "bg-gray-50 text-gray-800 border-gray-200"],
+  falling: ["↘ Falling", "bg-red-50 text-red-800 border-red-200"],
+  new: ["New this season", "bg-indigo-50 text-indigo-800 border-indigo-200"],
+};
+const roughly = (percentile) => Math.max(5, Math.min(95, Math.round(percentile / 10) * 10));
+
+export const AppointmentProfile = ({ profile }) => {
+  if (!profile) return null;
+  const [trajectory, trajectoryColour] = TRAJECTORY[profile.trajectory] || TRAJECTORY.steady;
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+      <div>
+        <h4 className="text-lg font-bold">Appointment profile</h4>
+        <p className="text-sm text-gray-700 mt-1">
+          Roughly where this manager would stand if they applied for a club today, among this season's managers, from the
+          public-record parts of the appointment score (rulebook 3.2). Activity and conduct, which the admin team assesses, aren't included.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <StatPill label="Level" value={profile.level} color="bg-purple-50 text-purple-800 border-purple-200" />
+        <StatPill label="Trajectory" value={trajectory} color={trajectoryColour} />
+        {profile.strengths.length > 0 && <StatPill label="Strengths" value={profile.strengths.join(", ")} color="bg-emerald-50 text-emerald-800 border-emerald-200" />}
+        {profile.weaknesses.length > 0 && <StatPill label="To work on" value={profile.weaknesses.join(", ")} color="bg-amber-50 text-amber-800 border-amber-200" />}
+      </div>
+      <div className="space-y-1">
+        {profile.parts.map((part) => (
+          <div key={part.part} className="flex items-center gap-3 text-sm">
+            <span className="w-32 text-gray-700">{part.label}</span>
+            <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden" aria-hidden="true">
+              <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${Math.max(4, part.percentile)}%` }} />
+            </div>
+            <span className="w-40 text-gray-600 text-xs">better than ~{roughly(part.percentile)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
   const winners = useMemo(
     () => (winnersSet instanceof Set ? winnersSet : new Set()),
@@ -185,6 +228,23 @@ const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
 
   const [search, setSearch] = useState("");
   const [selectedManager, setSelectedManager] = useState("");
+  // Appointment profiles of this season's managers, from the appointment-scores function.
+  const [profiles, setProfiles] = useState(null);
+  useEffect(() => {
+    let active = true;
+    fetch("/.netlify/functions/appointment-scores?mode=profiles")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (active && data?.profiles) setProfiles(data.profiles); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const profileFor = (name, rows) => {
+    if (!profiles) return null;
+    const byName = profiles.find((profile) => profile.manager === name);
+    if (byName) return byName;
+    const latestRow = rows.find((row) => parseInt(row.season || 0, 10) === latestSeason);
+    return latestRow ? profiles.find((profile) => profile.club === latestRow.team) || null : null;
+  };
   const [managerFilter, setManagerFilter] = useState("current");
 
   const filteredManagers = useMemo(() => {
@@ -375,6 +435,8 @@ const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
             color="bg-indigo-50 text-indigo-800 border-indigo-200"
           />
         </div>
+
+        <AppointmentProfile profile={profileFor(name, rows)} />
 
         {managerPrediction && (
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
