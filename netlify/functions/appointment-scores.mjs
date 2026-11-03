@@ -98,6 +98,7 @@ const profilesResponse = async (query) => {
     const requested = Number(query.season);
     const currentSeason = Number.isInteger(requested) && requested > 0 && requested <= latest ? requested : latest;
     let profiles = managerProfiles(archive, { currentSeason });
+    const managers = profiles.length;
     const manager = String(query.manager || "").slice(0, 120);
     const club = String(query.club || "").slice(0, 120);
     if (manager) {
@@ -107,7 +108,7 @@ const profilesResponse = async (query) => {
       // A club on its own: whoever manages it in the chosen season.
       profiles = profiles.filter((profile) => sameClub(profile.club, club));
     }
-    return { statusCode: 200, headers, body: JSON.stringify({ currentSeason, profiles }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ currentSeason, managers, profiles }) };
   } catch (error) {
     console.error(`appointment-scores profiles: ${error.message}`);
     return { statusCode: 502, headers: { ...headers, "Cache-Control": "no-store" }, body: JSON.stringify({ error: "Profiles are unavailable right now." }) };

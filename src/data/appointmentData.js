@@ -222,6 +222,8 @@ export const managerProfiles = (archive, { currentSeason }) => {
       position: Number(row.position),
       score: total,
       outOf: 80,
+      // Place among this season's managers (joint places share the higher one).
+      rank: 1 + totals.filter((other) => other > total).length,
       percentile,
       level: levelBand(percentile),
       trajectory: change === null ? "new" : change >= 5 ? "rising" : change <= -5 ? "falling" : "steady",
