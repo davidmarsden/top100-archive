@@ -73,7 +73,9 @@ const ManagerRankingsTab = () => {
           <p className="text-emerald-100 mt-1 max-w-3xl">
             Every current manager ranked on the public-record parts of the appointment score (rulebook 3.2): this season,
             recent seasons, honours, level and stability, out of 80. Activity and conduct, which the admin team assesses,
-            aren't included, so this is a guide to where managers stand rather than an appointment score.
+            aren't included, so this is a guide to where managers stand rather than a full appointment score. It isn't the review
+            score (rule 3.1) used for managers in or near the bottom three, which is out of 100 and weighs this season's result far
+            more heavily, so the two numbers differ.
           </p>
         </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Division">
@@ -100,7 +102,7 @@ const ManagerRankingsTab = () => {
             <tr>
               <th className="text-left py-3 px-3 font-bold text-gray-700" title="Overall rank among all current managers">#</th>
               <th className="text-left py-3 px-3 font-bold text-gray-700">Manager</th>
-              <th className="text-right py-3 px-3 font-bold text-gray-700">Score</th>
+              <th className="text-right py-3 px-3 font-bold text-gray-700" title="Appointment score (rule 3.2), public-record parts only">Appointment score /80</th>
               <th className="text-right py-3 px-3 font-bold text-gray-700">Change</th>
               <th className="text-left py-3 px-3 font-bold text-gray-700 hidden sm:table-cell">Band</th>
               {PARTS.map(([part, label]) => (
