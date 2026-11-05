@@ -121,3 +121,10 @@ test("waiting-list applicant history: returning managers with spells and the pub
   expect(old.parts.map((part) => part.part)).toEqual(["current", "recent", "honours", "level", "stability"]);
   expect(fresh).toMatchObject({ key: "2", returning: false, seasons: 0, score: 0 });
 });
+
+test("waiting-list applicant history: a manager whose only Top 100 season is the current one is returning", () => {
+  const archive = buildArchive({ sheetRows: [{ season: "28", division: "3", position: "7", team: "Pisa", points: "40", manager: "Brief Stay" }], liveRows: [] });
+  const [brief] = applicantHistory(archive, { currentSeason: 28, applicants: [{ key: "9", name: "Brief Stay" }] });
+  expect(brief).toMatchObject({ returning: true, matched: "Brief Stay", seasons: 1, firstSeason: 28, lastSeason: 28 });
+  expect(brief.score).toBeGreaterThan(0);
+});
