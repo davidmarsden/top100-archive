@@ -1,4 +1,4 @@
-import { buildArchive, levelBand, managerProfiles, scoreVacancies } from "./appointmentData";
+import { applicantHistory, buildArchive, levelBand, managerProfiles, scoreVacancies } from "./appointmentData";
 
 const sheet = [
   { season: "27", division: "1", position: "5", team: "Genoa", points: "50", manager: "TRX" },
@@ -98,3 +98,26 @@ test("appointment profiles use the club's current manager and last season's reco
 });
 
 const round = (value) => Math.round(value * 10) / 10;
+
+test("waiting-list applicant history: returning managers with spells and the public score, newcomers with none", () => {
+  const history = [
+    { season: "20", division: "2", position: "1", team: "Genoa", points: "80", manager: "Old Hand" },
+    { season: "21", division: "1", position: "8", team: "Genoa", points: "60", manager: "Old Hand" },
+    { season: "22", division: "1", position: "12", team: "Lazio", points: "50", manager: "Old Hand" },
+    { season: "27", division: "1", position: "1", team: "Roma", points: "90", manager: "Someone Else" },
+  ];
+  const archive = buildArchive({ sheetRows: history, liveRows: [{ season: 28, division: 1, position: 1, team: "Roma", manager: "Someone Else" }] });
+  const [old, fresh] = applicantHistory(archive, { currentSeason: 28, applicants: [{ key: "1", name: "Old Hand" }, { key: "2", name: "Brand New Person" }] });
+  expect(old.returning).toBe(true);
+  expect(old.matched).toBe("Old Hand");
+  expect(old.seasons).toBe(3);
+  expect([old.firstSeason, old.lastSeason, old.titles]).toEqual([20, 22, 1]);
+  expect(old.spells).toEqual([
+    { club: "Genoa", from: 20, to: 21, bestDivision: 1, bestPosition: 8 },
+    { club: "Lazio", from: 22, to: 22, bestDivision: 1, bestPosition: 12 },
+  ]);
+  expect(old.score).toBeGreaterThan(0);
+  expect(old.score).toBeLessThanOrEqual(80);
+  expect(old.parts.map((part) => part.part)).toEqual(["current", "recent", "honours", "level", "stability"]);
+  expect(fresh).toMatchObject({ key: "2", returning: false, seasons: 0, score: 0 });
+});

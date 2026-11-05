@@ -236,3 +236,42 @@ export const managerProfiles = (archive, { currentSeason }) => {
     };
   });
 };
+
+// Waiting-list applicants' Top 100 records (rulebook 3.3): for each { key, name }, the archive's
+// name for them (if any), a summary of their Top 100 career and the public-record part of the
+// appointment score (out of 80), scored as at the current season. An applicant with any archived
+// season is a returning manager. The name match is the same as everywhere else in the archive
+// ("Chris East" -> "East"), so the administrators should check it.
+export const applicantHistory = (archive, { currentSeason, applicants = [] }) => {
+  const { rows, archiveName } = archive;
+  return applicants.map((applicant) => {
+    const key = applicant.key ?? applicant.name;
+    const name = archiveName({ name: String(applicant.name || "").slice(0, 120) });
+    const career = name ? managerCareer(name, rows).filter((row) => row.season < currentSeason) : [];
+    if (!career.length) return { key, name: applicant.name, matched: null, returning: false, seasons: 0, score: 0, outOf: 80, parts: [], spells: [] };
+    const scored = scoreApplicant({ manager: name, currentSeason, rows });
+    // Consecutive seasons at the same club, as one spell.
+    const spells = [];
+    career.forEach((row) => {
+      const last = spells[spells.length - 1];
+      if (last && last.club === row.team && last.to === row.season - 1) {
+        last.to = row.season;
+        last.best = Math.min(last.best, row.division * 100 + row.position);
+      } else spells.push({ club: row.team, from: row.season, to: row.season, best: row.division * 100 + row.position });
+    });
+    return {
+      key,
+      name: applicant.name,
+      matched: name,
+      returning: true,
+      seasons: career.length,
+      firstSeason: career[0].season,
+      lastSeason: career[career.length - 1].season,
+      titles: career.filter((row) => row.position === 1).length,
+      score: round1(publicScore(scored)),
+      outOf: 80,
+      parts: PROFILE_PARTS.map(([part, label, max]) => ({ part, label, max, score: round1(scored.breakdown[part] || 0) })),
+      spells: spells.map(({ best, ...spell }) => ({ ...spell, bestDivision: Math.floor(best / 100), bestPosition: best % 100 })),
+    };
+  });
+};
