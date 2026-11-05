@@ -1,12 +1,12 @@
 // Appointment scores (rulebook 3.2) and bottom-three reviews (3.1) for the Top 100
 // admin appointments page (tournaments.smtop100.blog/admin/appointments), from the
 // same archive as Stats & History: the Full History sheet, the stats archive and
-// the live season. POST { mode: "vacancies" | "review", ...config } with the config
+// the live season. POST { mode: "vacancies" | "review" | "history", ...config } with the config
 // described in src/data/appointmentData.js. It only computes from public data.
 // GET ?mode=profiles[&manager=&club=] returns every current manager's appointment profile
 // (approximate level, trajectory, strengths and weaknesses), for the archive's manager
 // profiles and the Manager Portal; it is public and cached.
-import { buildArchive, managerProfiles, parseSheetTable, reviewBottomThree, sameClub, scoreVacancies } from "../../src/data/appointmentData.js";
+import { applicantHistory, buildArchive, managerProfiles, parseSheetTable, reviewBottomThree, sameClub, scoreVacancies } from "../../src/data/appointmentData.js";
 
 const clean = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "").trim();
 const SHEET_ID = clean(process.env.REACT_APP_SHEET_ID) || "17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w";
@@ -77,7 +77,11 @@ export const handler = async (event) => {
       if (!Array.isArray(config.managers)) throw Object.assign(new Error("managers are required"), { status: 400 });
       return { statusCode: 200, headers, body: JSON.stringify(reviewBottomThree(archive, { ...config, currentSeason: season })) };
     }
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'mode must be "vacancies" or "review"' }) };
+    if (config.mode === "history") {
+      if (!Array.isArray(config.applicants) || config.applicants.length > 300) throw Object.assign(new Error("applicants (up to 300) are required"), { status: 400 });
+      return { statusCode: 200, headers, body: JSON.stringify({ currentSeason: season, applicants: applicantHistory(archive, { ...config, currentSeason: season }) }) };
+    }
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'mode must be "vacancies", "review" or "history"' }) };
   } catch (error) {
     console.error(`appointment-scores: ${error.message}`);
     return { statusCode: error.status || 502, headers, body: JSON.stringify({ error: error.message }) };
