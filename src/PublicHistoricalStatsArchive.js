@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import HistoricalStatsArchive from "./HistoricalStatsArchive";
+import LiveDivisionStats from "./components/LiveDivisionStats";
 
 const STORAGE_KEY = "top100StatsImporterWorkspace";
 const PUBLIC_ARCHIVE_URL = "/data/statsArchive.json";
@@ -67,6 +68,9 @@ const PublicHistoricalStatsArchive = () => {
           {message}
         </div>
       )}
+      <div className="mb-8">
+        <LiveDivisionStats />
+      </div>
       <HistoricalStatsArchive allowImport={false} />
     </>
   );
