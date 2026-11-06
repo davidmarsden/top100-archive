@@ -9,7 +9,10 @@ const STORAGE_KEY = "top100StatsImporterWorkspace";
 const EXPECTED_DIVISIONS = [1, 2, 3, 4, 5];
 const EXPECTED_ROWS_PER_DIVISION = 20;
 
+// Empty values (null, undefined or "") stay empty: Number(null) is 0, which
+// showed missing strength figures as 0.
 const numberOrNull = (value) => {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
@@ -238,7 +241,7 @@ const HistoricalStatsArchive = ({ allowImport = true }) => {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black text-gray-900">Historical Stats Archive</h2>
-            <p className="text-gray-600 mt-1">Browse team strength, predicted finish, actual finish, VA and PVA across Malcolm&apos;s S2–S27 dataset.</p>
+            <p className="text-gray-600 mt-1">Browse team strength, predicted finish, actual finish, VA and PVA across Malcolm&apos;s S2–S27 dataset, then Mister TRX&apos;s season reviews (S28 onwards; squad strength figures are added when his spreadsheets are imported).</p>
           </div>
           {allowImport && (
             <label className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:bg-blue-700 cursor-pointer">
