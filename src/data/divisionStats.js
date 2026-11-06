@@ -2,6 +2,8 @@
 
 export const RANKINGS = [
   { id: "table", label: "League table", key: "position", ascending: true },
+  // Mister TRX's stats table: PVA, with VA breaking ties.
+  { id: "pva", label: "Stats table (PVA)", key: "pva", tiebreak: "value_added", ascending: false, needsOpening: true },
   { id: "value-added", label: "Value added so far", key: "value_added", ascending: false, needsOpening: true },
   { id: "most-improved", label: "Most improved squad", key: "etot_change", ascending: false, needsOpening: true },
   { id: "strongest", label: "Strongest squad (ETOT)", key: "etot", ascending: false },
@@ -32,7 +34,9 @@ export const rankClubs = (clubs = [], rankingId = "table") => {
     if (!isNumber(av)) return 1;
     if (!isNumber(bv)) return -1;
     const diff = (Number(av) - Number(bv)) * direction;
-    return diff || (a?.position ?? 99) - (b?.position ?? 99);
+    if (diff) return diff;
+    const tie = ranking.tiebreak ? Number(b?.[ranking.tiebreak] ?? 0) - Number(a?.[ranking.tiebreak] ?? 0) : 0;
+    return tie || (a?.position ?? 99) - (b?.position ?? 99);
   });
 };
 

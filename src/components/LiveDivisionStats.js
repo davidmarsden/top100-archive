@@ -17,7 +17,7 @@ import {
 export default function LiveDivisionStats() {
   const [state, setState] = useState({ status: "loading", stats: null });
   const [division, setDivision] = useState(1);
-  const [ranking, setRanking] = useState("table");
+  const [ranking, setRanking] = useState(null); // default: the stats table once the opening is recorded
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +44,9 @@ export default function LiveDivisionStats() {
   const current = divisions.find((item) => item.division === division) || divisions[0];
   const opening = stats.openingRecorded;
   const available = RANKINGS.filter((item) => opening || !item.needsOpening);
-  const clubs = rankClubs(current?.clubs || [], available.some((item) => item.id === ranking) ? ranking : "table");
+  const chosen = ranking || (opening ? "pva" : "table");
+  const activeRanking = available.some((item) => item.id === chosen) ? chosen : "table";
+  const clubs = rankClubs(current?.clubs || [], activeRanking);
   const updated = formatUpdated(stats.observedAt);
 
   return (
@@ -54,7 +56,7 @@ export default function LiveDivisionStats() {
         <p className="text-gray-600 mt-1">
           Live from Soccer Manager Sync{updated ? `, updated ${updated}` : ""}. Squad strength (ETOT) uses Mister TRX&apos;s formula
           {opening
-            ? "; predicted position is each club's ETOT rank in its division at the start of the season, and value added is predicted minus current position."
+            ? "; predicted position is each club's ETOT rank in its division at the start of the season, value added (VA) is predicted minus current position, and PVA is (VA + 1) ÷ position, which orders the stats table."
             : ". Predicted positions and value added appear once the season's opening squads are recorded."}
         </p>
       </div>
@@ -74,7 +76,7 @@ export default function LiveDivisionStats() {
         </div>
         <label className="text-sm text-gray-700 font-semibold">
           Rank by{" "}
-          <select value={ranking} onChange={(event) => setRanking(event.target.value)} className="ml-1 border rounded-lg px-2 py-2">
+          <select value={activeRanking} onChange={(event) => setRanking(event.target.value)} className="ml-1 border rounded-lg px-2 py-2">
             {available.map((item) => (
               <option key={item.id} value={item.id}>{item.label}</option>
             ))}
@@ -94,6 +96,7 @@ export default function LiveDivisionStats() {
               <th className="text-right py-2 px-2">ETOT</th>
               {opening && <th className="text-right py-2 px-2" title="Predicted position at the start of the season">Pre</th>}
               {opening && <th className="text-right py-2 px-2" title="Value added: predicted minus current position">VA</th>}
+              {opening && <th className="text-right py-2 px-2" title="Positional value added: (VA + 1) ÷ position">PVA</th>}
               {opening && <th className="text-right py-2 px-2" title="Change in ETOT since the start of the season">ETOT ±</th>}
               <th className="text-right py-2 px-2" title="Squad value">Value</th>
               <th className="text-right py-2 px-2" title="Points per £10m of squad value">Pts/£10m</th>
@@ -112,6 +115,7 @@ export default function LiveDivisionStats() {
                 <td className="py-2 px-2 text-right">{formatNumber(club.etot, 2)}</td>
                 {opening && <td className="py-2 px-2 text-right">{formatNumber(club.predicted_position)}</td>}
                 {opening && <td className="py-2 px-2 text-right font-bold">{formatSigned(club.value_added)}</td>}
+                {opening && <td className="py-2 px-2 text-right">{formatNumber(club.pva, 2)}</td>}
                 {opening && <td className="py-2 px-2 text-right">{formatSigned(club.etot_change, 2)}</td>}
                 <td className="py-2 px-2 text-right">{formatMoney(club.squad_value)}</td>
                 <td className="py-2 px-2 text-right">{formatNumber(club.points_per_10m, 2)}</td>

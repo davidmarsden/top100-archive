@@ -28,3 +28,13 @@ test("formats money, signed numbers and awards", () => {
   expect(formatAward({ name: "L.YAMAL", club: "Barcelona", value: 8.37 }, "avg")).toBe("L.YAMAL (Barcelona) · 8.37");
   expect(formatAward(null, "goals")).toBe("—");
 });
+
+test("the stats table orders by PVA with VA breaking ties, as in Mister TRX's reviews", () => {
+  const d1 = [
+    { club: "Arsenal", position: 8, value_added: 5, pva: 0.75 },
+    { club: "FC Porto", position: 1, value_added: 2, pva: 3 },
+    { club: "RCD Espanyol", position: 12, value_added: 8, pva: 0.75 },
+    { club: "Juventus", position: 20, value_added: -14, pva: -0.65 },
+  ];
+  expect(rankClubs(d1, "pva").map((c) => c.club)).toEqual(["FC Porto", "RCD Espanyol", "Arsenal", "Juventus"]);
+});
