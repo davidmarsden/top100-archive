@@ -31,6 +31,11 @@ const rows = fs.readFileSync(file, "utf8").split("\n")
     const finalPosition = number(fin);
     const sourceValueAdded = number(va);
     const sourcePva = number(pva);
+    for (const [label, value] of [["Predicted", predictedPosition], ["Finished", finalPosition]]) {
+      if (!Number.isInteger(value) || value < 1 || value > 20) throw new Error(`${club}: ${label} position ${value} is not a whole number from 1 to 20`);
+    }
+    if (!club) throw new Error(`Row ${index + 1}: no club name`);
+    if (!Number.isFinite(sourceValueAdded) || !Number.isFinite(sourcePva)) throw new Error(`${club}: VA or PVA is not a number`);
     const computedValueAdded = predictedPosition - finalPosition;
     const computedPva = Math.round(((computedValueAdded + 1) / finalPosition) * 1000) / 1000;
     if (computedValueAdded !== sourceValueAdded) throw new Error(`${club}: VA ${sourceValueAdded} does not match Pre-Fin ${computedValueAdded}`);
@@ -50,6 +55,7 @@ if (rows.length !== 20) throw new Error(`Expected 20 clubs, found ${rows.length}
 const finals = new Set(rows.map((row) => row.finalPosition));
 const predicted = new Set(rows.map((row) => row.predictedPosition));
 if (finals.size !== 20 || predicted.size !== 20) throw new Error("Predicted and finished positions must each be 1-20 with no repeats");
+// Nothing is written unless every check above passed.
 
 const archive = JSON.parse(fs.readFileSync(archivePath, "utf8"));
 const keep = (row) => !(row.season === season && row.division === division);
