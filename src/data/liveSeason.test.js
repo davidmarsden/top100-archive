@@ -64,3 +64,15 @@ test("a second Soccer Manager account stays a separate manager", () => {
   expect(resolveManagerName("Gianluca Ghio", "Independiente", rows)).toBe("Ghio");
   expect(resolveManagerName("Gianluca Ghio (2nd)", "Hellas Verona", rows)).toBe("Ghio (2nd)");
 });
+
+test("a second account already in the sheet keeps its name", () => {
+  const rows = [
+    { season: "27", team: "Independiente", manager: "Ghio" },
+    { season: "28", team: "Hellas Verona", manager: "Ghio (2nd)" },
+    { season: "28", team: "Lazio", manager: "Ghio (3)" },
+  ];
+  expect(resolveManagerName("Gianluca Ghio (2nd)", "Hellas Verona", rows)).toBe("Ghio (2nd)");
+  expect(resolveManagerName("Gianluca Ghio (3)", "Lazio", rows)).toBe("Ghio (3)");
+  // Only marked accounts in the sheet: the unmarked live account is not one of them.
+  expect(resolveManagerName("Gianluca Ghio (2nd)", "Hellas Verona", [{ season: "28", team: "Hellas Verona", manager: "Ghio (2nd)" }])).toBe("Ghio (2nd)");
+});
