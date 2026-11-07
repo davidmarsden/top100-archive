@@ -14,6 +14,7 @@ const managers = [
 test("cup columns leave out league titles and play-offs", () => {
   expect(["Division 1", "Division 2 Play-off", "Season"].map(isCupColumn)).toEqual([false, false, false]);
   expect(["Top 100 Cup", "Charity Shield", "SMFA Super Cup", "Youth Shield", "WCC"].every(isCupColumn)).toBe(true);
+  expect(isCupColumn("Youth Spoon")).toBe(false);
   expect(cupWins(clubs)).toHaveLength(5);
 });
 
@@ -48,4 +49,15 @@ test("a differently spelt manager counts through the club they ran that season",
   ]);
   // Same first word but another club that season: not theirs.
   expect(cups.forManager("Tom Lee", [{ season: 27, club: "Lazio" }])).toEqual([]);
+});
+
+test("short archive names match full honours names through the club", () => {
+  const cups = buildCupHonours({
+    clubs: [["Season", "Top 100 Cup", "SMFA Shield"], ["S27", "Chelsea", "Porto"]],
+    managers: [["Season", "Top 100 Cup", "SMFA Shield"], ["S27", "James Mckenzie", "André Guerra"]],
+  });
+  expect(cups.forManager("J. Mckenzie", [{ season: 27, club: "Chelsea" }])).toHaveLength(1);
+  expect(cups.forManager("Guerra", [{ season: 27, club: "FC Porto" }])).toHaveLength(1);
+  // Another Mckenzie at another club that season gets nothing.
+  expect(cups.forManager("S. Mckenzie", [{ season: 27, club: "Arsenal" }])).toEqual([]);
 });

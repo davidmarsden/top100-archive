@@ -7,10 +7,16 @@
 // (approximate level, trajectory, strengths and weaknesses), for the archive's manager
 // profiles and the Manager Portal; it is public and cached.
 import { applicantHistory, buildArchive, managerProfiles, parseSheetTable, reviewBottomThree, sameClub, scoreVacancies } from "../../src/data/appointmentData.js";
+import { buildCupHonours } from "../../src/data/cupHonours.js";
+import { mergeHonoursWide } from "../../src/data/gameHonours.js";
 
 const clean = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "").trim();
 const SHEET_ID = clean(process.env.REACT_APP_SHEET_ID) || "17-BZlcYuAQCfUV5gxAzS93Dsy6bq8mk_yRat88R5t-w";
 const SHEET_RANGE = "Full History!A:R";
+// The winners sheet (Youth Cup and Shield, World Club and seasons Sync hasn't read), as the Honours tab reads it.
+const WINNERS_SHEET_ID = clean(process.env.REACT_APP_WINNERS_SHEET_ID);
+const WINNERS_CLUBS_RANGE = clean(process.env.REACT_APP_WINNERS_CLUBS_RANGE) || "Clubs!A:Z";
+const WINNERS_MANAGERS_RANGE = clean(process.env.REACT_APP_WINNERS_MANAGERS_RANGE) || "Managers!A:Z";
 const GOOGLE_KEY = clean(process.env.REACT_APP_GOOGLE_API_KEY);
 const SUPABASE_URL = clean(process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL).replace(/\/+$/, "");
 const SUPABASE_ANON_KEY = clean(process.env.SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY);
@@ -26,8 +32,32 @@ const json = async (url, options) => {
   return response.json();
 };
 
+// Cup honours for the honours part of the score: Soccer Manager Sync's game honours merged
+// over the winners sheet, exactly as the Honours tab shows them. Without them no cups count,
+// so a failure is logged rather than hidden.
+const sheetValues = async (range) =>
+  WINNERS_SHEET_ID
+    ? (await json(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(WINNERS_SHEET_ID)}/values/${encodeURIComponent(range)}?key=${encodeURIComponent(GOOGLE_KEY)}`,
+        { headers: { Referer: `${SITE}/` } })).values || []
+    : [];
+const loadCupHonours = async () => {
+  const [clubs, managers, game] = await Promise.allSettled([
+    sheetValues(WINNERS_CLUBS_RANGE),
+    sheetValues(WINNERS_MANAGERS_RANGE),
+    json(`${SUPABASE_URL}/rest/v1/rpc/public_game_world_honours`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_world_slug: "top-100" }),
+    }),
+  ]);
+  [clubs, managers, game].filter((result) => result.status === "rejected").forEach((result) => console.error(`appointment-scores honours: ${result.reason?.message}`));
+  const value = (result) => (result.status === "fulfilled" && Array.isArray(result.value) ? result.value : []);
+  return buildCupHonours({ clubs: mergeHonoursWide(value(clubs), value(game), "club"), managers: mergeHonoursWide(value(managers), value(game), "manager") });
+};
+
 const loadArchive = async () => {
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.archive;
+  const cupHonours = loadCupHonours();
   const [sheet, stats, live] = await Promise.all([
     // The browser key is restricted to the site's referrer.
     json(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}/values/${encodeURIComponent(SHEET_RANGE)}?key=${encodeURIComponent(GOOGLE_KEY)}`,
@@ -39,7 +69,7 @@ const loadArchive = async () => {
       body: JSON.stringify({ p_world_slug: "top-100" }),
     }),
   ]);
-  const archive = buildArchive({ sheetRows: parseSheetTable(sheet.values || []), statsRows: stats.rows || stats, liveRows: live || [] });
+  const archive = buildArchive({ sheetRows: parseSheetTable(sheet.values || []), statsRows: stats.rows || stats, liveRows: live || [], cupHonours: await cupHonours });
   cached = { at: Date.now(), archive };
   return archive;
 };
