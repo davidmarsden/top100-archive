@@ -15,6 +15,8 @@ test("cup columns leave out league titles and play-offs", () => {
   expect(["Division 1", "Division 2 Play-off", "Season"].map(isCupColumn)).toEqual([false, false, false]);
   expect(["Top 100 Cup", "Charity Shield", "SMFA Super Cup", "Youth Shield", "WCC"].every(isCupColumn)).toBe(true);
   expect(isCupColumn("Youth Spoon")).toBe(false);
+  expect(isCupColumn("World Cup")).toBe(false);
+  expect(isCupColumn("World Club Cup")).toBe(true);
   expect(cupWins(clubs)).toHaveLength(5);
 });
 

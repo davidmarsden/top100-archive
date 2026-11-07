@@ -10,7 +10,7 @@
 //   A. Current season        20  finish (12) + result against squad strength (8)
 //   B. Last two seasons      15  finishes (9) + average value added (6)
 //   C. Honours               15  D1 titles 6, other titles 3, promotions 2, cups (SMFA and World Club 3,
-//                                Top 100 2, Youth and other cups 1), capped
+//                                Top 100 2, Youth Cup and other cups 1, Youth Shield 0.5), capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
 //   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (4),
@@ -43,10 +43,11 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
 export const FORFEIT_PENALTY = 2.5;
 
 // Cup wins in the honours part (C): SMFA and World Club cups 3, Top 100 cups 2,
-// Youth and other cups (Charity Shield, Youth Cup and Shield...) 1.
+// the Youth Cup and other cups (Charity Shield...) 1, the Youth Shield 0.5 (a
+// spin-off for teams knocked out in the Youth Cup's first knockout round).
 export const cupPoints = (competition = "") => {
   const key = String(competition).toLowerCase();
-  if (key.includes("youth")) return 1;
+  if (key.includes("youth")) return key.includes("shield") ? 0.5 : 1;
   if (key.includes("smfa") || key.includes("champions cup") || key.includes("world club") || /\bwc[cs]\b/.test(key)) return 3;
   if (key.includes("top 100")) return 2;
   return 1;

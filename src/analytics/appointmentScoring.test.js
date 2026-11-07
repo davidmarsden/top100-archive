@@ -33,9 +33,9 @@ test("scores honours from the archive, including promotions seen in the next sea
   expect(ann.total).toBeLessThanOrEqual(100);
 });
 
-test("cups count in honours: SMFA and World Club 3, Top 100 2, Youth and other cups 1, capped", () => {
-  expect(["SMFA Super Cup", "SMFA Champions Cup", "World Club Cup", "WCC", "Top 100 Cup", "Top 100 Shield", "Youth Cup", "Charity Shield"].map(cupPoints))
-    .toEqual([3, 3, 3, 3, 2, 2, 1, 1]);
+test("cups count in honours: SMFA and World Club 3, Top 100 2, Youth Cup and other cups 1, Youth Shield 0.5, capped", () => {
+  expect(["SMFA Super Cup", "SMFA Champions Cup", "World Club Cup", "WCC", "Top 100 Cup", "Top 100 Shield", "Youth Cup", "Charity Shield", "Youth Shield"].map(cupPoints))
+    .toEqual([3, 3, 3, 3, 2, 2, 1, 1, 0.5]);
   const without = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
   const cups = [
     { season: 27, competition: "SMFA Shield" },
