@@ -4,7 +4,7 @@
 // the SMFA cups. The sheet keeps the competitions the game doesn't run (the
 // Youth Cup and Shield), and seasons Sync hasn't read yet.
 //
-import { CLUB_ALIASES } from "./clubAliases";
+import { CLUB_ALIASES } from "./clubAliases.js";
 
 // The output keeps the sheet's wide layout (a Season column, then one column per
 // competition), so every reader of the sheet works unchanged.

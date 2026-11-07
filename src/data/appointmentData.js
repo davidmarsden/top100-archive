@@ -33,8 +33,9 @@ const statsKey = (season, division, club) => `${Number(season)}|${Number(divisio
 
 export const sameClub = (a, b) => canonicalClub(a) === canonicalClub(b);
 
-// sheetRows: from parseSheetTable; statsRows: statsArchive.json rows; liveRows: public_league_season_rows.
-export const buildArchive = ({ sheetRows = [], statsRows = [], liveRows = [] }) => {
+// sheetRows: from parseSheetTable; statsRows: statsArchive.json rows; liveRows: public_league_season_rows;
+// cupHonours: buildCupHonours() from src/data/cupHonours.js (optional: without it no cups count).
+export const buildArchive = ({ sheetRows = [], statsRows = [], liveRows = [], cupHonours = null }) => {
   const valueAdded = new Map();
   // Squad-strength rank (1 = strongest of the 100) for each club-season, from ETOT.
   const strengthRank = new Map();
@@ -83,7 +84,11 @@ export const buildArchive = ({ sheetRows = [], statsRows = [], liveRows = [] }) 
     return name ? resolveManagerName(name, sheetTeam || club || "", sheetRows) : name;
   };
 
-  return { rows, sheetRows, liveSeason, squadRankGain, archiveName };
+  // A manager's cup wins, matched by name or through the clubs they ran.
+  const cupsFor = (name) =>
+    cupHonours && name ? cupHonours.forManager(name, managerCareer(name, rows).map((row) => ({ season: row.season, club: row.team }))) : [];
+
+  return { rows, sheetRows, liveSeason, squadRankGain, archiveName, cupsFor };
 };
 
 const keyed = (list, archiveName) => Object.fromEntries(list.map((entry) => [entry.key ?? entry.name, archiveName(entry)]));
@@ -92,7 +97,7 @@ const keyed = (list, archiveName) => Object.fromEntries(list.map((entry) => [ent
 //           preferences: { key: [club, ...] }, discipline: { key: {...} }, activity: { key: {...} } }
 // Results are keyed by each applicant's key (or name).
 export const scoreVacancies = (archive, config) => {
-  const { rows, squadRankGain, archiveName } = archive;
+  const { rows, squadRankGain, archiveName, cupsFor = () => [] } = archive;
   const names = keyed(config.applicants, archiveName);
   const discipline = config.discipline || {};
   // An applicant with seasonClub (a vacancy's outgoing manager, scored for comparison) who has no
@@ -112,6 +117,7 @@ export const scoreVacancies = (archive, config) => {
       discipline: discipline[key],
       activity: { squadRankGain: squadRankGain(names[key]), ...((config.activity || {})[key] || {}) },
       level,
+      cups: cupsFor(names[key]),
     });
   // Each applicant is scored once per vacancy: the "record at the level" part depends on its division.
   const scoresByManager = Object.fromEntries(
@@ -142,7 +148,7 @@ export const scoreVacancies = (archive, config) => {
 // config: { currentSeason, managers: [{ key, name, club, display, ...review options }],
 //           supply: { newcomers: [names], leavers: [names] }, discipline: { key }, activity: { key } }
 export const reviewBottomThree = (archive, config) => {
-  const { rows, squadRankGain, archiveName } = archive;
+  const { rows, squadRankGain, archiveName, cupsFor = () => [] } = archive;
   const reviews = config.managers.map((entry) => {
     const key = entry.key ?? entry.name;
     const manager = archiveName(entry);
@@ -156,6 +162,7 @@ export const reviewBottomThree = (archive, config) => {
         discipline: (config.discipline || {})[key],
         activity: { squadRankGain: squadRankGain(manager), ...((config.activity || {})[key] || {}) },
         options: entry,
+        cups: cupsFor(manager),
       }),
     };
   });
@@ -190,7 +197,7 @@ export const levelBand = (percentile) =>
   percentile >= 90 ? "Top 10%" : percentile >= 75 ? "Top 25%" : percentile >= 50 ? "Above average" : percentile >= 25 ? "Below average" : "Bottom 25%";
 
 export const managerProfiles = (archive, { currentSeason }) => {
-  const { rows, squadRankGain } = archive;
+  const { rows, squadRankGain, cupsFor = () => [] } = archive;
   // The manager who holds each club now: the last name of a shared "A / B" entry.
   const current = rows
     .filter((row) => Number(row.season) === currentSeason && row.manager)
@@ -202,9 +209,10 @@ export const managerProfiles = (archive, { currentSeason }) => {
   const scored = current
     .filter((row) => !seen.has(row.manager) && seen.add(row.manager))
     .map((row) => {
-      const now = scoreApplicant({ manager: row.manager, currentSeason, rows, activity: { squadRankGain: squadRankGain(row.manager) } });
+      const cups = cupsFor(row.manager);
+      const now = scoreApplicant({ manager: row.manager, currentSeason, rows, activity: { squadRankGain: squadRankGain(row.manager) }, cups });
       const before = managerCareer(row.manager, earlierRows).some((r) => Number(r.season) === currentSeason - 1)
-        ? scoreApplicant({ manager: row.manager, currentSeason: currentSeason - 1, rows: earlierRows })
+        ? scoreApplicant({ manager: row.manager, currentSeason: currentSeason - 1, rows: earlierRows, cups })
         : null;
       return { row, now, total: round1(publicScore(now)), previous: before ? round1(publicScore(before)) : null };
     });
@@ -243,14 +251,14 @@ export const managerProfiles = (archive, { currentSeason }) => {
 // season is a returning manager. The name match is the same as everywhere else in the archive
 // ("Chris East" -> "East"), so the administrators should check it.
 export const applicantHistory = (archive, { currentSeason, applicants = [] }) => {
-  const { rows, archiveName } = archive;
+  const { rows, archiveName, cupsFor = () => [] } = archive;
   return applicants.map((applicant) => {
     const key = applicant.key ?? applicant.name;
     const name = archiveName({ name: String(applicant.name || "").slice(0, 120) });
     // Every archived season counts, including this one (someone who left part-way through it is returning).
     const career = name ? managerCareer(name, rows).filter((row) => row.season <= currentSeason) : [];
     if (!career.length) return { key, name: applicant.name, matched: null, returning: false, seasons: 0, score: 0, outOf: 80, parts: [], spells: [] };
-    const scored = scoreApplicant({ manager: name, currentSeason, rows });
+    const scored = scoreApplicant({ manager: name, currentSeason, rows, cups: cupsFor(name) });
     // Consecutive seasons at the same club, as one spell.
     const spells = [];
     career.forEach((row) => {

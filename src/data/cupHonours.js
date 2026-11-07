@@ -3,7 +3,7 @@
 // the Top 100 Cup and Shield, Charity Shield, SMFA cups, Youth Cup and Shield and
 // any World Club or other cup column in the winners sheet. Input is the merged
 // wide honours tables from loadHonoursTables() ([headers, ...rows]).
-import { sameClub } from "./gameHonours";
+import { sameClub } from "./gameHonours.js";
 
 const clean = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const tokens = (value) =>
@@ -19,6 +19,8 @@ export const isCupColumn = (header) => {
   const h = clean(header).toLowerCase();
   if (!h || SEASON_HEADERS.has(h)) return false;
   if (/play-?off/.test(h)) return false;
+  // The Youth Spoon (and any wooden spoon) is for finishing last, not a cup.
+  if (/spoon/.test(h)) return false;
   return !/^(division|div|d)\s*\d+$/.test(h) && !/^league\b/.test(h);
 };
 
@@ -58,15 +60,16 @@ export const buildCupHonours = (tables) => {
     managerWins.find((win) => win.season === season && win.competition === competition)?.winner || "";
   return {
     // career: [{ season, club }] from the league history. The honours tables
-    // can spell a manager differently ("Bojan" for "Bojan H"), so a win also
-    // counts when the manager ran the winning club that season and the names
-    // share a first word.
+    // often use full names where the league history is short ("André Guerra"
+    // for "Guerra", "James Mckenzie" for "J. Mckenzie"), so a win also counts
+    // when the manager ran the winning club that season and the names share a
+    // word of two letters or more.
     forManager: (name, career = []) =>
       managerWins
         .filter((win) => {
           if (sameManager(win.winner, name)) return true;
-          const first = tokens(name)[0];
-          if (!first || tokens(win.winner)[0] !== first) return false;
+          const words = tokens(name).filter((t) => t.length > 1);
+          if (!tokens(win.winner).some((t) => t.length > 1 && words.includes(t))) return false;
           const club = clubFor(win.season, win.competition);
           return Boolean(club) && career.some((spell) => Number(spell.season) === win.season && sameClub(spell.club, club));
         })

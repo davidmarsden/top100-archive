@@ -1,4 +1,4 @@
-import { allocateVacancies, managerSupply, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
+import { allocateVacancies, cupPoints, managerSupply, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
 
 const rows = [
   { season: 25, division: 2, position: 2, team: "Alpha", manager: "Ann" },
@@ -31,6 +31,23 @@ test("scores honours from the archive, including promotions seen in the next sea
   expect(bob.facts.bottomThreeLastFive).toEqual(["S27 D3 19th Beta"]);
   expect(ann.total).toBeGreaterThan(bob.total);
   expect(ann.total).toBeLessThanOrEqual(100);
+});
+
+test("cups count in honours: SMFA and World Club 3, Top 100 2, Youth and other cups 1, capped", () => {
+  expect(["SMFA Super Cup", "SMFA Champions Cup", "World Club Cup", "WCC", "Top 100 Cup", "Top 100 Shield", "Youth Cup", "Charity Shield"].map(cupPoints))
+    .toEqual([3, 3, 3, 3, 2, 2, 1, 1]);
+  const without = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
+  const cups = [
+    { season: 27, competition: "SMFA Shield" },
+    { season: 26, competition: "Top 100 Cup" },
+    { season: 25, competition: "Youth Cup" },
+    { season: 29, competition: "Top 100 Shield" }, // after the season scored: not counted
+  ];
+  const withCups = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, cups });
+  expect(withCups.facts).toMatchObject({ cups: 3, cupPoints: 6 });
+  expect(withCups.breakdown.honours).toBe(Math.min(15, without.breakdown.honours + 6));
+  const many = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, cups: Array.from({ length: 10 }, () => ({ season: 27, competition: "SMFA Super Cup" })) });
+  expect(many.breakdown.honours).toBe(15);
 });
 
 test("never counts a season taken over part-way through against the manager", () => {

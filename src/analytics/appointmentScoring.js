@@ -9,7 +9,8 @@
 // Score out of 100:
 //   A. Current season        20  finish (12) + result against squad strength (8)
 //   B. Last two seasons      15  finishes (9) + average value added (6)
-//   C. Honours               15  D1 titles 6, other titles 3, promotions 2, capped
+//   C. Honours               15  D1 titles 6, other titles 3, promotions 2, cups (SMFA and World Club 3,
+//                                Top 100 2, Youth and other cups 1), capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
 //   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (4),
@@ -40,6 +41,16 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
 
 // Points off an applicant's stability and conduct score for each forfeit this season.
 export const FORFEIT_PENALTY = 2.5;
+
+// Cup wins in the honours part (C): SMFA and World Club cups 3, Top 100 cups 2,
+// Youth and other cups (Charity Shield, Youth Cup and Shield...) 1.
+export const cupPoints = (competition = "") => {
+  const key = String(competition).toLowerCase();
+  if (key.includes("youth")) return 1;
+  if (key.includes("smfa") || key.includes("champions cup") || key.includes("world club") || /\bwc[cs]\b/.test(key)) return 3;
+  if (key.includes("top 100")) return 2;
+  return 1;
+};
 
 const ACTIVITY_PARTS = Object.freeze({ competitions: 4, market: 4, squadBuilding: 4, running: 3, community: 3, focus: 2 });
 
@@ -133,7 +144,8 @@ const nextDivisionLookup = (rows) => {
 };
 
 // level: the vacancy's division (D is scored against it); 1 when scoring without a vacancy.
-export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, level = 1 }) => {
+// cups: the manager's cup wins, [{ season, competition }] (league titles and play-offs come from rows).
+export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, level = 1, cups = [] }) => {
   const career = managerCareer(manager, rows);
   const current = career.find((row) => row.season === currentSeason) || null;
   const completed = career.filter((row) => row.season < currentSeason);
@@ -168,7 +180,9 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
     const next = nextDivision(row);
     return next !== null && next > row.division;
   }).length;
-  const C = Math.min(APPOINTMENT_WEIGHTS.honours, 6 * d1Titles + 3 * otherTitles + 2 * promotions);
+  const cupsWon = cups.filter((cup) => Number(cup.season) <= currentSeason);
+  const cupScore = cupsWon.reduce((sum, cup) => sum + cupPoints(cup.competition), 0);
+  const C = Math.min(APPOINTMENT_WEIGHTS.honours, 6 * d1Titles + 3 * otherTitles + 2 * promotions + cupScore);
 
   // D. Record at the vacancy's level: seasons in its division or above, and top-half finishes there.
   const d1Rows = career.filter((row) => row.division === 1);
@@ -219,6 +233,8 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
       otherTitles,
       promotions,
       relegations,
+      cups: cupsWon.length,
+      cupPoints: cupScore,
       d1Seasons: d1Rows.length,
       d1TopHalf,
       level,
@@ -298,8 +314,8 @@ export const REVIEW_MARGIN = 5;
 //   routine            a routine review (Divisions 3-5): reappointed unless barred, with the
 //                      score and any errors returned for context only
 // activity.forfeits: forfeits in Top 100 competitions this season.
-export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {} }) => {
-  const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity });
+export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {}, cups = [] }) => {
+  const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity, cups });
   const { facts } = scored;
   const tookOverMidSeason = Boolean(options.tookOverMidSeason || facts.currentJoinedMidSeason);
 
