@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Users, Search as SearchIcon } from "lucide-react";
 import { buildManagerPrediction } from "./utils/managerPredictor";
+import CupHonoursPanel from "./components/CupHonoursPanel";
 
 /* ------------------------------
    Status helpers (mirror App.js)
@@ -206,7 +207,7 @@ export const AppointmentProfile = ({ profile, managers }) => {
   );
 };
 
-const ManagerProfiles = ({ allPositionData = [], winnersSet }) => {
+const ManagerProfiles = ({ allPositionData = [], winnersSet, cupHonours }) => {
   const winners = useMemo(
     () => (winnersSet instanceof Set ? winnersSet : new Set()),
     [winnersSet]
@@ -398,6 +399,7 @@ const sackings = outcomeRows.filter((r) =>
 ).length;
 
 const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
+const cups = cupHonours ? cupHonours.forManager(name, rows.map((r) => ({ season: Number(r.season), club: r.team }))) : null;
 
     return (
       <div className="bg-white rounded-xl shadow p-4 space-y-4">
@@ -417,6 +419,13 @@ const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
             value={titles}
             color="bg-yellow-50 text-yellow-800 border-yellow-200"
           />
+          {cups && (
+            <StatPill
+              label="🥇 Cups"
+              value={cups.length}
+              color="bg-amber-50 text-amber-800 border-amber-200"
+            />
+          )}
           <StatPill
             label="⬆️ Auto Promotions"
             value={autoPromosBase + titlePromos}
@@ -443,6 +452,8 @@ const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
             color="bg-indigo-50 text-indigo-800 border-indigo-200"
           />
         </div>
+
+        {cups && <CupHonoursPanel honours={cups} withName="club" />}
 
         <AppointmentProfile profile={profileFor(name, rows)} managers={managerCount} />
 
