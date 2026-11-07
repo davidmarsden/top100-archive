@@ -36,3 +36,16 @@ test("a manager's and a club's cups, with the other side named", () => {
     { competition: "Youth Cup", count: 1, seasons: [27] },
   ]);
 });
+
+test("a differently spelt manager counts through the club they ran that season", () => {
+  const cups = buildCupHonours({
+    clubs: [["Season", "Top 100 Cup", "Youth Cup"], ["S27", "Bayern München", "Ajax"]],
+    managers: [["Season", "Top 100 Cup", "Youth Cup"], ["S27", "Bojan", "Bojan Other"]],
+  });
+  expect(cups.forManager("Bojan H")).toEqual([]);
+  expect(cups.forManager("Bojan H", [{ season: 27, club: "Bayern Munich" }])).toEqual([
+    { season: 27, competition: "Top 100 Cup", club: "Bayern München" },
+  ]);
+  // Same first word but another club that season: not theirs.
+  expect(cups.forManager("Tom Lee", [{ season: 27, club: "Lazio" }])).toEqual([]);
+});

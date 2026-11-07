@@ -399,7 +399,7 @@ const sackings = outcomeRows.filter((r) =>
 ).length;
 
 const seasonsManaged = new Set(rows.map((r) => (r.season || "").trim())).size;
-const cups = cupHonours ? cupHonours.forManager(name) : null;
+const cups = cupHonours ? cupHonours.forManager(name, rows.map((r) => ({ season: Number(r.season), club: r.team }))) : null;
 
     return (
       <div className="bg-white rounded-xl shadow p-4 space-y-4">

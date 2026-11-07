@@ -57,9 +57,19 @@ export const buildCupHonours = (tables) => {
   const managerFor = (season, competition) =>
     managerWins.find((win) => win.season === season && win.competition === competition)?.winner || "";
   return {
-    forManager: (name) =>
+    // career: [{ season, club }] from the league history. The honours tables
+    // can spell a manager differently ("Bojan" for "Bojan H"), so a win also
+    // counts when the manager ran the winning club that season and the names
+    // share a first word.
+    forManager: (name, career = []) =>
       managerWins
-        .filter((win) => sameManager(win.winner, name))
+        .filter((win) => {
+          if (sameManager(win.winner, name)) return true;
+          const first = tokens(name)[0];
+          if (!first || tokens(win.winner)[0] !== first) return false;
+          const club = clubFor(win.season, win.competition);
+          return Boolean(club) && career.some((spell) => Number(spell.season) === win.season && sameClub(spell.club, club));
+        })
         .map((win) => ({ season: win.season, competition: win.competition, club: clubFor(win.season, win.competition) })),
     forClub: (name) =>
       clubWins

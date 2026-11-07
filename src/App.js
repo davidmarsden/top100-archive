@@ -1050,7 +1050,10 @@ setDataLoaded(true);
         cupHonours && historyChart?.cupsFor
           ? historyChart.cupsFor.kind === "club"
             ? cupHonours.forClub(historyChart.cupsFor.name)
-            : cupHonours.forManager(historyChart.cupsFor.name)
+            : cupHonours.forManager(
+                historyChart.cupsFor.name,
+                historyChart.data.map((point) => ({ season: Number(String(point.season).replace(/\D/g, "")), club: point.club }))
+              )
           : null
       }
       cupHonoursWith={historyChart?.cupsFor?.kind === "club" ? "manager" : "club"}
