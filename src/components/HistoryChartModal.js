@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import CupHonoursPanel from "./CupHonoursPanel";
+import { sameClub } from "../data/gameHonours";
 
 const ordinal = (n) => {
   const num = Number(n);
@@ -51,6 +52,18 @@ const CustomDot = ({ cx, cy, payload, dataKey, stroke }) => {
   const labels = payload?.labels || payload?.[`${dataKey}_labels`] || [];
 const eventLabel = payload?.eventLabel;
 const clubColor = getClubColor(eventLabel);
+// Cup wins that season: a trophy above the point (count when more than one).
+const cups = payload?.cups || [];
+const cupMark = cups.length > 0 && (
+  <g>
+    <title>{cups.map((cup) => cup.competition).join(", ")}</title>
+    <circle cx={cx} cy={cy - 22} r={9} fill="#F59E0B" stroke="#92400E" strokeWidth={1} />
+    <text x={cx} y={cy - 18} textAnchor="middle" fontSize="11">🏆</text>
+    {cups.length > 1 && (
+      <text x={cx + 11} y={cy - 26} fontSize="10" fontWeight="bold" fill="#F59E0B">{cups.length}</text>
+    )}
+  </g>
+);
 
   const normalDot = (
     <circle
@@ -158,7 +171,7 @@ const clubColor = getClubColor(eventLabel);
   x1={cx}
   y1={28}
   x2={cx}
-  y2={cy - 12}
+  y2={cups.length ? cy - 34 : cy - 12}
   stroke={clubColor}
   strokeDasharray="4 4"
 />
@@ -176,6 +189,7 @@ const clubColor = getClubColor(eventLabel);
       )}
 
       {badge}
+      {cupMark}
     </g>
   );
 };
@@ -200,7 +214,21 @@ const HistoryChartModal = ({
     { dataKey: "globalRank", label: "Overall rank" },
   ];
 
-  const careerData = data;
+  // Each season's cup wins on the point, for the trophy marks and the tooltip.
+  const cupsBySeason = new Map();
+  (series ? [] : cupHonours || []).forEach((cup) => {
+    const key = `S${cup.season}`;
+    cupsBySeason.set(key, [...(cupsBySeason.get(key) || []), cup]);
+  });
+  // A season with two clubs (a mid-season move): each cup goes on the club that won it.
+  const pointsInSeason = (season) => data.filter((point) => String(point.season) === String(season)).length;
+  const careerData = cupsBySeason.size
+    ? data.map((point) => {
+        const seasonCups = cupsBySeason.get(String(point.season)) || [];
+        const cups = pointsInSeason(point.season) > 1 ? seasonCups.filter((cup) => !cup.club || sameClub(cup.club, point.club)) : seasonCups;
+        return { ...point, cups };
+      })
+    : data;
   
 
   return (
@@ -273,6 +301,12 @@ const HistoryChartModal = ({
     Relegated
   </span>
   <span>⛔ Auto-sacked</span>
+  {cupsBySeason.size > 0 && (
+    <span>
+      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-[9px]">🏆</span>{" "}
+      Cup win (number = how many)
+    </span>
+  )}
   <span>
     <span className="inline-block w-5 border-t border-dashed border-gray-500 align-middle"></span>{" "}
     Club change
@@ -407,6 +441,16 @@ const HistoryChartModal = ({
                                   >
                                     {item}
                                   </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {row.cups?.length > 0 && (
+                              <div className="mt-2">
+                                {row.cups.map((cup) => (
+                                  <div key={cup.competition} className="font-semibold text-amber-700">
+                                    🏆 {cup.competition}
+                                  </div>
                                 ))}
                               </div>
                             )}
