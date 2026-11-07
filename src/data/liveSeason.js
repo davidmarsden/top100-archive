@@ -25,7 +25,17 @@ const splitManagers = (value) =>
 // tokens of the live name. Otherwise keep the live name.
 // A sheet name with an initial ("Tom L") only counts by club: on name alone it
 // would claim any "Tom ..." (Tom Lee is not Tom L).
+// A second Soccer Manager account carries a marker ("Gianluca Ghio (2nd)"). It is a
+// different manager record: resolve the name without the marker, then keep it
+// ("Ghio (2nd)"), so it never merges with the first account's history.
+const ACCOUNT_MARKER = /\s*\((\d+(?:st|nd|rd|th)?)\)\s*$/i;
+
 export const resolveManagerName = (liveName, team, sheetRows = []) => {
+  const marker = clean(liveName).match(ACCOUNT_MARKER);
+  if (marker) {
+    const base = resolveManagerName(clean(liveName).replace(ACCOUNT_MARKER, ""), team, sheetRows);
+    return base ? `${base} (${marker[1]})` : "";
+  }
   const live = clean(liveName);
   if (!live) return "";
   const liveTokens = new Set(tokens(live));

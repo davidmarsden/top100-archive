@@ -55,3 +55,12 @@ test("a sheet name with an initial is not matched to a different manager by name
   // The club's own manager still keeps the sheet's short name.
   expect(resolveManagerName("Tom Lxxx", "Burnley", sheet)).toBe("Tom L");
 });
+
+test("a second Soccer Manager account stays a separate manager", () => {
+  const rows = [
+    { season: "27", team: "Independiente", manager: "Ghio" },
+    { season: "27", team: "Hellas Verona", manager: "Someone" },
+  ];
+  expect(resolveManagerName("Gianluca Ghio", "Independiente", rows)).toBe("Ghio");
+  expect(resolveManagerName("Gianluca Ghio (2nd)", "Hellas Verona", rows)).toBe("Ghio (2nd)");
+});
