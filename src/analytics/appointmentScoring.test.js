@@ -33,9 +33,12 @@ test("scores honours from the archive, including promotions seen in the next sea
   expect(ann.total).toBeLessThanOrEqual(100);
 });
 
-test("cups count in honours: SMFA and World Club 3, Top 100 2, Youth Cup and other cups 1, Youth Shield 0.5, capped", () => {
-  expect(["SMFA Super Cup", "SMFA Champions Cup", "World Club Cup", "WCC", "Top 100 Cup", "Top 100 Shield", "Youth Cup", "Charity Shield", "Youth Shield"].map(cupPoints))
-    .toEqual([3, 3, 3, 3, 2, 2, 1, 1, 0.5]);
+test("cups count in honours, by competition and (for SMFA) season, capped", () => {
+  const at = (season) => (competition) => cupPoints(competition, season);
+  expect(["SMFA Super Cup", "SMFA Champions Cup", "SMFA Shield", "World Club Cup", "WCC", "World Club Shield", "Top 100 Cup", "Top 100 Shield", "Youth Cup", "Charity Shield", "Youth Shield"].map(at(27)))
+    .toEqual([3, 3, 3, 3, 3, 1.5, 2, 2, 1, 1, 0.5]);
+  // Before Soccer Manager's Gold update (S23 and earlier), SMFA trophies count nothing.
+  expect(["SMFA Super Cup", "SMFA Champions Cup", "SMFA Shield", "Top 100 Cup"].map(at(23))).toEqual([0, 0, 0, 2]);
   const without = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
   const cups = [
     { season: 27, competition: "SMFA Shield" },
