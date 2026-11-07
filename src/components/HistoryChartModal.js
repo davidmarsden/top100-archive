@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import CupHonoursPanel from "./CupHonoursPanel";
 
 const ordinal = (n) => {
   const num = Number(n);
@@ -187,6 +188,8 @@ const HistoryChartModal = ({
   data = [],
   series,
   summary,
+  cupHonours,
+  cupHonoursWith,
   showEventIcons = true,
   setShowEventIcons,
 }) => {
@@ -206,7 +209,7 @@ const HistoryChartModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-6"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-6 max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 mb-6">
@@ -225,6 +228,12 @@ const HistoryChartModal = ({
             ×
           </button>
         </div>
+
+        {cupHonours && (
+          <div className="mb-4">
+            <CupHonoursPanel honours={cupHonours} withName={cupHonoursWith} />
+          </div>
+        )}
 
         <div className="mb-4">
           <button

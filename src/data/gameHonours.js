@@ -40,7 +40,7 @@ const knownClub = (value) => {
 // short names: "Beddows" for "Sir Stephen Beddows (God)", "Bayern Munich" for
 // "Bayern München"). Two clubs the alias list knows are the same only if they
 // are the same club there, so "Inter Milan" never keeps a sheet's "AC Milan".
-const sameClub = (a, b) => {
+export const sameClub = (a, b) => {
   const x = knownClub(a), y = knownClub(b);
   if (x && y) return x === y;
   return sameName(clubTokens)(a, b);

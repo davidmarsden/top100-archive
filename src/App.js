@@ -1,6 +1,7 @@
 // src/App.js
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { loadHonoursTables } from "./data/honoursSource";
+import { buildCupHonours } from "./data/cupHonours";
 
 import Charts from "./Charts";
 import ManagerProfilesTab from "./components/ManagerProfilesTab";
@@ -218,6 +219,7 @@ const Top100Archive = () => {
         
   const openClubChart = (clubName) => {
     setHistoryChart({
+      cupsFor: { kind: "club", name: clubName },
       title: `${clubName} trajectory`,
       subtitle: "Overall Top 100 league rank by season",
       data: buildClubTrajectory(clubName),
@@ -306,6 +308,7 @@ const openManagerChart = (managerName) => {
   const data = buildManagerCareer(managerName);
 
   setHistoryChart({
+    cupsFor: { kind: "manager", name: managerName },
     title: `${managerName} career`,
     subtitle: "Manager career rank by season",
     data,
@@ -368,6 +371,8 @@ const openManagerComparisonChart = () => {
 
   // winners set
   const [playoffWinnersSet, setPlayoffWinnersSet] = useState(null);
+  // Cup honours (everything but league titles and play-offs) for profiles.
+  const [cupHonours, setCupHonours] = useState(null);
 
 const getHistoryLabels = (r) => {
   const labels = [];
@@ -569,7 +574,9 @@ setDataLoaded(true);
   const loadWinners = useCallback(async () => {
     try {
       // Game competitions from Soccer Manager Sync over the winners sheet.
-      const { clubs: values } = await loadHonoursTables();
+      const tables = await loadHonoursTables();
+      setCupHonours(buildCupHonours(tables));
+      const values = tables.clubs;
       if (!values?.length) return;
 
       const [headers, ...rows] = values;
@@ -1012,7 +1019,7 @@ setDataLoaded(true);
           (dataLoaded ? <Charts thresholdHistory={thresholdHistory} /> : <DataPlaceholder />)}
         {activeTab === "managers" &&
           (dataLoaded ? (
-            <ManagerProfilesTab allPositionData={allPositionData} winnersSet={playoffWinnersSet} />
+            <ManagerProfilesTab allPositionData={allPositionData} winnersSet={playoffWinnersSet} cupHonours={cupHonours} />
           ) : (
             <DataPlaceholder />
           ))}
@@ -1039,6 +1046,14 @@ setDataLoaded(true);
       data={historyChart?.data || []}
       series={historyChart?.series}
       summary={historyChart?.summary}
+      cupHonours={
+        cupHonours && historyChart?.cupsFor
+          ? historyChart.cupsFor.kind === "club"
+            ? cupHonours.forClub(historyChart.cupsFor.name)
+            : cupHonours.forManager(historyChart.cupsFor.name)
+          : null
+      }
+      cupHonoursWith={historyChart?.cupsFor?.kind === "club" ? "manager" : "club"}
       showEventIcons={showEventIcons}
       setShowEventIcons={setShowEventIcons}
     />
