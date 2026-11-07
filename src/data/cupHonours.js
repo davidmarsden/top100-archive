@@ -19,8 +19,8 @@ export const isCupColumn = (header) => {
   const h = clean(header).toLowerCase();
   if (!h || SEASON_HEADERS.has(h)) return false;
   if (/play-?off/.test(h)) return false;
-  // The Youth Spoon (and any wooden spoon) is for finishing last, not a cup.
-  if (/spoon/.test(h)) return false;
+  // Not counted: the Youth Spoon (and any wooden spoon) and the World Cup.
+  if (/spoon/.test(h) || /\bworld cup\b/.test(h)) return false;
   return !/^(division|div|d)\s*\d+$/.test(h) && !/^league\b/.test(h);
 };
 
