@@ -25,7 +25,28 @@ const splitManagers = (value) =>
 // tokens of the live name. Otherwise keep the live name.
 // A sheet name with an initial ("Tom L") only counts by club: on name alone it
 // would claim any "Tom ..." (Tom Lee is not Tom L).
+// A second Soccer Manager account carries a marker ("Gianluca Ghio (2nd)"). It is a
+// different manager record: resolve the name without the marker, then keep it
+// ("Ghio (2nd)"), so it never merges with the first account's history.
+const ACCOUNT_MARKER = /\s*\((\d+(?:st|nd|rd|th)?)\)\s*$/i;
+
+const markerOf = (name) => (clean(name).match(ACCOUNT_MARKER)?.[1] || "").toLowerCase();
+const withoutMarker = (name) => clean(name).replace(ACCOUNT_MARKER, "");
+// The rows with each cell's managers narrowed to those `keep` accepts (markers removed).
+const narrowManagers = (sheetRows, keep) =>
+  sheetRows.map((row) => ({ ...row, manager: splitManagers(row.manager).filter(keep).map(withoutMarker).join(" / ") }));
+
 export const resolveManagerName = (liveName, team, sheetRows = []) => {
+  const marker = clean(liveName).match(ACCOUNT_MARKER);
+  if (marker) {
+    const mark = marker[1].toLowerCase();
+    const base = withoutMarker(liveName);
+    if (!base) return "";
+    // The same account already in the sheet ("Ghio (2nd)") first, then the unmarked names.
+    const marked = resolveManagerName(base, team, narrowManagers(sheetRows, (name) => markerOf(name) === mark));
+    if (marked !== base) return `${marked} (${marker[1]})`;
+    return `${resolveManagerName(base, team, narrowManagers(sheetRows, (name) => !markerOf(name)))} (${marker[1]})`;
+  }
   const live = clean(liveName);
   if (!live) return "";
   const liveTokens = new Set(tokens(live));
