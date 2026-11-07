@@ -9,8 +9,9 @@
 // Score out of 100:
 //   A. Current season        20  finish (12) + result against squad strength (8)
 //   B. Last two seasons      15  finishes (9) + average value added (6)
-//   C. Honours               15  D1 titles 6, other titles 3, promotions 2, cups (SMFA and World Club 3,
-//                                Top 100 2, Youth Cup and other cups 1, Youth Shield 0.5), capped
+//   C. Honours               15  D1 titles 6, other titles 3, promotions 2, cups (see cupPoints:
+//                                SMFA 3 from S24, World Club Cup 3, Top 100 2, Youth Cup and others 1,
+//                                World Club Shield 1.5, Youth Shield 0.5), capped
 //   D. Record at the level   10  seasons at or above the vacancy's division (6) + top-half finishes there (4)
 //   E. Stability, conduct    20  tenure (5) + bottom-three record (10) + discipline (5)
 //   F. Activity, contribution 20 measured: Top 100 competitions entered in the last two seasons (4),
@@ -42,13 +43,20 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
 // Points off an applicant's stability and conduct score for each forfeit this season.
 export const FORFEIT_PENALTY = 2.5;
 
-// Cup wins in the honours part (C): SMFA and World Club cups 3, Top 100 cups 2,
-// the Youth Cup and other cups (Charity Shield...) 1, the Youth Shield 0.5 (a
-// spin-off for teams knocked out in the Youth Cup's first knockout round).
-export const cupPoints = (competition = "") => {
+// Cup wins in the honours part (C):
+//   SMFA cups 3, from S24: before Soccer Manager's update of 23 August 2024 (day 67 of S23)
+//     only Gold managers could pick SMFA teams and tactics, so those trophies count nothing;
+//   World Club Cup 3, World Club Shield 1.5;
+//   Top 100 Cup and Shield 2;
+//   Youth Cup and other cups (Charity Shield...) 1, Youth Shield 0.5.
+// A shield beside a cup (Youth, World Club) is a spin-off for teams knocked out early: half the cup.
+export const SMFA_FULL_VALUE_FROM = 24;
+export const cupPoints = (competition = "", season = null) => {
   const key = String(competition).toLowerCase();
-  if (key.includes("youth")) return key.includes("shield") ? 0.5 : 1;
-  if (key.includes("smfa") || key.includes("champions cup") || key.includes("world club") || /\bwc[cs]\b/.test(key)) return 3;
+  const spinOff = key.includes("shield");
+  if (key.includes("youth")) return spinOff ? 0.5 : 1;
+  if (key.includes("world club") || /\bwc[cs]\b/.test(key)) return key === "wcs" || spinOff ? 1.5 : 3;
+  if (key.includes("smfa") || key.includes("champions cup")) return Number(season) >= SMFA_FULL_VALUE_FROM ? 3 : 0;
   if (key.includes("top 100")) return 2;
   return 1;
 };
@@ -182,7 +190,7 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
     return next !== null && next > row.division;
   }).length;
   const cupsWon = cups.filter((cup) => Number(cup.season) <= currentSeason);
-  const cupScore = cupsWon.reduce((sum, cup) => sum + cupPoints(cup.competition), 0);
+  const cupScore = cupsWon.reduce((sum, cup) => sum + cupPoints(cup.competition, cup.season), 0);
   const C = Math.min(APPOINTMENT_WEIGHTS.honours, 6 * d1Titles + 3 * otherTitles + 2 * promotions + cupScore);
 
   // D. Record at the vacancy's level: seasons in its division or above, and top-half finishes there.
