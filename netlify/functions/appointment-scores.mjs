@@ -118,6 +118,21 @@ export const handler = async (event) => {
   }
 };
 
+// Confirmed mid-season spells from public_manager_spells (an empty list if unavailable).
+const loadSpells = async () => {
+  try {
+    const result = await json(`${SUPABASE_URL}/rest/v1/rpc/public_manager_spells`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_world_slug: "top-100" }),
+    });
+    return Array.isArray(result?.spells) ? result.spells : [];
+  } catch (error) {
+    console.error(`appointment-scores spells: ${error.message}`);
+    return [];
+  }
+};
+
 // Public appointment profiles: from public records only, so any site may read them.
 const profilesResponse = async (query) => {
   const headers = {
@@ -131,7 +146,10 @@ const profilesResponse = async (query) => {
     const latest = Math.max(...archive.rows.map((row) => Number(row.season)).filter(Number.isFinite));
     const requested = Number(query.season);
     const currentSeason = Number.isInteger(requested) && requested > 0 && requested <= latest ? requested : latest;
-    let profiles = managerProfiles(archive, { currentSeason });
+    // Confirmed mid-season takeovers this season (published by the Top 100 app); without them,
+    // every manager is scored on their club's whole season.
+    const spells = currentSeason === latest ? await loadSpells() : [];
+    let profiles = managerProfiles(archive, { currentSeason, spells });
     const managers = profiles.length;
     const manager = String(query.manager || "").slice(0, 120);
     const club = String(query.club || "").slice(0, 120);

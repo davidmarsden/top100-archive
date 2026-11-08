@@ -26,6 +26,13 @@
 // A season a manager took over part-way through never counts against them
 // (rulebook 3.1): it is not a bottom-three finish for E or for eligibility.
 //
+// Mid-season spells: when the administrators have confirmed when a manager took over their
+// current club this season (spell: { startedOn, games, points, confirmed }), A is scored on the
+// manager's own games: their points per game over a full season, and the finish that would have
+// earned in their division (against the other clubs' points per game). The result against squad
+// strength gets half marks, since the club's predicted finish includes the predecessor's games.
+// Under MIN_SPELL_GAMES games, A gets half marks.
+//
 // Eligibility (any failure rules an applicant out):
 //   - at least a second season at their current club (archive recruitment threshold);
 //   - no open sanction (transfer ban or upheld breach), entered by administrators;
@@ -42,6 +49,9 @@ export const APPOINTMENT_WEIGHTS = Object.freeze({
 
 // Points off an applicant's stability and conduct score for each forfeit this season.
 export const FORFEIT_PENALTY = 2.5;
+
+// A mid-season spell scores on the manager's own games once it has this many.
+export const MIN_SPELL_GAMES = 10;
 
 // Cup wins in the honours part (C):
 //   SMFA cups 3, from S24: before Soccer Manager's update of 23 August 2024 (day 67 of S23)
@@ -87,6 +97,7 @@ const num = (value) => {
   return Number.isFinite(n) ? n : null;
 };
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+const ordinalText = (n) => { const v = n % 100; return `${n}${v >= 11 && v <= 13 ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th'}`; };
 const round1 = (value) => Math.round(value * 10) / 10;
 
 const normalise = (name) =>
@@ -154,17 +165,43 @@ const nextDivisionLookup = (rows) => {
 
 // level: the vacancy's division (D is scored against it); 1 when scoring without a vacancy.
 // cups: the manager's cup wins, [{ season, competition }] (league titles and play-offs come from rows).
-export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, level = 1, cups = [] }) => {
+// A confirmed mid-season spell, scored on the manager's own games: the finish their points per
+// game would have earned over a full season, against the other clubs in the division.
+export const spellFinish = (spell, current, rows = []) => {
+  const games = num(spell?.games);
+  const points = num(spell?.points);
+  if (!spell || spell.confirmed === false || !current || games === null || points === null) return null;
+  const seasonGames = 2 * (DIVISION_SIZE - 1);
+  if (games < 0 || points < 0 || games >= seasonGames) return null;
+  // Taken over before a game was played, or too few games yet: half marks for this season.
+  if (games < MIN_SPELL_GAMES) return { games, points, enough: false };
+  const rate = points / games;
+  const others = rows.filter((row) => num(row.season) === current.season && num(row.division) === current.division && row.team !== current.team);
+  // A season's sheet rows carry no games played: a season copied into the sheet is complete.
+  const played = (row) => num(row.played) ?? (row.live ? null : seasonGames);
+  const ahead = others.filter((row) => played(row) > 0 && num(row.points) / played(row) > rate).length;
+  return { games, points, enough: true, projectedPoints: Math.round(rate * seasonGames), projectedPosition: 1 + ahead };
+};
+
+export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, level = 1, cups = [], spell = null }) => {
   const career = managerCareer(manager, rows);
   const current = career.find((row) => row.season === currentSeason) || null;
   const completed = career.filter((row) => row.season < currentSeason);
   const nextDivision = nextDivisionLookup(rows);
   const notes = [];
 
-  // A. Current season.
+  // A. Current season (or the manager's own games, for a confirmed mid-season spell).
+  const midSpell = spellFinish(spell, current, rows);
   const currentFinish = current ? finishScore(current.division, current.position) : 0;
-  const currentValueAdded = current ? num(current.valueAdded) : null;
-  const A = current ? 12 * currentFinish + valueAddedScore(currentValueAdded, 8, 0.4) : 0;
+  const currentValueAdded = current && !midSpell ? num(current.valueAdded) : null;
+  let A = current ? 12 * currentFinish + valueAddedScore(currentValueAdded, 8, 0.4) : 0;
+  if (midSpell?.enough) {
+    A = 12 * finishScore(current.division, midSpell.projectedPosition) + valueAddedScore(null, 8, 0.4);
+    notes.push(`Took over mid-season: scored on ${midSpell.games} games (${midSpell.points} points), a ${ordinalText(midSpell.projectedPosition)}-place pace.`);
+  } else if (midSpell) {
+    A = APPOINTMENT_WEIGHTS.current / 2;
+    notes.push(`Took over mid-season with only ${midSpell.games} games played: half marks for this season.`);
+  }
   if (!current) notes.push("No current-season club found.");
 
   // B. Last two completed seasons.
@@ -252,7 +289,8 @@ export const scoreApplicant = ({ manager, currentSeason, rows = [], discipline =
       tenure,
       bottomThreeLastFive: bottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
       midSeasonBottomThree: midSeasonBottomThree.map((row) => `S${row.season} D${row.division} ${row.position}th ${row.team}`),
-      currentJoinedMidSeason: Boolean(current?.joinedMidSeason),
+      currentJoinedMidSeason: Boolean(current?.joinedMidSeason || midSpell),
+      spell: midSpell ? { startedOn: spell.startedOn || null, ...midSpell } : null,
       activity: Object.fromEntries(Object.entries(activityParts).map(([part, points]) => [part, points === null ? null : round1(points)])),
       sanctions: num(discipline.sanctions) || 0,
       forfeits,
@@ -323,8 +361,8 @@ export const REVIEW_MARGIN = 5;
 //   routine            a routine review (Divisions 3-5): reappointed unless barred, with the
 //                      score and any errors returned for context only
 // activity.forfeits: forfeits in Top 100 competitions this season.
-export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {}, cups = [] }) => {
-  const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity, cups });
+export const reviewSackedManager = ({ manager, currentSeason, rows = [], discipline = {}, activity = {}, options = {}, cups = [], spell = null }) => {
+  const scored = scoreApplicant({ manager, currentSeason, rows, discipline, activity, cups, spell });
   const { facts } = scored;
   const tookOverMidSeason = Boolean(options.tookOverMidSeason || facts.currentJoinedMidSeason);
 

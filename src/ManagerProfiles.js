@@ -192,6 +192,16 @@ export const AppointmentProfile = ({ profile, managers }) => {
         {profile.strengths.length > 0 && <StatPill label="Strengths" value={profile.strengths.join(", ")} color="bg-emerald-50 text-emerald-800 border-emerald-200" />}
         {profile.weaknesses.length > 0 && <StatPill label="To work on" value={profile.weaknesses.join(", ")} color="bg-amber-50 text-amber-800 border-amber-200" />}
       </div>
+      {profile.spell && (
+        <p className="text-sm text-gray-700">
+          Took over {profile.club}
+          {profile.since ? ` on ${new Date(profile.since).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : " during the season"}:{" "}
+          {profile.spell.games} games, {profile.spell.points} points.
+          {profile.spell.enough
+            ? ` "This season" is scored on those games: a ${ordinalRank(profile.spell.projectedPosition)}-place pace over a full season.`
+            : ' Too few games yet to judge, so "this season" gets half marks.'}
+        </p>
+      )}
       <div className="space-y-1">
         {profile.parts.map((part) => (
           <div key={part.part} className="flex items-center gap-3 text-sm">

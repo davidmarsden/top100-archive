@@ -94,7 +94,8 @@ export const buildArchive = ({ sheetRows = [], statsRows = [], liveRows = [], cu
 const keyed = (list, archiveName) => Object.fromEntries(list.map((entry) => [entry.key ?? entry.name, archiveName(entry)]));
 
 // config: { currentSeason, vacancies: [{ club, division }], applicants: [{ key, name, club, display, seasonClub? }],
-//           preferences: { key: [club, ...] }, discipline: { key: {...} }, activity: { key: {...} } }
+//           preferences: { key: [club, ...] }, discipline: { key: {...} }, activity: { key: {...} },
+//           spells: { key: { startedOn, games, points, confirmed } } (confirmed mid-season takeovers) }
 // Results are keyed by each applicant's key (or name).
 export const scoreVacancies = (archive, config) => {
   const { rows, squadRankGain, archiveName, cupsFor = () => [] } = archive;
@@ -118,6 +119,7 @@ export const scoreVacancies = (archive, config) => {
       activity: { squadRankGain: squadRankGain(names[key]), ...((config.activity || {})[key] || {}) },
       level,
       cups: cupsFor(names[key]),
+      spell: (config.spells || {})[key] || null,
     });
   // Each applicant is scored once per vacancy: the "record at the level" part depends on its division.
   const scoresByManager = Object.fromEntries(
@@ -163,6 +165,7 @@ export const reviewBottomThree = (archive, config) => {
         activity: { squadRankGain: squadRankGain(manager), ...((config.activity || {})[key] || {}) },
         options: entry,
         cups: cupsFor(manager),
+        spell: (config.spells || {})[key] || null,
       }),
     };
   });
@@ -196,7 +199,9 @@ const percentileOf = (value, values) => {
 export const levelBand = (percentile) =>
   percentile >= 90 ? "Top 10%" : percentile >= 75 ? "Top 25%" : percentile >= 50 ? "Above average" : percentile >= 25 ? "Below average" : "Bottom 25%";
 
-export const managerProfiles = (archive, { currentSeason }) => {
+// spells: confirmed mid-season spells ({ club, games, points, startedOn }, from public_manager_spells),
+// matched to each manager's current club.
+export const managerProfiles = (archive, { currentSeason, spells = [] }) => {
   const { rows, squadRankGain, cupsFor = () => [] } = archive;
   // The manager who holds each club now: the last name of a shared "A / B" entry.
   const current = rows
@@ -210,7 +215,8 @@ export const managerProfiles = (archive, { currentSeason }) => {
     .filter((row) => !seen.has(row.manager) && seen.add(row.manager))
     .map((row) => {
       const cups = cupsFor(row.manager);
-      const now = scoreApplicant({ manager: row.manager, currentSeason, rows, activity: { squadRankGain: squadRankGain(row.manager) }, cups });
+      const spell = spells.find((entry) => entry.club && sameClub(entry.club, row.team)) || null;
+      const now = scoreApplicant({ manager: row.manager, currentSeason, rows, activity: { squadRankGain: squadRankGain(row.manager) }, cups, spell });
       const before = managerCareer(row.manager, earlierRows).some((r) => Number(r.season) === currentSeason - 1)
         ? scoreApplicant({ manager: row.manager, currentSeason: currentSeason - 1, rows: earlierRows, cups })
         : null;
@@ -229,6 +235,9 @@ export const managerProfiles = (archive, { currentSeason }) => {
       club: row.team,
       division: Number(row.division),
       position: Number(row.position),
+      // A confirmed mid-season takeover: when, and the manager's own record since.
+      since: now.facts.spell?.startedOn || null,
+      spell: now.facts.spell || null,
       score: total,
       outOf: 80,
       // Place among this season's managers (joint places share the higher one).
