@@ -88,6 +88,13 @@ test("scores a confirmed mid-season spell on the manager's own games", () => {
   expect(scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, confirmed: false } }).breakdown.current).toBe(4.2);
   expect(scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, games: 6, points: 10 } }).breakdown.current).toBe(10);
   expect(scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, games: 38, points: 48 } }).breakdown.current).toBe(4.2);
+  // Taken over before a game: half marks, and the takeover is recognised.
+  const unplayed = scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, games: 0, points: 0 } });
+  expect(unplayed.breakdown.current).toBe(10);
+  expect(unplayed.facts.currentJoinedMidSeason).toBe(true);
+  // Once the season is in the sheet (points, no games played), the rate is against 38 games.
+  const sheet = table.map(({ played, ...row }) => row);
+  expect(spellFinish({ ...spell, points: 30 }, { season: 28, division: 3, team: "Saint" }, sheet)).toMatchObject({ projectedPoints: 52, projectedPosition: 3 });
 });
 
 test("scores activity from measured data, with half marks for anything missing and none for no role", () => {

@@ -172,11 +172,14 @@ export const spellFinish = (spell, current, rows = []) => {
   const points = num(spell?.points);
   if (!spell || spell.confirmed === false || !current || games === null || points === null) return null;
   const seasonGames = 2 * (DIVISION_SIZE - 1);
-  if (games <= 0 || games >= seasonGames) return null;
+  if (games < 0 || points < 0 || games >= seasonGames) return null;
+  // Taken over before a game was played, or too few games yet: half marks for this season.
   if (games < MIN_SPELL_GAMES) return { games, points, enough: false };
   const rate = points / games;
   const others = rows.filter((row) => num(row.season) === current.season && num(row.division) === current.division && row.team !== current.team);
-  const ahead = others.filter((row) => num(row.played) > 0 && num(row.points) / num(row.played) > rate).length;
+  // A season's sheet rows carry no games played: a season copied into the sheet is complete.
+  const played = (row) => num(row.played) ?? (row.live ? null : seasonGames);
+  const ahead = others.filter((row) => played(row) > 0 && num(row.points) / played(row) > rate).length;
   return { games, points, enough: true, projectedPoints: Math.round(rate * seasonGames), projectedPosition: 1 + ahead };
 };
 
