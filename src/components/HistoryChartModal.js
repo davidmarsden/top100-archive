@@ -1,4 +1,5 @@
 import React from "react";
+import { spellLines } from "../data/clubSpells";
 import {
   LineChart,
   Line,
@@ -413,7 +414,16 @@ const HistoryChartModal = ({
                         ) : (
                           <div>
                             <div>{row.club}</div>
-                            {row.manager && <div>Manager: {row.manager}</div>}
+                            {row.spells?.length ? (
+                              <div>
+                                <div>Managers this season:</div>
+                                {spellLines(row.spells, row.played || row.won + row.drawn + row.lost).map((line) => (
+                                  <div key={line} className="pl-2">{line}</div>
+                                ))}
+                              </div>
+                            ) : (
+                              row.manager && <div>Manager: {row.manager}</div>
+                            )}
                             <div>Division: {row.division}</div>
                             <div>Position: {ordinal(row.position)}</div>
                             <div>Overall rank: #{row.globalRank}</div>

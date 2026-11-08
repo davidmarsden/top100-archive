@@ -19,6 +19,7 @@ import ArchiveControls from "./components/ArchiveControls";
 import ManagerAnalyticsRoute from "./components/ManagerAnalyticsRoute";
 import LiveSeasonBanner from "./components/LiveSeasonBanner";
 import { buildLiveSeasonRows } from "./data/liveSeason";
+import { indexClubSpells, spellsFor as clubSpellsFor } from "./data/clubSpells";
 import { getArchiveWorld, worldQuery } from "./config/world";
 import { tabsForWorld } from "./config/archiveTabs";
 
@@ -200,6 +201,8 @@ const Top100Archive = () => {
   const [allPositionData, setAllPositionData] = useState([]);
   const [sheetPositionData, setSheetPositionData] = useState([]);
   const [liveSeasonRows, setLiveSeasonRows] = useState([]);
+  // Mid-season manager changes, by club-season (from the managers' Soccer Manager profiles).
+  const [clubSpells, setClubSpells] = useState(() => new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -207,11 +210,13 @@ const Top100Archive = () => {
   const [historyChart, setHistoryChart] = useState(null);  
   const [comparisonManagers, setComparisonManagers] = useState([]);
 
+  const spellsOf = (season, club) => clubSpellsFor(clubSpells, season, club);
+
   const buildClubTrajectory = (clubName) =>
   allPositionData
     .filter((r) => r.team === clubName)
     .sort((a, b) => Number(a.season) - Number(b.season))
-    .map((r) => makeHistoryPoint(r));
+    .map((r) => makeHistoryPoint(r, { spells: spellsOf(r.season, r.team) }));
 
 
 
@@ -615,6 +620,21 @@ setDataLoaded(true);
     loadWinners();
   }, [loadFromGoogleSheets, loadWinners]);
 
+  // Who managed each club when the manager changed during a season.
+  useEffect(() => {
+    if (!WORLD.sheet) return undefined;
+    let live = true;
+    fetch("/.netlify/functions/club-spells")
+      .then((res) => (res.ok ? res.json() : { spells: [] }))
+      .then((body) => {
+        if (live) setClubSpells(indexClubSpells(Array.isArray(body.spells) ? body.spells : []));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
   // Current season, live from Soccer Manager Sync, until it is in the sheet.
   useEffect(() => {
     // Top 100 Regen's live season is already in its league history.
@@ -970,6 +990,7 @@ setDataLoaded(true);
       openClubChart={openClubChart}
       openManagerChart={openManagerChart}
       toggleComparisonManager={toggleComparisonManager}
+      spellsOf={spellsOf}
     />
   ) : (
     <DataPlaceholder />
