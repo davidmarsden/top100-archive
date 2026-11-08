@@ -1,4 +1,5 @@
 import React from "react";
+import { spellLines } from "../data/clubSpells";
 import { Search } from "lucide-react";
 
 const SearchTab = ({
@@ -15,6 +16,7 @@ const SearchTab = ({
   openClubChart,
   openManagerChart,
   toggleComparisonManager,
+  spellsOf = () => null,
 }) => {
   const filtered = allPositionData
     .filter(
@@ -78,6 +80,13 @@ const SearchTab = ({
                     <div>
                       <p className="text-gray-500">Manager</p>
                       <p className="font-semibold">{team.manager || "Unknown"}</p>
+                      {spellsOf(team.season, team.team) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {spellLines(spellsOf(team.season, team.team), Number(team.played) || Number(team.won) + Number(team.drawn) + Number(team.lost)).map((line) => (
+                            <span key={line} className="block">{line}</span>
+                          ))}
+                        </p>
+                      )}
                     </div>
 
                     <div>
