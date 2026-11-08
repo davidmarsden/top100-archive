@@ -1,4 +1,4 @@
-import { allocateVacancies, cupPoints, managerSupply, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant } from "./appointmentScoring";
+import { allocateVacancies, cupPoints, managerSupply, eligibility, finishedSeasonWith, finishScore, reviewSackedManager, scoreApplicant, spellFinish } from "./appointmentScoring";
 
 const rows = [
   { season: 25, division: 2, position: 2, team: "Alpha", manager: "Ann" },
@@ -66,6 +66,28 @@ test("never counts a season taken over part-way through against the manager", ()
   const latecomer = scoreApplicant({ manager: "New", currentSeason: 28, rows: history });
   expect(latecomer.facts.currentJoinedMidSeason).toBe(true);
   expect(latecomer.facts.bottomThreeLastFive).toEqual([]);
+});
+
+test("scores a confirmed mid-season spell on the manager's own games", () => {
+  // D3: Raul took over after 16 games (7 points) and took 41 points from the last 22.
+  const table = [
+    { season: 28, division: 3, position: 1, team: "Top", manager: "T", played: 38, points: 67 },
+    { season: 28, division: 3, position: 2, team: "Next", manager: "N", played: 38, points: 66 },
+    { season: 28, division: 3, position: 16, team: "Saint", manager: "Raul", played: 38, points: 48, valueAdded: -12 },
+    { season: 28, division: 3, position: 20, team: "Last", manager: "L", played: 38, points: 33 },
+  ];
+  const whole = scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table });
+  const spell = { startedOn: "2026-08-21", games: 22, points: 41, confirmed: true };
+  const own = scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell });
+  expect(spellFinish(spell, { season: 28, division: 3, team: "Saint" }, table)).toMatchObject({ projectedPoints: 71, projectedPosition: 1 });
+  expect(whole.breakdown.current).toBe(4.2);
+  expect(own.breakdown.current).toBe(13.6); // 1st-place pace (12 x 0.8) + half marks against squad strength
+  expect(own.facts.currentJoinedMidSeason).toBe(true);
+  expect(own.facts.currentValueAdded).toBeNull();
+  // Unconfirmed, or too few games, or the whole season: no change, or half marks.
+  expect(scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, confirmed: false } }).breakdown.current).toBe(4.2);
+  expect(scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, games: 6, points: 10 } }).breakdown.current).toBe(10);
+  expect(scoreApplicant({ manager: "Raul", currentSeason: 28, rows: table, spell: { ...spell, games: 38, points: 48 } }).breakdown.current).toBe(4.2);
 });
 
 test("scores activity from measured data, with half marks for anything missing and none for no role", () => {
