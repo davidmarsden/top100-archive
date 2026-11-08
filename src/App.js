@@ -1064,7 +1064,12 @@ setDataLoaded(true);
       onClose={() => setHistoryChart(null)}
       title={historyChart?.title}
       subtitle={historyChart?.subtitle}
-      data={historyChart?.data || []}
+      data={
+        // A club's spells come from the current index, so a chart opened before they loaded fills in.
+        historyChart?.cupsFor?.kind === "club"
+          ? (historyChart.data || []).map((point) => ({ ...point, spells: spellsOf(String(point.season).replace(/^S/, ""), point.club) }))
+          : historyChart?.data || []
+      }
       series={historyChart?.series}
       summary={historyChart?.summary}
       cupHonours={
