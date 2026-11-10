@@ -102,8 +102,15 @@ export const mergeHonoursWide = (sheetValues = [], gameRows = [], kind = "club")
   const rowBySeason = new Map();
   rows.forEach((row) => { const season = seasonOf(row[seasonIndex]); if (season && !rowBySeason.has(season)) rowBySeason.set(season, row); });
 
-  const columnNames = (index) => rows.map((row) => row[index]).filter(Boolean);
-  const allSheetNames = headers.flatMap((h, i) => (i !== seasonIndex && isGameCompetition(h, gameKeys) ? columnNames(i) : []));
+  const columnEntries = (index) => rows.map((row) => ({ name: row[index], season: seasonOf(row[seasonIndex]) })).filter((entry) => entry.name);
+  const allSheetEntries = headers.flatMap((h, i) => (i !== seasonIndex && isGameCompetition(h, gameKeys) ? columnEntries(i) : []));
+  // A manager's sheet spelling only from honours within three seasons of the win:
+  // "The FM 2025" (S9, S12) is not the sheet's "The FM" (S26), whose words it contains.
+  const MANAGER_WINDOW = 3;
+  const sheetNamesFor = (season) =>
+    allSheetEntries
+      .filter((entry) => kind !== "manager" || (entry.season && Math.abs(entry.season - season) <= MANAGER_WINDOW))
+      .map((entry) => entry.name);
 
   const bySeason = new Map();
   games.forEach((row) => { const season = Number(row.season_num); if (!bySeason.has(season)) bySeason.set(season, []); bySeason.get(season).push(row); });
@@ -116,7 +123,7 @@ export const mergeHonoursWide = (sheetValues = [], gameRows = [], kind = "club")
     headers.forEach((h, i) => { if (i !== seasonIndex && isGameCompetition(h, gameKeys)) row[i] = ""; });
     for (const game of seasonGames) {
       const index = columnByKey.get(compKey(game.competition));
-      row[index] = sheetSpelling(game[valueKey], original?.[index], allSheetNames, kind);
+      row[index] = sheetSpelling(game[valueKey], original?.[index], sheetNamesFor(season), kind);
     }
   }
 

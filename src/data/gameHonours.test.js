@@ -84,3 +84,14 @@ test("a sheet manager with an initial is only kept in the same slot", () => {
   expect(sheetSpelling("Tom Lee", "", ["Tom L", "Hussain Saif"], "manager")).toBe("Tom Lee");
   expect(sheetSpelling("Tom Lee", "Tom L", ["Tom L"], "manager")).toBe("Tom L");
 });
+
+test("a manager's sheet spelling only comes from nearby seasons", () => {
+  const sheet = [["Season", "Division 4", "Top 100 Shield"], ["26", "The FM", ""], ["12", "", ""], ["11", "", "Beddows"]];
+  const games = [
+    { season_num: 12, competition: "Top 100 Shield", display_order: 2, club_name: "Standard Liège", manager_name: "The FM 2025" },
+    { season_num: 13, competition: "Top 100 Shield", display_order: 2, club_name: "Sampdoria", manager_name: "Sir Stephen Beddows (God)" },
+  ];
+  const merged = asObjects(mergeHonoursWide(sheet, games, "manager"));
+  expect(merged["12"]["Top 100 Shield"]).toBe("The FM 2025");
+  expect(merged["13"]["Top 100 Shield"]).toBe("Beddows");
+});

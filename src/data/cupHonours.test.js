@@ -63,3 +63,12 @@ test("short archive names match full honours names through the club", () => {
   // Another Mckenzie at another club that season gets nothing.
   expect(cups.forManager("S. Mckenzie", [{ season: 27, club: "Arsenal" }])).toEqual([]);
 });
+
+test("a longer name is a different manager unless they ran the winning club", () => {
+  const cups = buildCupHonours({
+    clubs: [["Season", "Top 100 Shield", "Division 4"], ["S12", "Standard Liège", ""], ["S26", "", "FC Basel"]],
+    managers: [["Season", "Top 100 Shield", "Division 4"], ["S12", "The FM 2025", ""], ["S26", "", "The FM"]],
+  });
+  expect(cups.forManager("The FM", [{ season: 26, club: "FC Basel" }, { season: 28, club: "Málaga CF" }])).toEqual([]);
+  expect(cups.forManager("The FM 2025", [])).toHaveLength(1);
+});
