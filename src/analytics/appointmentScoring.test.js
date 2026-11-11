@@ -100,9 +100,9 @@ test("scores a confirmed mid-season spell on the manager's own games", () => {
 test("scores activity from measured data, with half marks for anything missing and none for no role", () => {
   const unassessed = scoreApplicant({ manager: "Ann", currentSeason: 28, rows });
   expect(unassessed.breakdown.activity).toBe(8.5);
-  expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, community, focus.");
-  const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, community: 0, gameWorlds: 20 } });
-  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, running: 3, community: 3, gameWorlds: 2 } });
+  expect(unassessed.notes).toContain("Half marks used for: competitions, market, squadBuilding, voting, community, focus.");
+  const inactive = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 0, topManagerDeals: 0, squadRankGain: -20, votingPercent: 0, community: 0, gameWorlds: 20 } });
+  const active = scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { competitions: 2, topManagerDeals: 15, squadRankGain: 25, running: 3, votingPercent: 100, community: 3, gameWorlds: 2 } });
   expect(inactive.breakdown.activity).toBe(0);
   expect(active.breakdown.activity).toBe(20);
 });
@@ -264,7 +264,14 @@ describe("bottom-three review: the VAR standard and the S25 precedents", () => {
 test("managing in fewer game worlds scores better for focus", () => {
   const rows = [{ season: "28", division: "2", position: "10", team: "Club", manager: "Ann", played: "38" }];
   const focus = (gameWorlds) => scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { gameWorlds } }).facts.activity.focus;
-  expect([2, 3, 4, 9, 11, 15].map(focus)).toEqual([2, 2, 1.8, 0.5, 0, 0]);
+  expect([2, 3, 4, 9, 11, 15].map(focus)).toEqual([1, 1, 0.9, 0.3, 0, 0]);
+});
+
+test("voting in awards and polls counts towards activity, and not voting counts against it", () => {
+  const rows = [{ season: "28", division: "2", position: "10", team: "Club", manager: "Ann", played: "38" }];
+  const voting = (votingPercent) => scoreApplicant({ manager: "Ann", currentSeason: 28, rows, activity: { votingPercent } }).facts.activity.voting;
+  expect([100, 50, 0].map(voting)).toEqual([2, 1, 0]);
+  expect(voting(undefined)).toBeNull();
 });
 
 test("takes forfeits this season off an applicant's stability, beyond the disciplinary points", () => {

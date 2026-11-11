@@ -19,9 +19,11 @@
 //                                the club's squad-strength rank gain since the manager arrived (4);
 //                                by role: running Top 100 (3: current owner, administrator or
 //                                competition organiser 3, former owner or administrator 1.5);
-//                                assessed by administrators: community and social activity (3);
-//                                focus: fewer other game worlds (2: up to 3 worlds in all, then
-//                                0.25 less per extra world). Any part not supplied gets half marks.
+//                                voting: share of the awards and polls the manager could vote in
+//                                and did (2); assessed by administrators: community and social
+//                                activity (2, from their 0-3 assessments); focus: fewer other game
+//                                worlds (1: up to 3 worlds in all, then 0.125 less per extra world).
+//                                Any part not supplied gets half marks.
 //
 // A season a manager took over part-way through never counts against them
 // (rulebook 3.1): it is not a bottom-three finish for E or for eligibility.
@@ -71,13 +73,14 @@ export const cupPoints = (competition = "", season = null) => {
   return 1;
 };
 
-const ACTIVITY_PARTS = Object.freeze({ competitions: 4, market: 4, squadBuilding: 4, running: 3, community: 3, focus: 2 });
+const ACTIVITY_PARTS = Object.freeze({ competitions: 4, market: 4, squadBuilding: 4, running: 3, voting: 2, community: 2, focus: 1 });
 
 // Focus: managing in fewer Soccer Manager game worlds leaves more time for Top 100.
-// Up to 3 worlds (Top 100 included) is full marks, then a quarter point less per extra world.
+// Up to 3 worlds (Top 100 included) is full marks, then an eighth of a point less per extra world.
 const FOCUS_FULL_UP_TO = 3;
 
 // activity: { competitions: entries, topManagerDeals: count, squadRankGain: places, running: 0..3, community: 0..3,
+//             votingPercent: share (0..100) of the awards and polls the manager could vote in and did,
 //             gameWorlds: number of Soccer Manager game worlds managed in, Top 100 included }
 const activityPoints = (activity = {}) => ({
   competitions: num(activity.competitions) === null ? null : Math.min(4, 2 * num(activity.competitions)),
@@ -85,8 +88,11 @@ const activityPoints = (activity = {}) => ({
   squadBuilding: num(activity.squadRankGain) === null ? null : clamp(2 + num(activity.squadRankGain) / 10, 0, 4),
   // Roles are known for everyone, so no role means 0, not half marks.
   running: clamp(num(activity.running) ?? 0, 0, 3),
-  community: num(activity.community) === null ? null : clamp(num(activity.community), 0, 3),
-  focus: num(activity.gameWorlds) === null ? null : clamp(2 - 0.25 * (num(activity.gameWorlds) - FOCUS_FULL_UP_TO), 0, 2),
+  // Voting in awards and polls counts towards activity; not voting counts against it.
+  voting: num(activity.votingPercent) === null ? null : clamp(num(activity.votingPercent), 0, 100) / 50,
+  // Administrators assess community on a 0-3 scale; it counts for up to 2 points.
+  community: num(activity.community) === null ? null : (clamp(num(activity.community), 0, 3) * 2) / 3,
+  focus: num(activity.gameWorlds) === null ? null : clamp(1 - 0.125 * (num(activity.gameWorlds) - FOCUS_FULL_UP_TO), 0, 1),
 });
 
 const DIVISION_SIZE = 20;
