@@ -101,21 +101,31 @@ export const buildLiveSeasonRows = (liveRows = [], sheetRows = []) => {
   }));
 };
 
-const csvCell = (value) => {
-  const text = String(value ?? "");
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// A season's start date ("2026-06-26") as the sheet writes it: "Jun 26".
+export const formatSeasonStart = (value) => {
+  const match = /^(\d{4})-(\d{2})/.exec(clean(value));
+  return match ? `${MONTHS[Number(match[2]) - 1]} ${match[1].slice(2)}` : "";
 };
 
-// Same columns as the "Full History" tab, ready to paste under the last row.
-export const toSheetCsv = (rows = []) =>
-  [
-    ["Season", "Div", "Pos", "", "Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "", "Start date", "", "Manager"],
-    ...[...rows]
-      .sort((a, b) => Number(a.division) - Number(b.division) || Number(a.position) - Number(b.position))
-      .map((row) => [
-        row.season, row.division, row.position, "", row.team, row.played, row.won, row.drawn, row.lost,
-        row.goals_for, row.goals_against, row.goal_difference, row.points, "", "", "", row.manager,
-      ]),
-  ]
-    .map((line) => line.map(csvCell).join(","))
-    .join("\n");
+// Every manager of a club in a season ("Luís André Libras-Boas / Gianluca Ghio (2nd)"),
+// each in the sheet's own name ("Libras-Boas / Ghio (2nd)"), without repeats.
+export const resolveManagerNames = (names, team, sheetRows = []) =>
+  [...new Set(splitManagers(names).map((name) => resolveManagerName(name, team, sheetRows)).filter(Boolean))].join(" / ");
+
+// Seasons from Sync's league history (netlify/functions/league-history.js, in the sheet's
+// shape) that the Full History sheet does not have: the finished seasons Sync has saved,
+// with each season's own managers and start date, and the season being played.
+// The sheet wins for any season it has.
+export const buildSyncSeasonRows = (historyRows = [], sheetRows = []) => {
+  const sheetSeasons = new Set(sheetRows.map((row) => clean(row.season)));
+  const sheetTeams = new Map(sheetRows.map((row) => [clean(row.team).toLowerCase(), clean(row.team)]));
+  const sheetTeam = (team) => sheetTeams.get(clean(team).toLowerCase()) || clean(team);
+  return historyRows
+    .filter((row) => clean(row.season) && !sheetSeasons.has(clean(row.season)))
+    .map((row) => {
+      const team = sheetTeam(row.team);
+      return { ...row, team, manager: resolveManagerNames(row.manager, team, sheetRows) };
+    });
+};

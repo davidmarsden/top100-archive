@@ -1,4 +1,4 @@
-import { buildLiveSeasonRows, resolveManagerName, toSheetCsv } from "./liveSeason";
+import { buildLiveSeasonRows, buildSyncSeasonRows, formatSeasonStart, resolveManagerName, resolveManagerNames } from "./liveSeason";
 
 const sheet = [
   { season: "27", team: "Sampdoria", manager: "Beddows" },
@@ -31,10 +31,33 @@ test("adds the live season only while the sheet does not have it", () => {
   expect(buildLiveSeasonRows(live, [...sheet, { season: "28", team: "Sampdoria" }])).toEqual([]);
 });
 
-test("exports rows in the Full History column layout", () => {
-  const csv = toSheetCsv([{ season: "28", division: "1", position: "20", team: "Juventus", played: "38", won: "2", drawn: "6", lost: "30", goals_for: "20", goals_against: "92", goal_difference: "-72", points: "12", manager: "Mcgregor" }]);
-  expect(csv.split("\n")[0]).toBe("Season,Div,Pos,,Team,P,W,D,L,GF,GA,GD,Pts,,Start date,,Manager");
-  expect(csv.split("\n")[1]).toBe("28,1,20,,Juventus,38,2,6,30,20,92,-72,12,,,,Mcgregor");
+test("writes a season's start date as the sheet does", () => {
+  expect(formatSeasonStart("2026-06-26")).toBe("Jun 26");
+  expect(formatSeasonStart("2026-01-20")).toBe("Jan 26");
+  expect(formatSeasonStart(null)).toBe("");
+});
+
+test("names every manager of a club in a season in the sheet's own names", () => {
+  const rows = [
+    { season: "27", team: "Hellas Verona", manager: "Libras-Boas" },
+    { season: "27", team: "Independiente", manager: "Ghio" },
+    { season: "27", team: "SL Benfica", manager: "Robinson" },
+    { season: "27", team: "AS Saint-Etienne", manager: "Miranda" },
+  ];
+  expect(resolveManagerNames("Luís André Libras-Boas / Gianluca Ghio (2nd)", "Hellas Verona", rows)).toBe("Libras-Boas / Ghio (2nd)");
+  expect(resolveManagerNames("Gregg Robinson / Carlos Miranda", "SL Benfica", rows)).toBe("Robinson / Miranda");
+  expect(resolveManagerNames("", "SL Benfica", rows)).toBe("");
+});
+
+test("adds the seasons the sheet does not have, in the sheet's spellings", () => {
+  const sheetRows = [{ season: "27", division: "1", position: "12", team: "HAMBURGER SV", manager: "Marsden" }];
+  const history = [
+    { season: "27", team: "Hamburger SV", manager: "David Marsden" },
+    { season: "28", team: "Hamburger SV", manager: "David Marsden", start_date: "Jun 26" },
+  ];
+  const rows = buildSyncSeasonRows(history, sheetRows);
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ season: "28", team: "HAMBURGER SV", manager: "Marsden", start_date: "Jun 26" });
 });
 
 test("uses the sheet's spelling of a club so the live season joins its history", () => {

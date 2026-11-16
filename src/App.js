@@ -18,7 +18,7 @@ import ArchiveHeroHeader from "./components/ArchiveHeroHeader";
 import ArchiveControls from "./components/ArchiveControls";
 import ManagerAnalyticsRoute from "./components/ManagerAnalyticsRoute";
 import LiveSeasonBanner from "./components/LiveSeasonBanner";
-import { buildLiveSeasonRows } from "./data/liveSeason";
+import { buildSyncSeasonRows, formatSeasonStart } from "./data/liveSeason";
 import { indexClubSpells, spellsFor as clubSpellsFor } from "./data/clubSpells";
 import { getArchiveWorld, worldQuery } from "./config/world";
 import { tabsForWorld } from "./config/archiveTabs";
@@ -45,7 +45,7 @@ export const historyRowsFromSync = (rows = []) => {
     goals_against: String(row.goals_against ?? ""),
     goal_difference: String(row.goal_difference ?? ""),
     points: String(row.points ?? ""),
-    start_date: "",
+    start_date: formatSeasonStart(row.season_start),
     manager: String(row.manager ?? "").trim(),
     ...(row.is_live ? { live: true, inProgress: !liveComplete } : {}),
   }));
@@ -635,15 +635,16 @@ setDataLoaded(true);
     };
   }, []);
 
-  // Current season, live from Soccer Manager Sync, until it is in the sheet.
+  // Seasons the sheet does not have, from Sync's league history: finished seasons with
+  // their own managers and start dates, and the season being played.
   useEffect(() => {
-    // Top 100 Regen's live season is already in its league history.
+    // Top 100 Regen's whole history already comes from its league history.
     if (!WORLD.sheet) return undefined;
     let live = true;
-    fetch(`/.netlify/functions/live-season?${worldQuery(WORLD)}`)
+    fetch(`/.netlify/functions/league-history?${worldQuery(WORLD)}`)
       .then((res) => (res.ok ? res.json() : { rows: [] }))
       .then((body) => {
-        if (live) setLiveSeasonRows(Array.isArray(body.rows) ? body.rows : []);
+        if (live) setLiveSeasonRows(historyRowsFromSync(Array.isArray(body.rows) ? body.rows : []));
       })
       .catch(() => {});
     return () => {
@@ -652,7 +653,7 @@ setDataLoaded(true);
   }, []);
 
   const liveSeasonData = useMemo(
-    () => buildLiveSeasonRows(liveSeasonRows, sheetPositionData),
+    () => buildSyncSeasonRows(liveSeasonRows, sheetPositionData),
     [liveSeasonRows, sheetPositionData]
   );
 
