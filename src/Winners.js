@@ -216,7 +216,7 @@ const Winners = ({ sharedSearch, onSharedSearchChange }) => {
           {!getArchiveWorld().sheet
             ? (source.gameSeasons.length
               ? `Honours from Soccer Manager's Game World History (S${source.gameSeasons[source.gameSeasons.length - 1]}–S${source.gameSeasons[0]}).`
-              : 'No honours yet: run Sync everything in this world to read them.')
+              : 'No honours yet.')
             : source.gameSeasons.length
             ? `League, cup and SMFA honours from Soccer Manager (S${source.gameSeasons[source.gameSeasons.length - 1]}–S${source.gameSeasons[0]}); Youth Cup and Shield from the Top 100 winners list.`
             : 'Honours from the Top 100 winners list.'}

@@ -27,7 +27,7 @@ export default function LiveSeasonBanner({ rows = [] }) {
   return (
     <div className="mb-6 rounded-xl border-2 border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 flex flex-wrap items-center gap-3">
       <span>
-        <strong>S{season} is live from Soccer Manager Sync</strong>
+        <strong>S{season} live table from Soccer Manager</strong>
         {inProgress ? ` (${played} of 38 games played` : " (final table"}
         {updated ? `, updated ${updated})` : ")"}.
         {inProgress ? " Titles, promotions and sackings count once the season is complete." : " Add it to the Full History sheet to make it permanent."}
