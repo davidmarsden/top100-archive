@@ -485,7 +485,7 @@ const buildMostClubsManaged = () => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.error || `league history ${response.status}`);
         const rows = historyRowsFromSync(Array.isArray(body.rows) ? body.rows : []);
-        if (!rows.length) throw new Error(`No ${WORLD.name} seasons yet: run Sync everything in that world.`);
+        if (!rows.length) throw new Error(`No ${WORLD.name} seasons yet.`);
         setSheetPositionData(rows);
         setDataLoaded(true);
       } catch (e) {

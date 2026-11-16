@@ -54,7 +54,7 @@ export default function LiveDivisionStats() {
       <div>
         <h2 className="text-3xl font-black text-gray-900">S{stats.season} Division Stats</h2>
         <p className="text-gray-600 mt-1">
-          Live from Soccer Manager Sync{updated ? `, updated ${updated}` : ""}. Squad strength (ETOT) uses Mister TRX&apos;s formula
+          Live from Soccer Manager{updated ? `, updated ${updated}` : ""}. Squad strength (ETOT) uses Mister TRX&apos;s formula
           {opening
             ? "; predicted position is each club's ETOT rank in its division at the start of the season, value added (VA) is predicted minus current position, and PVA is (VA + 1) ÷ position, which orders the stats table."
             : ". Predicted positions and value added appear once the season's opening squads are recorded."}
