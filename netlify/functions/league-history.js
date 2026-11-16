@@ -11,6 +11,10 @@ const envValue = (...keys) =>
 const SUPABASE_URL = envValue('SUPABASE_URL', 'REACT_APP_SUPABASE_URL').replace(/\/+$/, '');
 const SUPABASE_ANON_KEY = envValue('SUPABASE_ANON_KEY', 'REACT_APP_SUPABASE_ANON_KEY');
 
+// Rows per request (Supabase's own cap) and a ceiling of 20,000 rows: 200 seasons of 100 clubs.
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
 // ?world=regen reads Top 100 Regen; anything else is Top 100.
 const WORLDS = new Set(['top-100', 'regen']);
 const worldSlug = (event) => {
@@ -32,13 +36,19 @@ exports.handler = async (event) => {
   }
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/public_league_history_rows`, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_world_slug: worldSlug(event) }),
-    });
-    if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    const rows = await res.json();
+    // Supabase returns at most 1,000 rows a request: read page after page until a short one.
+    const rows = [];
+    for (let offset = 0; offset < PAGE_SIZE * MAX_PAGES; offset += PAGE_SIZE) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/public_league_history_rows?limit=${PAGE_SIZE}&offset=${offset}`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_world_slug: worldSlug(event) }),
+      });
+      if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const page = await res.json();
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
     return {
       statusCode: 200,
       // Sync data changes when a sync runs: a stale copy is served for at most

@@ -129,3 +129,27 @@ export const buildSyncSeasonRows = (historyRows = [], sheetRows = []) => {
       return { ...row, team, manager: resolveManagerNames(row.manager, team, sheetRows) };
     });
 };
+
+const csvCell = (value) => {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+// Every finished season, in the Full History tab's columns (start date as month and
+// two-digit year, "Jun" "26"), oldest first: paste under the header, or keep as a backup.
+export const toFullHistoryCsv = (rows = []) =>
+  [
+    ["Season", "Div", "Pos", "", "Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "", "Start date", "", "Manager"],
+    ...rows
+      .filter((row) => !row.inProgress && clean(row.season))
+      .sort((a, b) => Number(a.season) - Number(b.season) || Number(a.division) - Number(b.division) || Number(a.position) - Number(b.position))
+      .map((row) => {
+        const [month = "", year = ""] = clean(row.start_date).split(/\s+/);
+        return [
+          row.season, row.division, row.position, "", row.team, row.played, row.won, row.drawn, row.lost,
+          row.goals_for, row.goals_against, row.goal_difference, row.points, "", month, year, row.manager,
+        ];
+      }),
+  ]
+    .map((line) => line.map(csvCell).join(","))
+    .join("\n");

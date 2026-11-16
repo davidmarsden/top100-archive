@@ -1,4 +1,4 @@
-import { buildLiveSeasonRows, buildSyncSeasonRows, formatSeasonStart, resolveManagerName, resolveManagerNames } from "./liveSeason";
+import { buildLiveSeasonRows, buildSyncSeasonRows, formatSeasonStart, resolveManagerName, resolveManagerNames, toFullHistoryCsv } from "./liveSeason";
 
 const sheet = [
   { season: "27", team: "Sampdoria", manager: "Beddows" },
@@ -98,4 +98,16 @@ test("a second account already in the sheet keeps its name", () => {
   expect(resolveManagerName("Gianluca Ghio (3)", "Lazio", rows)).toBe("Ghio (3)");
   // Only marked accounts in the sheet: the unmarked live account is not one of them.
   expect(resolveManagerName("Gianluca Ghio (2nd)", "Hellas Verona", [{ season: "28", team: "Hellas Verona", manager: "Ghio (2nd)" }])).toBe("Ghio (2nd)");
+});
+
+test("exports every finished season in the Full History tab's columns, oldest first", () => {
+  const csv = toFullHistoryCsv([
+    { season: "28", division: "1", position: "11", team: "Hellas Verona", played: "38", won: "15", drawn: "9", lost: "14", goals_for: "52", goals_against: "49", goal_difference: "3", points: "54", start_date: "Jun 26", manager: "Libras-Boas / Ghio (2nd)" },
+    { season: "27", division: "1", position: "4", team: "Hellas Verona", played: "38", start_date: "Jan 26", manager: "Libras-Boas" },
+    { season: "29", division: "1", position: "1", team: "FC Porto", played: "10", inProgress: true, manager: "Guerra" },
+  ]).split("\n");
+  expect(csv[0]).toBe("Season,Div,Pos,,Team,P,W,D,L,GF,GA,GD,Pts,,Start date,,Manager");
+  expect(csv[1]).toBe("27,1,4,,Hellas Verona,38,,,,,,,,,Jan,26,Libras-Boas");
+  expect(csv[2]).toBe("28,1,11,,Hellas Verona,38,15,9,14,52,49,3,54,,Jun,26,Libras-Boas / Ghio (2nd)");
+  expect(csv).toHaveLength(3);
 });

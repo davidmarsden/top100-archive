@@ -971,6 +971,8 @@ setDataLoaded(true);
   availableDivisions={availableDivisions}
   selectedDivision={selectedDivision}
   setSelectedDivision={setSelectedDivision}
+  allPositionData={allPositionData}
+  worldSlug={WORLD.slug}
 />
 
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { Search } from "lucide-react";
+import { Search, Download } from "lucide-react";
+import { toFullHistoryCsv } from "../data/liveSeason";
 
 const ArchiveControls = ({
   activeTab,
@@ -12,7 +13,21 @@ const ArchiveControls = ({
   availableDivisions,
   selectedDivision,
   setSelectedDivision,
+  allPositionData = [],
+  worldSlug = "top-100",
 }) => {
+  // The whole archive as a Full History sheet: for the sheet, or to keep.
+  const downloadFullHistory = () => {
+    const url = URL.createObjectURL(new Blob([toFullHistoryCsv(allPositionData)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${worldSlug}-full-history.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
+
   const hasInitialisedSeason = useRef(false);
 
   useEffect(() => {
@@ -79,6 +94,15 @@ const ArchiveControls = ({
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={downloadFullHistory}
+            disabled={!allPositionData.length}
+            className="ml-auto inline-flex items-center gap-2 px-4 py-3 text-base border-2 border-gray-200 rounded-xl bg-white hover:border-blue-400 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            Download full history (CSV)
+          </button>
         </div>
       )}
     </>
