@@ -59,7 +59,7 @@ out.push(`# S${season} round-up brief: after ${played} game${played === 1 ? "" :
 out.push("");
 out.push(`Source: ${SITE} division stats, observed ${stats.observedAt || "unknown"}. ` +
   `Last season: statsArchive.json (S${season - 1}). Predicted = opening-day squad-strength order (Mister TRX's formula). ` +
-  `VA = predicted minus current position.`);
+  `VA = predicted minus current position. Awards: ${stats.awardsScope === "league" ? `league games only (${stats.leagueMatches} matches)` : "all matches"}.`);
 
 for (const div of stats.divisions) {
   const d = div.division;
@@ -104,9 +104,10 @@ for (const div of stats.divisions) {
   const big = clubs.filter((c) => Math.abs(c.goal_difference) >= 3);
   if (big.length) facts.push(`Margins of 3+: ${big.map((c) => `${c.club} ${sign(c.goal_difference)}`).join(", ")}`);
   const { topScorer, mostAssists } = div.awards || {};
-  // These counts can run ahead of league games played (they may include other competitions): check before quoting.
-  if (topScorer) facts.push(`Top scorer (check source): ${topScorer.name} (${topScorer.club}) ${topScorer.value}`);
-  if (mostAssists) facts.push(`Most assists (check source): ${mostAssists.name} (${mostAssists.club}) ${mostAssists.value}`);
+  // League games only when the RPC says so (awardsScope 'league'); older versions counted friendlies too.
+  const scope = stats.awardsScope === "league" ? "league" : "all matches, incl. friendlies: check before quoting";
+  if (topScorer) facts.push(`Top scorer (${scope}): ${topScorer.name} (${topScorer.club}) ${topScorer.value}`);
+  if (mostAssists) facts.push(`Most assists (${scope}): ${mostAssists.name} (${mostAssists.club}) ${mostAssists.value}`);
   out.push("", ...facts.map((f) => `- ${f}`));
 }
 
