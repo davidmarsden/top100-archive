@@ -14,11 +14,11 @@ export const RANKINGS = [
 ];
 
 export const AWARDS = [
-  { id: "topScorer", label: "Top scorer", unit: "goals" },
-  { id: "mostAssists", label: "Most assists", unit: "assists" },
-  { id: "bestAverage", label: "Best average rating", unit: "avg", note: "10+ apps" },
-  { id: "bestYoungPlayer", label: "Best young player", unit: "avg", note: "21 or under, 10+ apps" },
-  { id: "oldestRegular", label: "Oldest regular", unit: "years old", note: "10+ apps" },
+  { id: "topScorer", label: "Top scorer", unit: "goals", note: "league" },
+  { id: "mostAssists", label: "Most assists", unit: "assists", note: "league" },
+  { id: "bestAverage", label: "Best average rating", unit: "avg", note: "10+ league apps" },
+  { id: "bestYoungPlayer", label: "Best young player", unit: "avg", note: "21 or under, 10+ league apps" },
+  { id: "oldestRegular", label: "Oldest regular", unit: "years old", note: "10+ league apps" },
 ];
 
 const isNumber = (value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
